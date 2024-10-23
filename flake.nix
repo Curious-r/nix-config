@@ -220,7 +220,7 @@
       # Nix on droid configuration entrypoint
       # Available through 'nix-on-droid --flake .#FIXME'
       nixOnDroidConfigurations = {
-        default = nix-on-droid.lib.nixOnDroidConfiguration {
+        Phone-Redmi-K50Pro = nix-on-droid.lib.nixOnDroidConfiguration {
           extraSpecialArgs = {
             inherit inputs outputs;
           };
