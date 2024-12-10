@@ -37,7 +37,7 @@
 
     # Home manager
     home-manager = {
-      url = "github:nix-community/home-manager/release-24.05";
+      url = "github:nix-community/home-manager/release-24.11";
       # `follows` 是 inputs 中的继承语法
       # 这里使 home-manager 的 `inputs.nixpkgs` 与当前 flake 的
       # `inputs.nixpkgs` 保持一致，避免依赖的 nixpkgs 版本不一致导致问题
