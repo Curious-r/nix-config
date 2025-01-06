@@ -76,7 +76,7 @@
   ];
 
   environment.persistence."/persistent".users.curious.directories = [
-    homeserver
+    "homeserver"
   ];
 
   # Some programs need SUID wrappers, can be configured further or are
