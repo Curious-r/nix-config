@@ -75,6 +75,10 @@
     bottom
   ];
 
+  environment.persistence."/persistent".users.curious.directories = [
+    homeserver
+  ];
+
   # Some programs need SUID wrappers, can be configured further or are
   # started in user sessions.
   # programs.mtr.enable = true;
