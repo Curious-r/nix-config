@@ -35,7 +35,6 @@
                 # Subvolumes must set a mountpoint in order to be mounted,
                 # unless their parent is mounted
                 subvolumes = {
-                  # Subvolume name is different from mountpoint
                   "@" = {
                     mountOptions = [
                       "compress=zstd"
@@ -43,7 +42,6 @@
                     ];
                     mountpoint = "/";
                   };
-                  # Subvolume name is the same as the mountpoint
                   "@nix" = {
                     mountOptions = [
                       "compress=zstd"
