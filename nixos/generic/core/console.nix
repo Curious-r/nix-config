@@ -3,7 +3,7 @@
   console = {
     font = "Lat2-Terminus16";
     keyMap = "us";
-    earlySetup = true;    # 使 console 配置生效于 initrd
+    earlySetup = true; # 使 console 配置生效于 initrd
     # 控制台颜色
     colors = [
       "282C34"

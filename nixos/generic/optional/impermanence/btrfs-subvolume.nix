@@ -1,4 +1,4 @@
-{ enableRestoreService, outputs,  ... }:
+{ enableRestoreService, outputs, ... }:
 {
   imports = [
     ../disko/primary/efi-btrfs.nix
