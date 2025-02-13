@@ -39,7 +39,9 @@
         ".local"
         ".ssh"
       ];
-      files = [ ];
+      files = [
+        ".gitconfig"
+      ];
     };
   };
 }
