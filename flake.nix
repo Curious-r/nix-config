@@ -9,10 +9,18 @@
     extra-substituters = [
       # nix community's cache server
       "https://nix-community.cachix.org"
+
+      # helix 官方 flake 构建的缓存服务器
+      # 我的所有不同类型 nix 实例都用helix作默认编辑器
+      # 所以它的缓存配置直接写在顶层
+      "https://helix.cachix.org"
     ];
     extra-trusted-public-keys = [
       # nix community's cache server public key
       "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
+
+      # helix 缓存服务器的公钥
+      "helix.cachix.org-1:ejp9KQpR1FBI2onstMQ34yogDm4OgU2ru6lIwPvuCVs="
     ];
   };
 
