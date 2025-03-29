@@ -7,7 +7,6 @@
 
   users = {
     mutableUsers = false;
-    defaultUserShell = pkgs.nushell;
     users = {
       root = {
         hashedPasswordFile = config.sops.secrets."passwords/users/root".path;
