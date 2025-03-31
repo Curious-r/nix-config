@@ -25,7 +25,7 @@ in
       wantedBy = [ "initrd.target" ];
       requires = [ requiredUnit ];
       after = [ "rollback.service" ];
-      before = [ "-.mount" ];
+      before = [ "initrd-root-fs.target" ];
       unitConfig.DefaultDependencies = "no";
       serviceConfig.Type = "oneshot";
       script = # bash

@@ -25,10 +25,11 @@ in
       wantedBy = [ "initrd.target" ];
       requires = [ requiredUnit ];
       after = [
+        "initrd-root-device.target"
         requiredUnit
         # 如果使用了磁盘加密，请确保解密服务在此服务之前完成
       ];
-      before = [ "-.mount" ];
+      before = [ "initrd-root-fs.target" ];
       unitConfig.DefaultDependencies = "no";
       serviceConfig.Type = "oneshot";
       script = # bash
