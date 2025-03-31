@@ -8,9 +8,9 @@
 }:
 let
   cfg = config.boot.impermanence.btrfsSubvolume.restore;
-  primaryDiskUnit = "dev-disk-by\\x2did-${
+  requiredUnit = "dev-disk-by\\x2did-${
     lib.replaceStrings [ "-" ] [ "\\x2d" ] primaryDiskWwid
-  }.device";
+  }\\x2dpart2.device";
 in
 {
   options = {
@@ -23,9 +23,9 @@ in
     boot.initrd.systemd.services.restore = {
       description = "Restore a specific BTRFS @ subvolume from backup";
       wantedBy = [ "initrd.target" ];
-      requires = [ primaryDiskUnit ];
+      requires = [ requiredUnit ];
       after = [ "rollback.service" ];
-      before = [ "sysroot.mount" ];
+      before = [ "-.mount" ];
       unitConfig.DefaultDependencies = "no";
       serviceConfig.Type = "oneshot";
       script = ''

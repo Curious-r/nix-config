@@ -8,9 +8,9 @@
 }:
 let
   cfg = config.boot.impermanence.btrfsSubvolume.rollback;
-  primaryDiskUnit = "dev-disk-by\\x2did-${
+  requiredUnit = "dev-disk-by\\x2did-${
     lib.replaceStrings [ "-" ] [ "\\x2d" ] primaryDiskWwid
-  }.device";
+  }\\x2dpart2.device";
 in
 {
   options = {
@@ -23,12 +23,12 @@ in
     boot.initrd.systemd.services.rollback = {
       description = "Rollback BTRFS @ subvolume to a pristine state";
       wantedBy = [ "initrd.target" ];
-      requires = [ primaryDiskUnit ];
+      requires = [ requiredUnit ];
       after = [
-        primaryDiskUnit
+        requiredUnit
         # 如果使用了磁盘加密，请确保解密服务在此服务之前完成
       ];
-      before = [ "sysroot.mount" ];
+      before = [ "-.mount" ];
       unitConfig.DefaultDependencies = "no";
       serviceConfig.Type = "oneshot";
       script = ''
