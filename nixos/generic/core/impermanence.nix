@@ -6,7 +6,7 @@
   ];
   # 配合 nixos-anywhere 部署时，在 stage1 阶段生成持久化目录所需的选项
   # 启用 initrd systemd 也是配合 rollback 服务的需要
-  boot.loader.efi.canTouchEfiVariables = lib.mkForce true;
+  # boot.loader.efi.canTouchEfiVariables = lib.mkForce true;
   boot.initrd.systemd.enable = lib.mkForce true;
 
   # /persistent 是你实际保存文件的地方
