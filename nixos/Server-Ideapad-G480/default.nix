@@ -6,45 +6,10 @@
   imports = [
     # Include the results of the hardware scan.
     ./hardware-configuration.nix
-    # ./homeserver.nix
+    ./boot.nix
+    ./network.nix
+    ./impermanence.nix
   ];
-
-  # Use the systemd-boot EFI boot loader.
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.systemd-boot.consoleMode = "auto";
-  boot.loader.efi.canTouchEfiVariables = true;
-
-  # 禁用烦人的bcm4313调试信息
-  boot.consoleLogLevel = 3;
-
-  networking = {
-    hostName = "Server-Ideapad-G480"; # Define your hostname.
-    networkmanager = {
-      enable = true; # Enables NetworkManager, which will manage networking
-    };
-    timeServers = [ "ntp.aliyun.com" ];
-    nftables = {
-      enable = true;
-    };
-    firewall = {
-      enable = true;
-      allowedTCPPorts = [
-        22
-        7931
-        8123
-        9876
-      ];
-      allowedUDPPorts = [ 7931 ];
-      # checkReversePath = "loose";
-      logReversePathDrops = true;
-      logRefusedPackets = true;
-    };
-    # Configure network proxy if necessary
-    # proxy = {
-    #   default = "socks://192.168.1.8:7890";
-    #   noProxy = "127.0.0.1,localhost,internal.domain";
-    # };
-  };
 
   # Enable the X11 windowing system.
   # services.xserver.enable = true;
@@ -57,14 +22,8 @@
   # Enable CUPS to print documents.
   # services.printing.enable = true;
 
-  # Enable sound.
-  # sound.enable = true;
-  # hardware.pulseaudio.enable = true;
-
   # Enable touchpad support (enabled default in most desktopManager).
   # services.xserver.libinput.enable = true;
-
-  # Define a user account. Don't forget to set a password with ‘passwd’.
 
   # List packages installed in system profile. To search, run:
   # $ nix search wget
@@ -72,10 +31,6 @@
     wget
     zellij
     bottom
-  ];
-
-  environment.persistence."/persistent".users.curious.directories = [
-    "homeserver"
   ];
 
   # Some programs need SUID wrappers, can be configured further or are

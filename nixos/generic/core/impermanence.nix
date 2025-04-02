@@ -4,7 +4,8 @@
     inputs.impermanence.nixosModules.impermanence
     inputs.disko.nixosModules.disko
   ];
-  # 配合nixos-anywhere部署时，在stage1阶段生成持久化目录所需的选项
+  # 配合 nixos-anywhere 部署时，在 stage1 阶段生成持久化目录所需的选项
+  # 启用 initrd systemd 也是配合 rollback 服务的需要
   boot.loader.efi.canTouchEfiVariables = lib.mkForce true;
   boot.initrd.systemd.enable = lib.mkForce true;
 
