@@ -5,7 +5,7 @@
 {
   imports = [
     ./locale.nix # localization settings
-    ./editor.nix
+    ./tools.nix # basic tools
   ];
 
   # Backup etc files instead of failing to activate generation if a file already exists in /etc

@@ -228,6 +228,14 @@
           pkgs = import nixpkgs { system = "aarch64-linux"; };
           modules = [ ./nix-on-droid/Phone-Redmi-K50Pro ];
         };
+        Pad-Vivo-3Pro = nix-on-droid.lib.nixOnDroidConfiguration {
+          extraSpecialArgs = {
+            inherit inputs outputs;
+          };
+          pkgs = import nixpkgs { system = "aarch64-linux"; };
+          modules = [ ./nix-on-droid/Pad-Vivo-3Pro ];
+        };
+
       };
     };
 }
