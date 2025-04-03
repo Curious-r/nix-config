@@ -175,8 +175,9 @@
             ./nixos/generic/core
             ./nixos/generic/optional/nix/substituters/mainland.nix
             # ./nixos/generic/optional/nix/substituters/yazi.nix
+            ./nixos/generic/optional/impermanence/basic
+            ./nixos/generic/optional/impermanence/implementation/btrfs-subvolume.nix
             ./nixos/Server-Ideapad-G480
-            ./nixos/generic/optional/impermanence/btrfs-subvolume.nix
             # inputs.daeuniverse.nixosModules.dae
             # inputs.nixos-cosmic.nixosModules.default
           ];
@@ -195,8 +196,10 @@
             ./nixos/generic/core
             ./nixos/generic/optional/nix/substituters/mainland.nix
             ./nixos/generic/optional/nix/substituters/cosmic.nix
+            ./nixos/generic/optional/impermanence/basic
+            ./nixos/generic/optional/impermanence/implementation/btrfs-subvolume.nix
+            ./nixos/generic/optional/impermanence/additional/curious/desktop.nix
             ./nixos/Desktop-DIY-B650
-            ./nixos/generic/optional/impermanence/btrfs-subvolume.nix
             inputs.nixos-cosmic.nixosModules.default
           ];
         };

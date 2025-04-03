@@ -9,7 +9,6 @@
     ./locale.nix # localization settings
     ./nix.nix # nix settings and garbage collection
     ./sops.nix # secrets management
-    ./impermanence.nix
     ./users.nix
     ./console.nix
     ./editor.nix
