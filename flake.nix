@@ -177,6 +177,8 @@
             # ./nixos/generic/optional/nix/substituters/yazi.nix
             ./nixos/generic/optional/impermanence/basic
             ./nixos/generic/optional/impermanence/implementation/btrfs-subvolume.nix
+            ./nixos/generic/optional/docker/basic
+            ./nixos/generic/optional/docker/registry-mirrors/mainland.nix
             ./nixos/Server-Ideapad-G480
             # inputs.daeuniverse.nixosModules.dae
             # inputs.nixos-cosmic.nixosModules.default

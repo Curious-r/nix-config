@@ -49,14 +49,6 @@
   # services.desktopManager.cosmic.enable = true;
   # services.displayManager.cosmic-greeter.enable = true;
 
-  # Enable docker.
-  virtualisation.docker = {
-    enable = true;
-    # btrfs 存储驱动在系统软重启时的解挂载处理似乎有问题，可能会引起我的 impermance btrfs 根目录回滚失败，
-    # 这里尝试使用 overlay2
-    storageDriver = "overlay2";
-  };
-
   # Copy the NixOS configuration file and link it from the resulting system
   # (/run/current-system/configuration.nix). This is useful in case you
   # accidentally delete configuration.nix.
