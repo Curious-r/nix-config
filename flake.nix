@@ -201,6 +201,7 @@
             ./nixos/generic/optional/impermanence/basic
             ./nixos/generic/optional/impermanence/implementation/btrfs-subvolume.nix
             ./nixos/generic/optional/impermanence/additional/curious/desktop.nix
+            ./nixos/generic/optional/inputMethod.nix
             ./nixos/Desktop-DIY-B650
             inputs.nixos-cosmic.nixosModules.default
           ];
