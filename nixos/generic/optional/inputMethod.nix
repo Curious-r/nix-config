@@ -2,7 +2,11 @@
 {
   i18n.inputMethod = {
     enable = true;
-    type = "ibus";
-    ibus.engines = with pkgs.ibus-engines; [ rime ];
+    type = "fcitx5";
+    fcitx5.addons = with pkgs; [
+      fcitx5-gtk # alternatively, kdePackages.fcitx5-qt
+      fcitx5-nord # a color theme
+      fcitx5-rime
+    ];
   };
 }
