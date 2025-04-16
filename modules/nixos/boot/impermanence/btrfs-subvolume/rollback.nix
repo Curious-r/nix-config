@@ -7,14 +7,14 @@
   ...
 }:
 let
-  cfg = config.boot.impermanence.btrfsSubvolume.rollback;
+  cfg = config.boot.impermanence.btrfs-subvolume.rollback;
   requiredUnit = "dev-disk-by\\x2did-${
     lib.replaceStrings [ "-" ] [ "\\x2d" ] primaryDiskWwid
   }\\x2dpart2.device";
 in
 {
   options = {
-    boot.impermanence.btrfsSubvolume.rollback = {
+    boot.impermanence.btrfs-subvolume.rollback = {
       enable = lib.mkEnableOption "Service to rollback BTRFS @ subvolume to a pristine state";
     };
   };

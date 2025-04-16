@@ -14,11 +14,6 @@
   # Enable the X11 windowing system.
   # services.xserver.enable = true;
 
-  # programs.yazi = {
-  #   enable = true;
-  #   package = inputs.yazi.packages.${pkgs.system}.default; # if you use overlays, you can omit this
-  # };
-
   # Enable CUPS to print documents.
   # services.printing.enable = true;
 
@@ -29,8 +24,6 @@
   # $ nix search wget
   environment.systemPackages = with pkgs; [
     wget
-    zellij
-    bottom
   ];
 
   # Some programs need SUID wrappers, can be configured further or are

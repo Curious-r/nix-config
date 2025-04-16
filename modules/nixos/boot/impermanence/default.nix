@@ -3,5 +3,5 @@
 {
   # List your module files here
   # my-module = import ./my-module.nix;
-  btrfsSubvolume = import ./btrfs-subvolume;
+  btrfs-subvolume = import ./btrfs-subvolume;
 }

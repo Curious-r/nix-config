@@ -7,14 +7,14 @@
   ...
 }:
 let
-  cfg = config.boot.impermanence.btrfsSubvolume.restore;
+  cfg = config.boot.impermanence.btrfs-subvolume.restore;
   requiredUnit = "dev-disk-by\\x2did-${
     lib.replaceStrings [ "-" ] [ "\\x2d" ] primaryDiskWwid
   }\\x2dpart2.device";
 in
 {
   options = {
-    boot.impermanence.btrfsSubvolume.restore = {
+    boot.impermanence.btrfs-subvolume.restore = {
       enable = lib.mkEnableOption "Service to restore a specific BTRFS @ subvolume from backup";
     };
   };

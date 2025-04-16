@@ -56,7 +56,4 @@
       options = "--delete-older-than 10d";
     };
   };
-  environment.systemPackages = with pkgs; [
-    git # Nix Flakes 通过 git 命令从数据源拉取依赖，所以必须先安装好 git
-  ];
 }
