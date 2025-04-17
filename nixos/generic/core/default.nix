@@ -1,7 +1,6 @@
 {
+  self,
   pkgs,
-  inputs,
-  outputs,
   ...
 }:
 {
@@ -25,7 +24,7 @@
 
   nixpkgs = {
     # you can add global overlays here
-    overlays = builtins.attrValues outputs.overlays;
+    overlays = builtins.attrValues self.overlays;
     config = {
       allowUnfree = true;
     };

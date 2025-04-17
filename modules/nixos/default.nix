@@ -3,5 +3,5 @@
 {
   # List your module files here
   # my-module = import ./my-module.nix;
-  boot = import ./boot;
+  imp-btrfs = import ./boot/impermanence/btrfs-subvolume;
 }

@@ -89,7 +89,7 @@
   # outputs 是一个函数，在 flake 评估时被隐式调用，inputs 将作为参数被传入，那么我们可以使用解构的方式
   # 声明参数集，即显式声明一些属性，这些属性会继承 inputs 中同名的属性，这使得 outputs 函数体中可以直接
   # 使用本地变量的名字来调用该依赖，比如 nixpkgs。我们不必将 inputs 中所有的属性都这样解构出来，不常用
-  # 的非关键依赖可以不写，但这会导致解构赋值时发生匹配失败，因此我们需要使用 ... 来承接未匹配的属性。
+  # 的非关键依赖可以不写，但这会导致解构赋值时产生匹配失败的错误，因此我们需要使用 ... 来承接未匹配的属性。
   # 同时，用 @ 语法给参数集起别名 inputs 后，函数中可以使用 inputs.<xxx> 的方式访问所有属性，即使它是前
   # 文所说的未解构的非关键依赖，这是flake 系统的 inputs 命名捕获在发挥作用。
   outputs =
@@ -106,12 +106,6 @@
         moduleWithSystem,
         ...
       }:
-      #   let
-      #   inherit (flake-parts-lib) importApply;
-      #   nixosModules = importApply ./modules/nixos { inherit withSystem; };
-      #   homeManagerModules = importApply ./modules/home-manager { inherit withSystem; };
-      # in
-
       {
         imports = [
           treefmt-nix.flakeModule
