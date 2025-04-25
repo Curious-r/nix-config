@@ -3,7 +3,6 @@
   imports = [ inputs.sops-nix.nixosModules.sops ];
 
   sops = {
-
     defaultSopsFile = ../../../secrets/secrets.yaml;
     validateSopsFiles = false;
 
@@ -13,6 +12,9 @@
       generateKey = true;
     };
 
-    secrets = { };
+    secrets = {
+      "passwords/users/root".neededForUsers = true;
+      "passwords/users/curious".neededForUsers = true;
+    };
   };
 }

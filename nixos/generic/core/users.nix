@@ -1,21 +1,16 @@
 { pkgs, config, ... }:
 {
-  sops.secrets = {
-    "passwords/users/root".neededForUsers = true;
-    "passwords/users/curious".neededForUsers = true;
-  };
-
   users = {
     mutableUsers = false;
     users = {
       root = {
-        hashedPasswordFile = config.sops.secrets."passwords/users/root".path;
+        hashedPasswordFile = config.vaultix.secrets."root-password".path;
       };
 
       curious = {
         isNormalUser = true;
         description = "Curious";
-        hashedPasswordFile = config.sops.secrets."passwords/users/curious".path;
+        hashedPasswordFile = config.vaultix.secrets."curious-password".path;
         extraGroups = [
           "wheel"
           "networkmanager"
