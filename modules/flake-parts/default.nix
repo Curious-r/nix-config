@@ -1,1 +1,3 @@
-{ }
+{
+  example-parts = import ./example;
+}

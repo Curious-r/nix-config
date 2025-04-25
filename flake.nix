@@ -94,6 +94,7 @@
   # 文所说的未解构的非关键依赖，这是flake 系统的 inputs 命名捕获在发挥作用。
   outputs =
     inputs@{
+      self,
       flake-parts,
       treefmt-nix,
       vaultix,
@@ -109,7 +110,7 @@
       {
         imports = [
           treefmt-nix.flakeModule
-          # vaultix.flakeModules.default
+          vaultix.flakeModules.default
           ./modules
           ./overlays
           ./nixos
@@ -135,6 +136,14 @@
               programs.prettier.enable = true;
             };
           };
+
+        flake = {
+          vaultix = {
+            nodes = self.nixosConfigurations;
+            cache = "./secrets/cache"; # default, optional
+            identity = "/var/lib/vaultix/key.txt";
+          };
+        };
       }
     );
 }
