@@ -21,5 +21,18 @@ in
         ./curious/Server-Ideapad-G480
       ];
     };
+    "curious@Desktop-DIY-B650" = home-manager.lib.homeManagerConfiguration {
+      pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux; # Home-manager requires 'pkgs' instance
+      extraSpecialArgs = {
+        inherit inputs;
+      };
+      modules = [
+        # > Our main home-manager configuration file <
+        ./curious/generic/core
+        ./curious/generic/optional/nix/substituters/mainland.nix
+        ./curious/generic/optional/zed-editor.nix
+        ./curious/Desktop-DIY-B650
+      ];
+    };
   };
 }

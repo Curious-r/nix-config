@@ -132,6 +132,10 @@
             packages = import ./pkgs pkgs;
             treefmt = {
               projectRootFile = "flake.nix";
+              settings.global.excludes = [
+                "*.age"
+                "secrets/cache/*"
+              ];
               programs.nixfmt.enable = true;
               programs.prettier.enable = true;
             };
