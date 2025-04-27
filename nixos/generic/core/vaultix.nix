@@ -2,6 +2,12 @@
 {
   imports = [ inputs.vaultix.nixosModules.default ];
   services.userborn.enable = true;
+  services.openssh.hostKeys = [
+    {
+      path = "/etc/ssh/ssh_host_ed25519_key";
+      type = "ed25519";
+    }
+  ];
   vaultix = {
     secrets = {
       root-password = {

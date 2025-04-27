@@ -78,6 +78,7 @@ in
         ./generic/optional/impermanence/basic
         ./generic/optional/impermanence/implementation/btrfs-subvolume.nix
         ./generic/optional/impermanence/additional/curious/desktop.nix
+        ./generic/optional/fonts.nix
         ./generic/optional/inputMethod.nix
         ./Desktop-DIY-B650
         inputs.nixos-cosmic.nixosModules.default
