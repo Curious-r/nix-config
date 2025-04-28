@@ -4,13 +4,13 @@
     mutableUsers = false;
     users = {
       root = {
-        hashedPasswordFile = config.vaultix.secrets."root-password".path;
+        hashedPasswordFile = config.vaultix.secrets.root-password.path;
       };
 
       curious = {
         isNormalUser = true;
         description = "Curious";
-        hashedPasswordFile = config.vaultix.secrets."curious-password".path;
+        hashedPasswordFile = config.vaultix.secrets.curious-password.path;
         extraGroups = [
           "wheel"
           "networkmanager"
