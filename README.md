@@ -3,7 +3,7 @@
 with
 
 - [flake-parts](https://github.com/hercules-ci/flake-parts)
-- [vaultix](https://github.com/oluceps/vaultix)
+- [vaultix](https://github.com/milieuim/vaultix)
 - [impermanence](https://github.com/nix-community/impermanence)
 - [disko](https://github.com/nix-community/disko)
 - [treefmt-nix](https://github.com/numtide/treefmt-nix)

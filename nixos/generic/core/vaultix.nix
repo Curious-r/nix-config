@@ -26,8 +26,8 @@
       };
     };
     beforeUserborn = [
-    "root-password"
-    "curious-password"
+      "root-password"
+      "curious-password"
     ];
   };
 }
