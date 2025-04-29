@@ -15,14 +15,12 @@
         mode = "640"; # default 0400
         owner = "root";
         group = "users";
-        path = "/var/lib/vaultix/root-password";
       };
       curious-password = {
         file = ../../../secrets/curious-password.age;
         mode = "640"; # default 0400
         owner = "root";
         group = "users";
-        path = "/var/lib/vaultix/curious-password";
       };
     };
     beforeUserborn = [

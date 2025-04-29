@@ -12,9 +12,9 @@
         description = "Curious";
         hashedPasswordFile = config.vaultix.secrets.curious-password.path;
         extraGroups = [
-          "wheel"
+          "wheel" # Enable ‘sudo’ for the user.
           "networkmanager"
-        ]; # Enable ‘sudo’ for the user.
+        ];
       };
     };
   };
