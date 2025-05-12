@@ -12,6 +12,7 @@
     ./vaultix.nix # secrets management
     ./users.nix
     ./console.nix
+    ./fonts.nix
     ./editor.nix
     ./ssh.nix
     ./networking.nix

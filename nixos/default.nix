@@ -51,14 +51,11 @@ in
         # > Our main nixos configuration file <
         ./generic/core
         ./generic/optional/nix/substituters/mainland.nix
-        # ./nixos/generic/optional/nix/substituters/yazi.nix
         ./generic/optional/impermanence/basic
         ./generic/optional/impermanence/implementation/btrfs-subvolume.nix
         ./generic/optional/docker/basic
         ./generic/optional/docker/registry-mirrors/mainland.nix
         ./Server-Ideapad-G480
-        # inputs.daeuniverse.nixosModules.dae
-        # inputs.nixos-cosmic.nixosModules.default
       ];
     };
     Desktop-DIY-B650 = nixpkgs.lib.nixosSystem {
@@ -78,7 +75,6 @@ in
         ./generic/optional/impermanence/basic
         ./generic/optional/impermanence/implementation/btrfs-subvolume.nix
         ./generic/optional/impermanence/additional/curious/desktop.nix
-        ./generic/optional/fonts.nix
         ./generic/optional/inputMethod.nix
         ./Desktop-DIY-B650
         inputs.nixos-cosmic.nixosModules.default

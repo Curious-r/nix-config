@@ -2,6 +2,7 @@
 {
   imports = [
     ./nix.nix
+    ./editor.nix
     ./git.nix
     ./cli-tools.nix
   ];

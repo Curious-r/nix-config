@@ -10,6 +10,7 @@
     ./vaultix.nix
     ./network.nix
     ./impermanence.nix
+    ./home-manager.nix
   ];
 
   # Enable the X11 windowing system.

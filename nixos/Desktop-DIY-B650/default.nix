@@ -9,6 +9,7 @@
     ./boot.nix
     ./vaultix.nix
     ./network.nix
+    ./home-manager.nix
     ./desktop.nix
   ];
 

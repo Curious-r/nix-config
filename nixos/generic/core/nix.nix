@@ -37,16 +37,10 @@
       trusted-users = [ "curious" ];
       substituters = [
         "https://cache.nixos.org"
-
-        # helix 官方 flake 的缓存源，所有 Nixos 实例均使用此版 helix 作为默认编辑器
-        "https://helix.cachix.org"
       ];
       trusted-public-keys = [
         # the default public key of cache.nixos.org, it's built-in, no need to add it here
         "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
-
-        # helix 缓存源公钥
-        "helix.cachix.org-1:ejp9KQpR1FBI2onstMQ34yogDm4OgU2ru6lIwPvuCVs="
       ];
     };
 
