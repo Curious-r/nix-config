@@ -6,8 +6,6 @@
     extensions = [
       "nix"
       "toml"
-      "elixir"
-      "make"
     ];
 
     ## everything inside of these brackets are Zed options.
@@ -23,15 +21,15 @@
         ### copilot_chat models { gpt-4o gpt-4 gpt-3.5-turbo o1-preview } requires github connected
         default_model = {
           provider = "zed.dev";
-          model = "claude-3-5-sonnet-latest";
+          model = "claude-3-7-sonnet-latest";
         };
 
-        #                inline_alternatives = [
-        #                    {
-        #                        provider = "copilot_chat";
-        #                        model = "gpt-3.5-turbo";
-        #                    }
-        #                ];
+        inline_alternatives = [
+          {
+            provider = "zed.dev";
+            model = "claude-3-7-sonnet-latest";
+          }
+        ];
       };
 
       node = {
@@ -77,48 +75,15 @@
       };
 
       lsp = {
-        rust-analyzer = {
-
-          binary = {
-            #                        path = lib.getExe pkgs.rust-analyzer;
-            path_lookup = true;
-          };
-        };
         nix = {
           binary = {
+            # path = lib.getExe pkgs.nixd;
             path_lookup = true;
-          };
-        };
-
-        elixir-ls = {
-          binary = {
-            path_lookup = true;
-          };
-          settings = {
-            dialyzerEnabled = true;
           };
         };
       };
 
       languages = {
-        "Elixir" = {
-          language_servers = [
-            "!lexical"
-            "elixir-ls"
-            "!next-ls"
-          ];
-          format_on_save = {
-            external = {
-              command = "mix";
-              arguments = [
-                "format"
-                "--stdin-filename"
-                "{buffer_path}"
-                "-"
-              ];
-            };
-          };
-        };
         "HEEX" = {
           language_servers = [
             "!lexical"
@@ -139,7 +104,6 @@
         };
       };
 
-      vim_mode = true;
       ## tell zed to use direnv and direnv can use a flake.nix enviroment.
       load_direnv = "shell_hook";
       base_keymap = "VSCode";
@@ -151,8 +115,6 @@
       show_whitespaces = "all";
       ui_font_size = 16;
       buffer_font_size = 16;
-
     };
-
   };
 }
