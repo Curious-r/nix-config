@@ -74,9 +74,9 @@
     # 引入时不应该令它的 inputs.nixpkgs 跟随我们的版本，这会导致
     # 产物与二进制缓存 hash 不一致，从而引起大量编译。
     # 典型的如 Helix 编辑器
-    helix.url = "github:helix-editor/helix/25.01.1";
+    # helix.url = "github:helix-editor/helix/25.01.1";
 
-    daeuniverse.url = "github:daeuniverse/flake.nix/main";
+    # daeuniverse.url = "github:daeuniverse/flake.nix/main";
 
     nixos-cosmic.url = "github:lilyinstarlight/nixos-cosmic";
 
