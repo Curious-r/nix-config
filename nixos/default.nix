@@ -45,12 +45,6 @@ in
       };
       modules = [
         # > Our main nixos configuration file <
-        ./generic/core
-        ./generic/optional/nix/substituters/mainland.nix
-        ./generic/optional/impermanence/basic
-        ./generic/optional/impermanence/implementation/btrfs-subvolume.nix
-        ./generic/optional/docker/basic
-        ./generic/optional/docker/registry-mirrors/mainland.nix
         ./Server-Ideapad-G480
       ];
     };
@@ -65,15 +59,7 @@ in
       };
       modules = [
         # > Our main nixos configuration file <
-        ./generic/core
-        ./generic/optional/nix/substituters/mainland.nix
-        ./generic/optional/nix/substituters/cosmic.nix
-        ./generic/optional/impermanence/basic
-        ./generic/optional/impermanence/implementation/btrfs-subvolume.nix
-        ./generic/optional/impermanence/additional/curious/desktop.nix
-        ./generic/optional/inputMethod.nix
         ./Desktop-DIY-B650
-        inputs.nixos-cosmic.nixosModules.default
       ];
     };
   };

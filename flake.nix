@@ -21,7 +21,7 @@
   # inputs 中的每一项依赖都会在被拉取、构建后，作为参数传递给 outputs 函数
   inputs = {
     # Nixpkgs
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
 
     # You can access packages and modules from different nixpkgs revs
     # at the same time. Here's an working example:
@@ -38,7 +38,7 @@
 
     # Home manager
     home-manager = {
-      url = "github:nix-community/home-manager/release-24.11";
+      url = "github:nix-community/home-manager/release-25.05";
       # `follows` 是 inputs 中的继承语法
       # 这里使 home-manager 的 `inputs.nixpkgs` 与当前 flake 的
       # `inputs.nixpkgs` 保持一致，避免依赖的 nixpkgs 版本不一致导致问题
@@ -77,8 +77,6 @@
     # helix.url = "github:helix-editor/helix/25.01.1";
 
     # daeuniverse.url = "github:daeuniverse/flake.nix/main";
-
-    nixos-cosmic.url = "github:lilyinstarlight/nixos-cosmic";
 
     yazi.url = "github:sxyazi/yazi";
   };

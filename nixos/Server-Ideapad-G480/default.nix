@@ -1,9 +1,16 @@
 # Edit this configuration file to define what should be installed on
 # your system.  Help is available in the configuration.nix(5) man page
 # and in the NixOS manual (accessible by running `nixos-help`).
-{ pkgs, inputs, ... }:
+{ pkgs, ... }:
 {
   imports = [
+    ../generic/core
+    ../generic/optional/nix/substituters/mainland.nix
+    ../generic/optional/impermanence/basic
+    ../generic/optional/impermanence/implementation/btrfs-subvolume.nix
+    ../generic/optional/docker/basic
+    ../generic/optional/docker/registry-mirrors/mainland.nix
+
     # Include the results of the hardware scan.
     ./hardware-configuration.nix
     ./boot.nix

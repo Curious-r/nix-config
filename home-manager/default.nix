@@ -16,8 +16,6 @@ in
       };
       modules = [
         # > Our main home-manager configuration file <
-        ./curious/generic/core
-        ./curious/generic/optional/nix/substituters/mainland.nix
         ./curious/Server-Ideapad-G480
       ];
     };
@@ -28,10 +26,6 @@ in
       };
       modules = [
         # > Our main home-manager configuration file <
-        ./curious/generic/core
-        ./curious/generic/optional/nix/substituters/mainland.nix
-        ./curious/generic/optional/zed-editor.nix
-        ./curious/generic/optional/firefox.nix
         ./curious/Desktop-DIY-B650
       ];
     };
