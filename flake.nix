@@ -76,7 +76,7 @@
     # 典型的如 Helix 编辑器
     # helix.url = "github:helix-editor/helix/25.01.1";
 
-    # daeuniverse.url = "github:daeuniverse/flake.nix/main";
+    daeuniverse.url = "github:daeuniverse/flake.nix";
 
     yazi.url = "github:sxyazi/yazi";
   };
@@ -125,7 +125,7 @@
         ];
 
         perSystem =
-          { pkgs, lib, ... }:
+          { pkgs, ... }:
           {
             packages = import ./pkgs pkgs;
             treefmt = {

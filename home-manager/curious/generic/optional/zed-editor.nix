@@ -58,12 +58,28 @@
         env = {
           TERM = "alacritty";
         };
-        font_family = "FiraCode Nerd Font";
-        font_features = null;
-        font_size = null;
+        font_family = "Monaspace Krypton";
+        font_features = {
+          calt = true;
+          liga = true;
+          ss01 = true;
+          ss02 = true;
+          ss03 = true;
+          ss04 = true;
+          ss05 = true;
+          ss06 = true;
+          ss07 = true;
+          ss08 = true;
+          ss09 = true;
+          ss10 = true;
+          cv60 = true;
+          cv62 = true;
+        };
+        font_size = 15;
+        font_weight = 400;
         line_height = "comfortable";
         option_as_meta = false;
-        button = false;
+        button = true;
         shell = "system";
         #{
         #                    program = "zsh";
@@ -113,8 +129,33 @@
         dark = "One Dark";
       };
       show_whitespaces = "all";
+      ui_font_family = "Zed Plex Sans";
+      ui_font_features = {
+        calt = false;
+      };
+      ui_font_fallbacks = [ "Noto Sans CJK SC" ];
       ui_font_size = 16;
+      ui_font_weight = 400;
+      buffer_font_family = "Monaspace Argon";
+      buffer_font_features = {
+        calt = true;
+        liga = true;
+        ss01 = true;
+        ss02 = true;
+        ss03 = true;
+        ss04 = true;
+        ss05 = true;
+        ss06 = true;
+        ss07 = true;
+        ss08 = true;
+        ss09 = true;
+        ss10 = true;
+        cv60 = true;
+        cv62 = true;
+      };
+      buffer_font_fallbacks = [ "Noto Sans CJK SC" ];
       buffer_font_size = 16;
+      buffer_font_weight = 400;
     };
   };
 }

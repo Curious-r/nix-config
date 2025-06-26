@@ -10,6 +10,7 @@
     ../generic/optional/impermanence/implementation/btrfs-subvolume.nix
     ../generic/optional/docker/basic
     ../generic/optional/docker/registry-mirrors/mainland.nix
+    ../generic/optional/nix/substituters/garnix.nix
 
     # Include the results of the hardware scan.
     ./hardware-configuration.nix
@@ -18,6 +19,7 @@
     ./network.nix
     ./impermanence.nix
     ./home-manager.nix
+    ./dae.nix
   ];
 
   # Enable the X11 windowing system.
