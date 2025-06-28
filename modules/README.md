@@ -29,6 +29,11 @@ Simply replace `<module-name>` with the desired module name.
   If you are advanced user then use this as this configures the Operating system at it's core.
   Expects `input, impermanence` as module arg. (disable them if you don't want to use them but import them.)
 
+- **`flakeModules`**:
+  You can distribute reusable module logic through flakes using flake attributes, and that includes flakeModules.
+  However, importing from self is not possible, because such an import could affect the self attribute set.
+  To use your own exported module, you have to reference it directly.
+  See https://flake.parts/dogfood-a-reusable-module.html
 ---
 
 ### 🛠️ Why Use These Modules?

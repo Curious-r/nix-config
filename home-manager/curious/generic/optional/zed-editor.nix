@@ -11,25 +11,19 @@
     ## everything inside of these brackets are Zed options.
     userSettings = {
 
-      assistant = {
-        enabled = true;
+      agent = {
         version = "2";
-        default_open_ai_model = null;
-        ### PROVIDER OPTIONS
-        ### zed.dev models { claude-3-5-sonnet-latest } requires github connected
-        ### anthropic models { claude-3-5-sonnet-latest claude-3-haiku-latest claude-3-opus-latest  } requires API_KEY
-        ### copilot_chat models { gpt-4o gpt-4 gpt-3.5-turbo o1-preview } requires github connected
+        enabled = true;
+        button = true;
+        dock = "right";
+        default_width = 640;
+        default_height = 320;
+        default_view = "thread";
         default_model = {
           provider = "zed.dev";
-          model = "claude-3-7-sonnet-latest";
+          model = "claude-sonnet-4";
         };
-
-        inline_alternatives = [
-          {
-            provider = "zed.dev";
-            model = "claude-3-7-sonnet-latest";
-          }
-        ];
+        single_file_review = true;
       };
 
       node = {

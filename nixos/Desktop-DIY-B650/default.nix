@@ -12,6 +12,7 @@
     ../generic/optional/inputMethod.nix
     ../generic/optional/daed.nix
     ../generic/optional/nix/substituters/garnix.nix
+    ../generic/optional/impermanence/additional/daed.nix
 
     # Include the results of the hardware scan.
     ./hardware-configuration.nix

@@ -1,6 +1,6 @@
 { inputs, self, ... }:
 let
-  # 维持传统 flake 中流行的 inputs 参数解构的调用习惯
+  # 维持传统 flake 中函数调用的惯用形式
   inherit (inputs) nixpkgs;
 in
 {
