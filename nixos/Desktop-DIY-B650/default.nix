@@ -6,19 +6,26 @@
   imports = [
     ../generic/core
     ../generic/optional/nix/substituters/mainland.nix
-    ../generic/optional/impermanence/basic
-    ../generic/optional/impermanence/implementation/btrfs-subvolume.nix
-    ../generic/optional/impermanence/additional/curious/desktop.nix
+    ../generic/optional/disko/primary/efi-btrfs.nix
+
+    # 使用 impermenance btrfs 方案
+    # ../generic/optional/impermanence/basic
+    # ../generic/optional/impermanence/implementation/btrfs-subvolume.nix
+    # ../generic/optional/impermanence/additional/curious/desktop.nix
+    # ../generic/optional/impermanence/additional/daed.nix
+    #
+    ../generic/optional/preservation/curious/desktop.nix
     ../generic/optional/inputMethod.nix
     ../generic/optional/daed.nix
     ../generic/optional/nix/substituters/garnix.nix
-    ../generic/optional/impermanence/additional/daed.nix
+    ../generic/optional/preservation/daed.nix
 
     # Include the results of the hardware scan.
     ./hardware-configuration.nix
+
     ./boot.nix
     ./vaultix.nix
-    ./network.nix
+    ./networking.nix
     ./home-manager.nix
     ./desktop.nix
   ];
@@ -42,16 +49,6 @@
   environment.systemPackages = with pkgs; [
     wget
   ];
-
-  environment.persistence."/persistent" = {
-    users.curious = {
-      directories = [
-        ".mozilla"
-      ];
-      files = [
-      ];
-    };
-  };
 
   # Some programs need SUID wrappers, can be configured further or are
   # started in user sessions.

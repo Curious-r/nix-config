@@ -3,11 +3,10 @@
 with
 
 - [flake-parts](https://github.com/hercules-ci/flake-parts)
-- [vaultix](https://github.com/milieuim/vaultix)
-- [impermanence](https://github.com/nix-community/impermanence)
+- [vaultix](https://github.com/milieuim/vaultix) alternative: [sops-nix](https://github.com/Mic92/sops-nix)
+- [preservation](https://github.com/nix-community/preservation) alternative: [impermanence](https://github.com/nix-community/impermanence)
 - [disko](https://github.com/nix-community/disko)
 - [treefmt-nix](https://github.com/numtide/treefmt-nix)
-- [sops-nix](https://github.com/Mic92/sops-nix)
 
 ---
 

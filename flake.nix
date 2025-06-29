@@ -62,7 +62,8 @@
     vaultix.url = "github:milieuim/vaultix";
 
     # 使 NixOS 不保留预期之外的副作用
-    impermanence.url = "github:nix-community/impermanence";
+    # impermanence.url = "github:nix-community/impermanence";
+    preservation.url = "github:nix-community/preservation";
 
     # Disko
     disko = {

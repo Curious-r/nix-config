@@ -11,6 +11,7 @@
         "Music"
         "Pictures"
         "Videos"
+        ".mozilla"
       ];
       files = [ ];
     };
