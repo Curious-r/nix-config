@@ -1,7 +1,6 @@
 { self, enableRestoreService, ... }:
 {
   imports = [
-    ../../disko/primary/efi-btrfs.nix
     self.nixosModules.imp-btrfs
   ];
   # 系统完成启动后根目录 / 挂载于名为 @ 的子卷上，所谓回滚，即在启动阶段备份该子卷并重建空白的同名子卷

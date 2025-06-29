@@ -6,18 +6,24 @@
   imports = [
     ../generic/core
     ../generic/optional/nix/substituters/mainland.nix
-    ../generic/optional/impermanence/basic
-    ../generic/optional/impermanence/implementation/btrfs-subvolume.nix
+    ../generic/optional/disko/primary/efi-btrfs.nix
+
+    # 使用 impermenance btrfs 方案
+    # ../generic/optional/impermanence/basic
+    # ../generic/optional/impermanence/implementation/btrfs-subvolume.nix
+    # ./impermanence.nix
+
     ../generic/optional/docker/basic
     ../generic/optional/docker/registry-mirrors/mainland.nix
     ../generic/optional/nix/substituters/garnix.nix
 
     # Include the results of the hardware scan.
     ./hardware-configuration.nix
+
     ./boot.nix
     ./vaultix.nix
-    ./network.nix
-    ./impermanence.nix
+    ./networking.nix
+    ./preservation.nix
     ./home-manager.nix
     ./dae.nix
   ];
@@ -64,5 +70,5 @@
   # this value at the release version of the first install of this system.
   # Before changing this value read the documentation for this option
   # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
-  system.stateVersion = "24.11"; # Did you read the comment?
+  system.stateVersion = "25.05"; # Did you read the comment?
 }

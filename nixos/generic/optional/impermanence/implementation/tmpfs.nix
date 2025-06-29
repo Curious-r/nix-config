@@ -1,6 +1,5 @@
 { ... }:
 {
-  imports = [ ../../disko/primary/tmpfs-efi-btrfs-swap.nix ];
   systemd.services.nix-daemon = {
     environment = {
       # 指定临时文件的位置
