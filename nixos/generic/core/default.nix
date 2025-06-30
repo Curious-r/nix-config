@@ -16,6 +16,7 @@
     ./ssh.nix
     ./networking.nix
     ./preservation.nix
+    ./home-manager.nix
   ];
 
   security.sudo.extraConfig = ''

@@ -19,7 +19,6 @@
     ./boot.nix
     ./vaultix.nix
     ./networking.nix
-    ./home-manager.nix
     ./desktop.nix
   ];
 

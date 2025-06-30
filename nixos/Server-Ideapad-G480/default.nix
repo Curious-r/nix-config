@@ -18,7 +18,6 @@
     ./vaultix.nix
     ./networking.nix
     ./preservation.nix
-    ./home-manager.nix
     ./dae.nix
   ];
 
