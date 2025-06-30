@@ -16,6 +16,7 @@
     ./editor.nix
     ./ssh.nix
     ./networking.nix
+    ./preservation.nix
   ];
 
   security.sudo.extraConfig = ''

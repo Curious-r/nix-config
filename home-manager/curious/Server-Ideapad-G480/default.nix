@@ -4,5 +4,5 @@
     ../generic/core
     ../generic/optional/nix/substituters/mainland.nix
   ];
-  home.stateVersion = "24.11";
+  home.stateVersion = "25.05";
 }

@@ -34,6 +34,7 @@ Simply replace `<module-name>` with the desired module name.
   However, importing from self is not possible, because such an import could affect the self attribute set.
   To use your own exported module, you have to reference it directly.
   See https://flake.parts/dogfood-a-reusable-module.html
+
 ---
 
 ### 🛠️ Why Use These Modules?
