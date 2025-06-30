@@ -9,9 +9,9 @@
     ../generic/optional/disko/primary/efi-btrfs.nix
 
     # 使用 impermenance btrfs 方案
-    # ../generic/optional/impermanence/basic
-    # ../generic/optional/impermanence/implementation/btrfs-subvolume.nix
-    # ./impermanence.nix
+    ../generic/optional/impermanence/basic
+    ../generic/optional/impermanence/implementation/btrfs-subvolume.nix
+    ./impermanence.nix
 
     ../generic/optional/docker/basic
     ../generic/optional/docker/registry-mirrors/mainland.nix
@@ -21,9 +21,9 @@
     ./hardware-configuration.nix
 
     ./boot.nix
-    ./vaultix.nix
+    # ./vaultix.nix
     ./networking.nix
-    ./preservation.nix
+    # ./preservation.nix
     ./home-manager.nix
     ./dae.nix
   ];

@@ -4,13 +4,13 @@
     mutableUsers = false;
     users = {
       root = {
-        hashedPasswordFile = config.vaultix.secrets.root-password.path;
+        hashedPasswordFile = config.sops.secrets."passwords/users/root".path;
       };
 
       curious = {
         isNormalUser = true;
         description = "Curious";
-        hashedPasswordFile = config.vaultix.secrets.curious-password.path;
+        hashedPasswordFile = config.sops.secrets."passwords/users/curious".path;
         extraGroups = [
           "wheel" # Enable ‘sudo’ for the user.
           "networkmanager"

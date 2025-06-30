@@ -9,12 +9,12 @@
     ../generic/optional/disko/primary/efi-btrfs.nix
 
     # 使用 impermenance btrfs 方案
-    # ../generic/optional/impermanence/basic
-    # ../generic/optional/impermanence/implementation/btrfs-subvolume.nix
-    # ../generic/optional/impermanence/additional/curious/desktop.nix
-    # ../generic/optional/impermanence/additional/daed.nix
-    #
-    ../generic/optional/preservation/curious/desktop.nix
+     ../generic/optional/impermanence/basic
+     ../generic/optional/impermanence/implementation/btrfs-subvolume.nix
+     ../generic/optional/impermanence/additional/curious/desktop.nix
+     ../generic/optional/impermanence/additional/daed.nix
+    
+    # ../generic/optional/preservation/curious/desktop.nix
     ../generic/optional/inputMethod.nix
     ../generic/optional/daed.nix
     ../generic/optional/nix/substituters/garnix.nix
@@ -24,7 +24,7 @@
     ./hardware-configuration.nix
 
     ./boot.nix
-    ./vaultix.nix
+    # ./vaultix.nix
     ./networking.nix
     ./home-manager.nix
     ./desktop.nix
@@ -62,9 +62,6 @@
 
   # Enable the OpenSSH daemon.
   services.openssh.enable = true;
-
-  # services.desktopManager.cosmic.enable = true;
-  # services.displayManager.cosmic-greeter.enable = true;
 
   # Copy the NixOS configuration file and link it from the resulting system
   # (/run/current-system/configuration.nix). This is useful in case you
