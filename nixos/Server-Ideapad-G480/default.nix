@@ -7,12 +7,6 @@
     ../generic/core
     ../generic/optional/nix/substituters/mainland.nix
     ../generic/optional/disko/primary/efi-btrfs.nix
-
-    # 使用 impermenance btrfs 方案
-    # ../generic/optional/impermanence/basic
-    # ../generic/optional/impermanence/implementation/btrfs-subvolume.nix
-    # ./impermanence.nix
-
     ../generic/optional/docker/basic
     ../generic/optional/docker/registry-mirrors/mainland.nix
     ../generic/optional/nix/substituters/garnix.nix

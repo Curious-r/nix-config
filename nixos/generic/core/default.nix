@@ -8,7 +8,6 @@
     ./boot.nix
     ./locale.nix # localization settings
     ./nix.nix # nix settings and garbage collection
-    # ./sops.nix # secrets management
     ./vaultix.nix # secrets management
     ./users.nix
     ./console.nix

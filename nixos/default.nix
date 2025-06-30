@@ -39,11 +39,6 @@ in
         inherit inputs self;
         primaryDiskWwid = "ata-Phison_SATA_SSD_0C3307050CA900023301";
         swapSize = "8G";
-
-        # 用于 impermenance btrfs 方案
-        # backupRetentionPolicy = "30"; # 备份旧快照的最长保留时间，单位为天
-        # enableRestoreService = false; # 恢复到某个备份时，配置此项为 true
-        # restoreTarget = "";         # 并把此项的值修改为对应的时间戳
       };
       modules = [
         # > Our main nixos configuration file <
@@ -55,11 +50,6 @@ in
         inherit inputs self;
         primaryDiskWwid = "ata-WDC_PC_SN520_SDAPNUW-512G_19529C801253";
         swapSize = "16G";
-
-        # 用于 impermenance btrfs 方案
-        # backupRetentionPolicy = "30"; # 备份旧快照的最长保留时间，单位为天
-        # enableRestoreService = false; # 恢复到某个备份时，配置此项为 true
-        # restoreTarget = "";         # 并把此项的值修改为对应的时间戳
       };
       modules = [
         # > Our main nixos configuration file <

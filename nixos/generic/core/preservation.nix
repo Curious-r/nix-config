@@ -80,7 +80,6 @@
               mode = "0700";
             }
             ".config"
-            ".config"
             ".local/state"
             ".local/share"
             "nix-config"

@@ -53,16 +53,11 @@
 
     # TODO: Add any other flake you might need
     # hardware.url = "github:nixos/nixos-hardware";
-    # sops-nix = {
-    #   url = "github:Mic92/sops-nix";
-    #   inputs.nixpkgs.follows = "nixpkgs";
-    # };
 
     # vaultix, a secret manage scheme for NixOS
     vaultix.url = "github:milieuim/vaultix";
 
     # 使 NixOS 不保留预期之外的副作用
-    # impermanence.url = "github:nix-community/impermanence";
     preservation.url = "github:nix-community/preservation";
 
     # Disko
