@@ -1,4 +1,4 @@
-{ ... }:
+{ pkgs, ... }:
 {
   console = {
     font = "Lat2-Terminus16";
@@ -35,5 +35,12 @@
     extraOptions = "--term xterm-256color";
     # Whether to use 3D hardware acceleration to render the console.
     hwRender = true;
+    fonts = [
+      {
+        name = "Monaspace Krypton";
+        package = pkgs.monaspace;
+      }
+    ];
+    extraConfig = "font-size=16";
   };
 }

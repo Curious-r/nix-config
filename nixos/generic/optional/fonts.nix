@@ -1,10 +1,8 @@
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
 {
   # all fonts are linked to /nix/var/nix/profiles/system/sw/share/X11/fonts
   fonts = {
-    # use fonts specified by user rather than default ones
-    enableDefaultPackages = false;
-    fontDir.enable = true;
+    fontDir.enable = lib.mkDefault true;
 
     packages = with pkgs; [
       # icon fonts
@@ -41,33 +39,25 @@
     # user defined fonts
     # the reason there's Noto Color Emoji everywhere is to override DejaVu's
     # B&W emojis that would sometimes show instead of some Color emojis
-    fontconfig.defaultFonts = {
-      serif = [
-        "Noto serif"
-        "Noto Serif CJK SC"
-        "Noto Color Emoji"
-      ];
-      sansSerif = [
-        "Noto Sans"
-        "Noto Sans CJK SC"
-        "Noto Color Emoji"
-      ];
-      monospace = [
-        "Monaspace Argon"
-        "Noto Color Emoji"
-      ];
-      emoji = [ "Noto Color Emoji" ];
+    fontconfig = {
+      useEmbeddedBitmaps = true;
+      defaultFonts = {
+        serif = [
+          "Noto serif"
+          "Noto Serif CJK SC"
+          "Noto Color Emoji"
+        ];
+        sansSerif = [
+          "Noto Sans"
+          "Noto Sans CJK SC"
+          "Noto Color Emoji"
+        ];
+        monospace = [
+          "Monaspace Argon"
+          "Noto Color Emoji"
+        ];
+        emoji = [ "Noto Color Emoji" ];
+      };
     };
-  };
-
-  # https://wiki.archlinux.org/title/KMSCON
-  services.kmscon = {
-    fonts = [
-      {
-        name = "Monaspace Krypton";
-        package = pkgs.monaspace;
-      }
-    ];
-    extraConfig = "font-size=16";
   };
 }
