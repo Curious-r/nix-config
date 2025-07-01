@@ -14,8 +14,8 @@
     ../generic/optional/nix/substituters/garnix.nix
     ../generic/optional/preservation/daed.nix
 
-    # Include the results of the hardware scan.
-    ./hardware-configuration.nix
+    # Use nixos-facter for hardware config
+    ./nixos-facter.nix
 
     ./boot.nix
     ./vaultix.nix

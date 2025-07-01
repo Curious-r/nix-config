@@ -52,7 +52,9 @@
     };
 
     # TODO: Add any other flake you might need
-    # hardware.url = "github:nixos/nixos-hardware";
+
+    # Generate hardware-related configuration using the nixos-factor detection report
+    nixos-facter-modules.url = "github:numtide/nixos-facter-modules";
 
     # vaultix, a secret manage scheme for NixOS
     vaultix.url = "github:milieuim/vaultix";

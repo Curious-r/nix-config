@@ -11,8 +11,8 @@
     ../generic/optional/docker/registry-mirrors/mainland.nix
     ../generic/optional/nix/substituters/garnix.nix
 
-    # Include the results of the hardware scan.
-    ./hardware-configuration.nix
+    # Use nixos-facter for hardware config
+    ./nixos-facter.nix
 
     ./boot.nix
     ./vaultix.nix
