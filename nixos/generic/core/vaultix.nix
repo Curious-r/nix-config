@@ -11,13 +11,13 @@
   vaultix = {
     secrets = {
       root-password = {
-        file = ../../../secrets/generic/core/root-password.age;
+        file = ../../../secrets/nixos/generic/core/root-password.age;
         mode = "640"; # default 0400
         owner = "root";
         group = "users";
       };
       curious-password = {
-        file = ../../../secrets/generic/core/curious-password.age;
+        file = ../../../secrets/nixos/generic/core/curious-password.age;
         mode = "640"; # default 0400
         owner = "root";
         group = "users";

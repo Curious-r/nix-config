@@ -1,11 +1,9 @@
 { pkgs, lib, ... }:
-
 {
   programs.zed-editor = {
     enable = true;
     extensions = [
       "nix"
-      "toml"
     ];
 
     ## everything inside of these brackets are Zed options.
@@ -84,31 +82,26 @@
         working_directory = "current_project_directory";
       };
 
+      languages = {
+        Nix = {
+          formatter = "language_server";
+          format_on_save = "on";
+          language_servers = [
+            "nixd"
+            "!nil"
+          ];
+        };
+      };
+
       lsp = {
-        nix = {
+        nixd = {
           binary = {
             # path = lib.getExe pkgs.nixd;
             path_lookup = true;
           };
-        };
-      };
-
-      languages = {
-        "HEEX" = {
-          language_servers = [
-            "!lexical"
-            "elixir-ls"
-            "!next-ls"
-          ];
-          format_on_save = {
-            external = {
-              command = "mix";
-              arguments = [
-                "format"
-                "--stdin-filename"
-                "{buffer_path}"
-                "-"
-              ];
+          initialization_options = {
+            formatting = {
+              command = [ "nixfmt" ];
             };
           };
         };
