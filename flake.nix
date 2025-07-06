@@ -56,7 +56,7 @@
     # Generate hardware-related configuration using the nixos-factor detection report
     nixos-facter-modules.url = "github:numtide/nixos-facter-modules";
 
-    # vaultix, a secret manage scheme for NixOS
+    # Vaultix, a secret manage scheme for NixOS
     vaultix.url = "github:milieuim/vaultix";
 
     # 使 NixOS 不保留预期之外的副作用
@@ -65,6 +65,12 @@
     # Disko
     disko = {
       url = "github:nix-community/disko";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    # Secure boot for NixOS
+    lanzaboote = {
+      url = "github:nix-community/lanzaboote/v0.4.2";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 

@@ -9,7 +9,7 @@
     ../generic/optional/disko/primary/efi-btrfs.nix
     ../generic/optional/preservation/curious/desktop.nix
     ../generic/optional/fonts.nix
-    ../generic/optional/inputMethod.nix
+    ../generic/optional/input-method.nix
     ../generic/optional/daed.nix
     ../generic/optional/nix/substituters/garnix.nix
     ../generic/optional/preservation/daed.nix

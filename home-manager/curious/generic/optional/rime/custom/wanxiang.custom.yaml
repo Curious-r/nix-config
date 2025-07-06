@@ -1,2 +1,2 @@
 patch:
-  translator/enable_correction: true
+  # translator/enable_correction: true
