@@ -4,11 +4,10 @@
     hostName = "Desktop-DIY-B650"; # Define your hostname.
     networkmanager = {
       enable = true; # Enables NetworkManager, which will manage networking
+      wifi.backend = "iwd";
     };
     timeServers = [ "ntp.aliyun.com" ];
-    nftables = {
-      enable = true;
-    };
+    nftables.enable = true;
     firewall = {
       enable = true;
       allowedTCPPorts = [

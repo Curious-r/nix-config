@@ -8,7 +8,7 @@
       enable = true;
       port = 12345;
     };
-    configFile = config.vaultix.secrets.dae-config.path;
+    configFile = config.vaultix.secrets."config.dae".path;
     /*
       default options
 

@@ -1,14 +1,13 @@
-{ ... }:
+{ pkgs, ... }:
 {
+  environment.systemPackages = [
+    pkgs.impala
+  ];
   networking = {
     hostName = "Server-Ideapad-G480"; # Define your hostname.
-    networkmanager = {
-      enable = true; # Enables NetworkManager, which will manage networking
-    };
     timeServers = [ "ntp.aliyun.com" ];
-    nftables = {
-      enable = true;
-    };
+    nftables.enable = true;
+    wireless.iwd.enable = true;
     firewall = {
       enable = true;
       allowedTCPPorts = [
