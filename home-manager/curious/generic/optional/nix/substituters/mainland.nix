@@ -2,7 +2,6 @@
 {
   nix = {
     settings = {
-
       substituters = [
         # cache mirror located in Chinese mainland
         # status: https://mirrors.sjtug.sjtu.edu.cn/

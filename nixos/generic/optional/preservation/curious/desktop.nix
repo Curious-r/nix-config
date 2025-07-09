@@ -15,7 +15,6 @@
             "Public"
             "Templates"
             "Videos"
-            ".mozilla"
           ];
         };
       };

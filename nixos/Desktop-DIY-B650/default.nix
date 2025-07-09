@@ -8,6 +8,8 @@
     ../generic/optional/nix/substituters/mainland.nix
     ../generic/optional/disko/primary/efi-btrfs.nix
     ../generic/optional/preservation/curious/desktop.nix
+    ../generic/optional/preservation/curious/firefox.nix
+    ../generic/optional/preservation/curious/thunderbird.nix
     ../generic/optional/fonts.nix
     ../generic/optional/input-method.nix
     ../generic/optional/daed.nix
