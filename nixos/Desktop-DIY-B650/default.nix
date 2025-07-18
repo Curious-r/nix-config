@@ -11,6 +11,7 @@
     ../generic/optional/preservation/curious/firefox.nix
     ../generic/optional/preservation/curious/thunderbird.nix
     ../generic/optional/fonts.nix
+    ../generic/optional/desktop.nix
     ../generic/optional/input-method.nix
     ../generic/optional/daed.nix
     ../generic/optional/nix/substituters/garnix.nix
@@ -23,7 +24,6 @@
     ./boot.nix
     ./vaultix.nix
     ./networking.nix
-    ./desktop.nix
   ];
 
   # Enable the X11 windowing system.

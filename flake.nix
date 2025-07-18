@@ -138,8 +138,10 @@
                 "*.age"
                 "secrets/cache/*"
               ];
-              programs.nixfmt.enable = true;
-              programs.prettier.enable = true;
+              programs = {
+                nixfmt.enable = true;
+                prettier.enable = true;
+              };
             };
           };
 
