@@ -8,10 +8,20 @@
     enable = true;
     defaultEditor = true;
     languages = {
-      language-server.nixd = {
-        command = "nixd";
-        formatting = {
-          command = [ "nixfmt" ];
+      language = [
+        {
+          name = "nix";
+          auto-format = true;
+          language-servers = [ "nixd" ];
+        }
+      ];
+      language-server = {
+        nixd = {
+          command = "nixd";
+          args = [ "--semantic-tokens=true" ];
+          config.nixd = {
+            formatting.command = [ "nixfmt" ];
+          };
         };
       };
     };

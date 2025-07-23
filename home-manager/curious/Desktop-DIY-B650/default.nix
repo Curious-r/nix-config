@@ -9,6 +9,7 @@
     ../generic/optional/browser/firefox.nix
     ../generic/optional/browser/servo.nix
     ../generic/optional/thunderbird.nix
+    ../generic/optional/openscad.nix
   ];
   home.stateVersion = "25.05";
 }

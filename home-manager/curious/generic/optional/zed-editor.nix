@@ -31,6 +31,7 @@
 
       hour_format = "hour24";
       auto_update = false;
+
       terminal = {
         alternate_scroll = "off";
         blinking = "off";
@@ -96,7 +97,6 @@
       lsp = {
         nixd = {
           binary = {
-            # path = lib.getExe pkgs.nixd;
             path_lookup = true;
           };
           initialization_options = {
