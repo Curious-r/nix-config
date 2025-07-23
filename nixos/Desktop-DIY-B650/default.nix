@@ -10,6 +10,7 @@
     ../generic/optional/preservation/curious/desktop.nix
     ../generic/optional/preservation/curious/firefox.nix
     ../generic/optional/preservation/curious/thunderbird.nix
+    ../generic/optional/boot/plymouth.nix
     ../generic/optional/fonts.nix
     ../generic/optional/desktop.nix
     ../generic/optional/input-method.nix

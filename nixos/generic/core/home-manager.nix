@@ -8,7 +8,7 @@
     extraSpecialArgs = { inherit inputs; };
 
     users.curious.imports = [
-      (../../../home-manager/curious + "/${config.networking.hostName}")
+      ../../../home-manager/curious/${config.networking.hostName}
     ];
   };
 }

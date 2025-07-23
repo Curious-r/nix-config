@@ -1,5 +1,10 @@
-{ lib, ... }:
+{ pkgs, lib, ... }:
 {
-  boot.initrd.systemd.enable = lib.mkDefault true;
-  boot.initrd.systemd.emergencyAccess = lib.mkDefault true;
+  boot = {
+    kernelPackages = lib.mkDefault pkgs.linuxPackages_latest;
+    initrd.systemd = {
+      enable = lib.mkDefault true;
+      emergencyAccess = lib.mkDefault true;
+    };
+  };
 }
