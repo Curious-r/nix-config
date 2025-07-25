@@ -74,9 +74,6 @@
         option_as_meta = false;
         button = true;
         shell = "system";
-        #{
-        #                    program = "zsh";
-        #};
         toolbar = {
           title = true;
         };
