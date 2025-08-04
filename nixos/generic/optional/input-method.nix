@@ -8,7 +8,7 @@
       fcitx5-material-color # a color theme
       (fcitx5-rime.override {
         rimeDataPkgs = [
-          rime-wanxiang
+          unstable.rime-wanxiang
         ];
       })
     ];
