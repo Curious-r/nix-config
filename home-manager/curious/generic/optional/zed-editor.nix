@@ -80,32 +80,9 @@
         working_directory = "current_project_directory";
       };
 
-      languages = {
-        Nix = {
-          formatter = "language_server";
-          format_on_save = "on";
-          language_servers = [
-            "nixd"
-            "!nil"
-          ];
-        };
-      };
-
-      lsp = {
-        nixd = {
-          binary = {
-            path_lookup = true;
-          };
-          initialization_options = {
-            formatting = {
-              command = [ "nixfmt" ];
-            };
-          };
-        };
-      };
-
-      ## tell zed to use direnv and direnv can use a flake.nix enviroment.
+      # tell zed to use direnv and direnv can use devenv.
       load_direnv = "shell_hook";
+
       base_keymap = "VSCode";
       theme = {
         mode = "system";
