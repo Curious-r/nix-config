@@ -18,6 +18,7 @@
     ../generic/optional/nix/substituters/garnix.nix
     ../generic/optional/preservation/daed.nix
     ../generic/optional/steam.nix
+    ../generic/optional/vaultix/curious/rclone.nix
 
     # Use nixos-facter for hardware config
     ./nixos-facter.nix
