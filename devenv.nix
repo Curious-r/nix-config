@@ -13,7 +13,7 @@
   # https://devenv.sh/packages/
   packages = with pkgs; [
     nixd
-    nixdfmt-rfc-style
+    nixfmt-rfc-style
   ];
 
   # https://devenv.sh/languages/

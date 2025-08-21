@@ -1,4 +1,4 @@
-{ inputs, ... }:
+{ inputs, self, ... }:
 let
   # 维持传统 flake 中函数调用的惯用形式
   inherit (inputs) home-manager;
@@ -12,7 +12,7 @@ in
     "curious@Server-Ideapad-G480" = home-manager.lib.homeManagerConfiguration {
       pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux; # Home-manager requires 'pkgs' instance
       extraSpecialArgs = {
-        inherit inputs;
+        inherit inputs self;
       };
       modules = [
         # > Our main home-manager configuration file <
@@ -22,7 +22,7 @@ in
     "curious@Desktop-DIY-B650" = home-manager.lib.homeManagerConfiguration {
       pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux; # Home-manager requires 'pkgs' instance
       extraSpecialArgs = {
-        inherit inputs;
+        inherit inputs self;
       };
       modules = [
         # > Our main home-manager configuration file <

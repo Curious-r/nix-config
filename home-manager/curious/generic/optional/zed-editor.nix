@@ -81,7 +81,7 @@
       };
 
       # tell zed to use direnv and direnv can use devenv.
-      load_direnv = "shell_hook";
+      load_direnv = "direct";
 
       base_keymap = "VSCode";
       theme = {
