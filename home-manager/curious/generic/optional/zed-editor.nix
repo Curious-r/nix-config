@@ -2,6 +2,7 @@
 {
   programs.zed-editor = {
     enable = true;
+    package = pkgs.unstable.zed-editor;
     extensions = [
       "nix"
     ];
@@ -10,7 +11,6 @@
     userSettings = {
 
       agent = {
-        version = "2";
         enabled = true;
         button = true;
         dock = "right";
@@ -29,7 +29,6 @@
         npm_path = lib.getExe' pkgs.nodejs "npm";
       };
 
-      hour_format = "hour24";
       auto_update = false;
 
       terminal = {
@@ -74,9 +73,6 @@
         option_as_meta = false;
         button = true;
         shell = "system";
-        toolbar = {
-          title = true;
-        };
         working_directory = "current_project_directory";
       };
 

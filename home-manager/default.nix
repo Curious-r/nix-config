@@ -17,6 +17,15 @@ in
       modules = [
         # > Our main home-manager configuration file <
         ./curious/Server-Ideapad-G480
+        {
+          nixpkgs = {
+            # you can add global overlays here
+            overlays = builtins.attrValues self.overlays;
+            config = {
+              allowUnfree = true;
+            };
+          };
+        }
       ];
     };
     "curious@Desktop-DIY-B650" = home-manager.lib.homeManagerConfiguration {
@@ -27,6 +36,15 @@ in
       modules = [
         # > Our main home-manager configuration file <
         ./curious/Desktop-DIY-B650
+        {
+          nixpkgs = {
+            # you can add global overlays here
+            overlays = builtins.attrValues self.overlays;
+            config = {
+              allowUnfree = true;
+            };
+          };
+        }
       ];
     };
   };
