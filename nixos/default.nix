@@ -56,5 +56,16 @@ in
         ./Desktop-DIY-B650
       ];
     };
+    Laptop-Legion-R7000 = nixpkgs.lib.nixosSystem {
+      specialArgs = {
+        inherit inputs self;
+        primaryDiskWwid = "nvme-SAMSUNG_MZVLB512HBJQ-000L2_S4DYNF0N449629";
+        swapSize = "16G";
+      };
+      modules = [
+        # > Our main nixos configuration file <
+        ./Laptop-Legion-R7000
+      ];
+    };
   };
 }

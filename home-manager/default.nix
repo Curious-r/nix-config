@@ -47,5 +47,24 @@ in
         }
       ];
     };
+    "curious@Laptop-Legion-R7000" = home-manager.lib.homeManagerConfiguration {
+      pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux; # Home-manager requires 'pkgs' instance
+      extraSpecialArgs = {
+        inherit inputs self;
+      };
+      modules = [
+        # > Our main home-manager configuration file <
+        ./curious/Laptop-Legion-R7000
+        {
+          nixpkgs = {
+            # you can add global overlays here
+            overlays = builtins.attrValues self.overlays;
+            config = {
+              allowUnfree = true;
+            };
+          };
+        }
+      ];
+    };
   };
 }
