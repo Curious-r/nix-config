@@ -82,7 +82,6 @@
             ".config"
             ".local/state"
             ".local/share"
-            "nix-config"
           ];
           files = [
             ".gitconfig"
