@@ -8,6 +8,8 @@
     ../generic/optional/nix/substituters/mainland.nix
     ../generic/optional/disko/primary/efi-btrfs.nix
     ../generic/optional/preservation/curious/desktop.nix
+    # zen-browser 基于 firefox，不仅使用自己的 .zen 目录，也使用 .mozilla
+    ../generic/optional/preservation/curious/zen.nix
     ../generic/optional/preservation/curious/firefox.nix
     ../generic/optional/preservation/curious/thunderbird.nix
     ../generic/optional/boot/plymouth.nix
