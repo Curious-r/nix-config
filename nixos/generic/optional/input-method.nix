@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, self, ... }:
 {
   i18n.inputMethod = {
     enable = true;
@@ -8,7 +8,7 @@
       fcitx5-material-color # a color theme
       (unstable.fcitx5-rime.override {
         rimeDataPkgs = [
-          unstable.rime-wanxiang
+          self.packages.${pkgs.system}.rime-wanxiang
         ];
       })
     ];

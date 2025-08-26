@@ -9,6 +9,7 @@ with
 - [disko](https://github.com/nix-community/disko)
 - [treefmt-nix](https://github.com/numtide/treefmt-nix)
 - [devenv](https://github.com/cachix/devenv)
+
 ---
 
 [![Nix Flake](https://img.shields.io/badge/Nix-Flake-blue.svg?logo=NixOS&logoColor=white)](https://nixos.wiki/wiki/Flakes)

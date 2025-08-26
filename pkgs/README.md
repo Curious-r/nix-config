@@ -11,7 +11,7 @@ Most packages are compatible with all systems specified in `flake.nix`. If a pac
 
 To use the packages, add the flake as an input in your configuration:
 
-```bash
+```nix
 inputs = {
     curious-r.url = "github:Curious-r/nix-config";
     curious-r.inputs.nixpkgs.follows = "nixpkgs";
@@ -20,7 +20,7 @@ inputs = {
 
 Once added, install the package using:
 
-```bash
+```nix
 inputs.curious-r.packages.<package-name>
 ```
 
@@ -31,7 +31,7 @@ inputs.curious-r.packages.<package-name>
 You can quickly run the package without installing it using:
 
 ```bash
-nix run "ggithub:Curious-r/nix-config#<pkgname>"
+nix run "github:Curious-r/nix-config#<pkgname>"
 ```
 
 Or bring the package into a shell environment with:
