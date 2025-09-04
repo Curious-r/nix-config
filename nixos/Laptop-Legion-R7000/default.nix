@@ -21,6 +21,7 @@
     ../generic/optional/preservation/daed.nix
     ../generic/optional/steam.nix
     ../generic/optional/vaultix/curious/rclone.nix
+    ../generic/optional/solaar.nix
 
     # Use nixos-facter for hardware config
     ./nixos-facter.nix

@@ -9,6 +9,7 @@
       (unstable.fcitx5-rime.override {
         rimeDataPkgs = [
           self.packages.${pkgs.system}.rime-wanxiang
+          # unstable.rime-wanxiang
         ];
       })
     ];
