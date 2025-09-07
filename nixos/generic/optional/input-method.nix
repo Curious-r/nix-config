@@ -2,7 +2,6 @@
   pkgs,
   lib,
   config,
-  self,
   ...
 }:
 {
@@ -19,8 +18,7 @@
       fcitx5-material-color # a color theme
       (unstable.fcitx5-rime.override {
         rimeDataPkgs = [
-          self.packages.${pkgs.system}.rime-wanxiang
-          # unstable.rime-wanxiang
+          unstable.rime-wanxiang
         ];
       })
     ];
