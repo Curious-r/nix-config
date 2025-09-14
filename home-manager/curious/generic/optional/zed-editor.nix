@@ -86,13 +86,12 @@
         dark = "One Dark";
       };
       show_whitespaces = "all";
-      ui_font_family = "Zed Plex Sans";
-      ui_font_features = {
-        calt = false;
-      };
+
+      ui_font_family = ".ZedSans";
       ui_font_fallbacks = [ "Noto Sans CJK SC" ];
       ui_font_size = 16;
       ui_font_weight = 400;
+
       buffer_font_family = "Monaspace Argon";
       buffer_font_features = {
         calt = true;
@@ -113,6 +112,8 @@
       buffer_font_fallbacks = [ "Noto Sans CJK SC" ];
       buffer_font_size = 16;
       buffer_font_weight = 400;
+
+      helix_mode = true;
     };
   };
 }
