@@ -58,6 +58,7 @@
         ];
         emoji = [ "Noto Color Emoji" ];
       };
+      hinting.style = "full";
     };
   };
 }
