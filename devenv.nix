@@ -12,7 +12,6 @@
 
   # https://devenv.sh/packages/
   packages = with pkgs; [
-    nixd
     nixfmt-rfc-style
   ];
 
@@ -49,4 +48,10 @@
   # git-hooks.hooks.shellcheck.enable = true;
 
   # See full reference at https://devenv.sh/reference/options/
+  languages = {
+    nix = {
+      enable = true;
+      lsp.package = pkgs.nixd;
+    };
+  };
 }

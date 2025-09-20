@@ -4,6 +4,6 @@
     direnv.enable = true;
   };
   environment.systemPackages = with pkgs; [
-    devenv
+    unstable.devenv
   ];
 }
