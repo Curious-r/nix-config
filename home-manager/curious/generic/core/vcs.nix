@@ -1,4 +1,4 @@
-{ ... }:
+{ pkgs, ... }:
 {
   programs = {
     git = {
@@ -7,4 +7,5 @@
       userEmail = "Curious@curious.host";
     };
   };
+  home.packages = with pkgs; [ pijul ];
 }
