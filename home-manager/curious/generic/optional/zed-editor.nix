@@ -12,10 +12,11 @@
 
       agent = {
         enabled = true;
-        button = true;
+        preferred_completion_mod = "normal";
+        eutton = true;
         dock = "right";
-        default_width = 640;
-        default_height = 320;
+        default_width = 600;
+        default_height = 300;
         default_view = "thread";
         default_model = {
           provider = "zed.dev";
@@ -87,12 +88,10 @@
       };
       show_whitespaces = "all";
 
-      ui_font_family = ".ZedSans";
-      ui_font_fallbacks = [ "Noto Sans CJK SC" ];
-      ui_font_size = 16;
-      ui_font_weight = 400;
-
+      # 各种字体设置
+      # 编辑器字体
       buffer_font_family = "Monaspace Argon";
+      buffer_font_fallbacks = [ "Noto Sans Mono CJK SC" ];
       buffer_font_features = {
         calt = true;
         liga = true;
@@ -109,9 +108,16 @@
         cv60 = true;
         cv62 = true;
       };
-      buffer_font_fallbacks = [ "Noto Sans CJK SC" ];
       buffer_font_size = 16;
       buffer_font_weight = 400;
+      buffer_line_height = "comfortable";
+      # UI 字体
+      ui_font_family = ".ZedSans";
+      ui_font_fallbacks = [ "Noto Sans CJK SC" ];
+      ui_font_size = 16;
+      ui_font_weight = 400;
+      # AI 面板字体
+      agent_font_size = 14;
 
       helix_mode = true;
     };
