@@ -82,6 +82,15 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # 用于管理 Cosmic DE
+    cosmic-manager = {
+      url = "github:HeitorAugustoLN/cosmic-manager";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        home-manager.follows = "home-manager";
+      };
+    };
+
     # 一些项目官方仓库提供了自建的二进制缓存，这种情况下，为了充分利用缓存，
     # 引入时不应该令它的 inputs.nixpkgs 跟随我们的版本，这会导致
     # 产物与二进制缓存 hash 不一致，从而引起大量编译。
