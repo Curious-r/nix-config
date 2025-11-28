@@ -1,4 +1,4 @@
-{ ... }:
+{ pkgs, ... }:
 {
   services.displayManager = {
     cosmic-greeter.enable = true;
@@ -12,4 +12,8 @@
     enable = true;
     xwayland.enable = true;
   };
+  environment.cosmic.excludePackages = with pkgs; [
+    cosmic-edit
+    cosmic-term
+  ];
 }

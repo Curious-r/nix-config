@@ -3,8 +3,12 @@
   programs = {
     git = {
       enable = true;
-      userName = "Curious";
-      userEmail = "Curious@curious.host";
+      settings = {
+        user = {
+          name = "Curious";
+          email = "Curious@curious.host";
+        };
+      };
     };
   };
   home.packages = with pkgs; [ pijul ];

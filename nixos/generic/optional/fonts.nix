@@ -15,7 +15,7 @@
       noto-fonts # 大部分文字的常见样式，不包含汉字
       noto-fonts-cjk-serif # 汉字部分，有衬线
       noto-fonts-cjk-sans # 汉字部分，无衬线
-      noto-fonts-emoji # 彩色的表情符号字体
+      noto-fonts-color-emoji # 彩色的表情符号字体
 
       # 思源系列字体是 Adobe 主导的。其中汉字部分被称为「思源黑体」和「思源宋体」，是由 Adobe + Google 共同开发的
       # source-sans # 无衬线字体，不含汉字。字族名是Source Sans Pro（旧版）和Source Sans 3（新版），以及变体

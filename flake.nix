@@ -21,17 +21,12 @@
   # inputs 中的每一项依赖都会在被拉取、构建后，作为参数传递给 outputs 函数
   inputs = {
     # Nixpkgs
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
 
     # You can access packages and modules from different nixpkgs revs
     # at the same time. Here's an working example:
-    nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
+    nixpkgs-stable.url = "github:nixos/nixpkgs/nixos-25.05";
     # Also see the 'unstable-packages' overlay at 'overlays/default.nix'.
-
-    lix-module = {
-      url = "https://git.lix.systems/lix-project/nixos-module/archive/2.93.3-1.tar.gz";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
 
     flake-parts.url = "github:hercules-ci/flake-parts";
 
@@ -43,7 +38,7 @@
 
     # Home manager
     home-manager = {
-      url = "github:nix-community/home-manager/release-25.05";
+      url = "github:nix-community/home-manager";
       # `follows` 是 inputs 中的继承语法
       # 这里使 home-manager 的 `inputs.nixpkgs` 与当前 flake 的
       # `inputs.nixpkgs` 保持一致，避免依赖的 nixpkgs 版本不一致导致问题
@@ -52,7 +47,7 @@
 
     # Nix on droid
     nix-on-droid = {
-      url = "github:nix-community/nix-on-droid/release-24.05";
+      url = "github:nix-community/nix-on-droid";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -78,7 +73,7 @@
 
     # Secure boot for NixOS
     lanzaboote = {
-      url = "github:nix-community/lanzaboote/v0.4.2";
+      url = "github:nix-community/lanzaboote/v0.4.3";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 

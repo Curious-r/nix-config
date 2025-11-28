@@ -1,12 +1,11 @@
 {
   inputs,
   config,
+  pkgs,
   lib,
   ...
 }:
 {
-  imports = [ inputs.lix-module.nixosModules.default ];
-
   nix = {
     # This will add each flake input as a registry
     # To make nix3 commands consistent with your flake
@@ -15,6 +14,8 @@
     # This will add your inputs to the system's legacy channels
     # Making legacy nix commands consistent as well, awesome!
     nixPath = lib.mapAttrsToList (key: value: "${key}=${value.to.path}") config.nix.registry;
+
+    package = pkgs.lixPackageSets.stable.lix;
 
     settings = {
       # See https://jackson.dev/post/nix-reasonable-defaults/
