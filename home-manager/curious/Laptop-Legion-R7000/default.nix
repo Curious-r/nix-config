@@ -5,6 +5,7 @@
     ../generic/optional/nix/substituters/mainland.nix
     ../generic/optional/desktop.nix
     ../generic/optional/rime
+    ../generic/optional/terminal/alacritty.nix
     ../generic/optional/zed-editor.nix
     ../generic/optional/browser/zen.nix
     ../generic/optional/browser/servo.nix
