@@ -12,8 +12,8 @@
 
       agent = {
         enabled = true;
-        preferred_completion_mod = "normal";
-        eutton = true;
+        preferred_completion_mode = "normal";
+        button = true;
         dock = "right";
         default_width = 600;
         default_height = 300;
@@ -117,7 +117,8 @@
       ui_font_size = 16;
       ui_font_weight = 400;
       # AI 面板字体
-      agent_font_size = 14;
+      agent_ui_font_size = 16;
+      agent_buffer_font_size = 14;
 
       helix_mode = true;
     };

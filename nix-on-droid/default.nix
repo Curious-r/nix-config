@@ -13,14 +13,14 @@ in
       extraSpecialArgs = {
         inherit inputs;
       };
-      pkgs = import nixpkgs { system = "aarch64-linux"; };
+      pkgs = import nixpkgs { stdenv.hostPlatform.system = "aarch64-linux"; };
       modules = [ ./Phone-Redmi-K50Pro ];
     };
     Pad-Vivo-3Pro = nix-on-droid.lib.nixOnDroidConfiguration {
       extraSpecialArgs = {
         inherit inputs;
       };
-      pkgs = import nixpkgs { system = "aarch64-linux"; };
+      pkgs = import nixpkgs { stdenv.hostPlatform.system = "aarch64-linux"; };
       modules = [ ./Pad-Vivo-3Pro ];
     };
   };
