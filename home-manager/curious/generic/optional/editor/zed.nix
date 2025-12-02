@@ -51,7 +51,7 @@
         env = {
           TERM = "alacritty";
         };
-        font_family = "Monaspace Krypton";
+        font_family = "Monaspace Neon Var";
         font_features = {
           calt = true;
           liga = true;
@@ -69,7 +69,7 @@
           cv62 = true;
         };
         font_size = 15;
-        font_weight = 400;
+        font_weight = 500;
         line_height = "comfortable";
         option_as_meta = false;
         button = true;
@@ -90,7 +90,7 @@
 
       # 各种字体设置
       # 编辑器字体
-      buffer_font_family = "Monaspace Argon";
+      buffer_font_family = "Monaspace Argon Var";
       buffer_font_fallbacks = [ "Noto Sans Mono CJK SC" ];
       buffer_font_features = {
         calt = true;
@@ -115,7 +115,7 @@
       ui_font_family = ".ZedSans";
       ui_font_fallbacks = [ "Noto Sans CJK SC" ];
       ui_font_size = 16;
-      ui_font_weight = 400;
+      ui_font_weight = 500;
       # AI 面板字体
       agent_ui_font_size = 16;
       agent_buffer_font_size = 14;
