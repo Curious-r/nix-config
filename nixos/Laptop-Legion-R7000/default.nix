@@ -22,6 +22,8 @@
     ../generic/optional/steam.nix
     ../generic/optional/vaultix/curious/rclone.nix
     ../generic/optional/solaar.nix
+    ../generic/optional/openrazer.nix
+    ../generic/optional/users/users/curious/openrazer.nix
 
     # Use nixos-facter for hardware config
     ./nixos-facter.nix

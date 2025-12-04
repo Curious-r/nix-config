@@ -1,12 +1,12 @@
 { inputs, self, ... }:
 let
   # 维持传统 flake 中函数调用的惯用形式
-  inherit (inputs) nixpkgs nixpkgs-stable;
+  inherit (inputs) nixpkgs;
 in
 {
   flake.nixosConfigurations = {
     # FIXME replace with your hostname
-    Server-Ideapad-G480 = nixpkgs-stable.lib.nixosSystem {
+    Server-Ideapad-G480 = nixpkgs.lib.nixosSystem {
       # Nixpkgs 的模块系统提供了两种方式来传递非默认参数：
       #   1. nixpkgs.lib.nixosSystem 函数的 specialArgs 参数
       #   2. 在任一 Module 中使用 _module.args 这个 option 来传递参数
@@ -33,7 +33,7 @@ in
       #     imports = [ { a = b; } ];
       #   和：
       #     modules = [ { a = b; } ];
-      #   一个单纯的属性集没有能接受参数的结构，模块系统无法对其注入，所以只能在其中进行 config 的定义，
+      #   一个单纯的属性集没有能接收参数的结构，模块系统无法对其注入，所以只能在其中进行 config 的定义，
       #   它适合简单、局部的配置定义，写起来比较方便
       specialArgs = {
         inherit inputs self;
