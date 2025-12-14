@@ -7,4 +7,8 @@
       emergencyAccess = lib.mkDefault true;
     };
   };
+  system = {
+    nixos-init.enable = true;
+    etc.overlay.enable = true;
+  };
 }
