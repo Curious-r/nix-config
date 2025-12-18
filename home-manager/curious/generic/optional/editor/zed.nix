@@ -2,9 +2,11 @@
 {
   programs.zed-editor = {
     enable = true;
-    package = pkgs.zed-editor;
     extensions = [
       "nix"
+    ];
+    extraPackages = [
+      pkgs.vscode-json-languageserver
     ];
 
     ## everything inside of these brackets are Zed options.
