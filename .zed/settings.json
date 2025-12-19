@@ -12,8 +12,7 @@
   },
   "lsp": {
     "nixd": {
-      "binary": { "path_lookup": true },
-      "initialization_options ": {
+      "initialization_options": {
         "formatting": {
           "command": ["nixfmt"]
         }
