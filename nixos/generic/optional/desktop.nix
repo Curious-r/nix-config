@@ -3,9 +3,9 @@
   services.displayManager = {
     cosmic-greeter.enable = true;
     autoLogin = {
-      enable = true;
+      # enable = true;
       # Replace `yourUserName` with the actual username of user who should be automatically logged in
-      user = "curious";
+      # user = "curious";
     };
   };
   services.desktopManager.cosmic = {
