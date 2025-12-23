@@ -12,14 +12,14 @@
     ../generic/optional/docker/registry-mirrors/mainland.nix
     ../generic/optional/nix/substituters/garnix.nix
 
-    # Use nixos-facter for hardware config
-    ./nixos-facter.nix
-
     ./boot.nix
     ./vaultix.nix
     ./networking.nix
     ./preservation.nix
     ./dae.nix
+
+    # hardware config
+    ./hardware.nix
   ];
 
   # Enable the X11 windowing system.

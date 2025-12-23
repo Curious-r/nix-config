@@ -53,9 +53,6 @@
 
     # TODO: Add any other flake you might need
 
-    # Generate hardware-related configuration using the nixos-factor detection report
-    nixos-facter-modules.url = "github:numtide/nixos-facter-modules";
-
     # Hardware collection
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
 

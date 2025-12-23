@@ -25,13 +25,12 @@
     ../generic/optional/openrazer.nix
     ../generic/optional/users/users/curious/openrazer.nix
 
-    # Use nixos-facter for hardware config
-    ./nixos-facter.nix
-
     ./boot.nix
     ./vaultix.nix
     ./networking.nix
 
+    # hardware config
+    ./hardware.nix
     # hardware config from community collection
     inputs.nixos-hardware.nixosModules.lenovo-legion-15arh05h
   ];

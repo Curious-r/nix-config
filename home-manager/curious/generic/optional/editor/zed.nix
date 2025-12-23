@@ -4,6 +4,8 @@
     enable = true;
     extensions = [
       "nix"
+      "opencode"
+      "mcp-server-context7"
     ];
     extraPackages = [
       pkgs.vscode-json-languageserver
