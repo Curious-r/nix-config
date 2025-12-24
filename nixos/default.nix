@@ -37,7 +37,7 @@ in
       #   它适合简单、局部的配置定义，写起来比较方便
       specialArgs = {
         inherit inputs self;
-        primaryDiskWwid = "ata-WDC_WD1600BEVT-22ZCT0_WD-WXC908420123";
+        primaryDiskWwid = "ata-Phison_SATA_SSD_0C3307050CA900023301";
         swapSize = "8G";
       };
       modules = [

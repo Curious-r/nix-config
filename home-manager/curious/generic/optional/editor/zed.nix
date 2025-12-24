@@ -4,11 +4,11 @@
     enable = true;
     extensions = [
       "nix"
-      "opencode"
       "mcp-server-context7"
     ];
-    extraPackages = [
-      pkgs.vscode-json-languageserver
+    extraPackages = with pkgs; [
+      qwen-code
+      vscode-json-languageserver
     ];
 
     ## everything inside of these brackets are Zed options.
@@ -27,6 +27,15 @@
           model = "claude-sonnet-4";
         };
         single_file_review = true;
+      };
+
+      agent_servers = {
+        "Qwen Code" = {
+          type = "custom";
+          command = "qwen";
+          args = [ "--experimental-acp" ];
+          env = { };
+        };
       };
 
       node = {
