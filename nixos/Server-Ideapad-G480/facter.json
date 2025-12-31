@@ -217,7 +217,7 @@
         "module_alias": "pci:v00008086d00000151sv000017AAsd00003977bc06sc04i00"
       },
       {
-        "index": 18,
+        "index": 17,
         "attached_to": 0,
         "class_list": ["pci", "bridge"],
         "bus_type": {
@@ -277,7 +277,7 @@
         "module_alias": "pci:v00008086d00000154sv000017AAsd00003977bc06sc00i00"
       },
       {
-        "index": 19,
+        "index": 18,
         "attached_to": 0,
         "class_list": ["pci", "bridge"],
         "bus_type": {
@@ -344,8 +344,8 @@
     ],
     "camera": [
       {
-        "index": 27,
-        "attached_to": 34,
+        "index": 29,
+        "attached_to": 27,
         "class_list": ["camera", "usb"],
         "bus_type": {
           "hex": "0086",
@@ -377,107 +377,13 @@
           "value": 0
         },
         "model": "Chicony Electronics Lenovo EasyCamera",
-        "sysfs_id": "/devices/pci0000:00/0000:00:1d.0/usb1/1-1/1-1.6/1-1.6:1.1",
-        "sysfs_bus_id": "1-1.6:1.1",
-        "resources": [
-          {
-            "type": "baud",
-            "speed": 480000000,
-            "bits": 0,
-            "stop_bits": 0,
-            "parity": 0,
-            "handshake": 0
-          }
-        ],
-        "detail": {
-          "device_class": {
-            "hex": "00ef",
-            "name": "miscellaneous",
-            "value": 239
-          },
-          "device_subclass": {
-            "hex": "0002",
-            "name": "comm",
-            "value": 2
-          },
-          "device_protocol": 1,
-          "interface_class": {
-            "hex": "000e",
-            "name": "video",
-            "value": 14
-          },
-          "interface_subclass": {
-            "hex": "0002",
-            "name": "comm",
-            "value": 2
-          },
-          "interface_protocol": 0,
-          "interface_number": 1,
-          "interface_alternate_setting": 0,
-          "interface_association": {
-            "function_class": {
-              "hex": "000e",
-              "name": "video",
-              "value": 14
-            },
-            "function_subclass": {
-              "hex": "0003",
-              "name": "hid",
-              "value": 3
-            },
-            "function_protocol": 0,
-            "interface_count": 2,
-            "first_interface": 0
-          }
-        },
-        "hotplug": "usb",
-        "driver": "uvcvideo",
-        "driver_module": "uvcvideo",
-        "drivers": ["uvcvideo"],
-        "driver_modules": ["uvcvideo"],
-        "module_alias": "usb:v04F2pB2E1d3955dcEFdsc02dp01ic0Eisc02ip00in01"
-      },
-      {
-        "index": 32,
-        "attached_to": 34,
-        "class_list": ["camera", "usb"],
-        "bus_type": {
-          "hex": "0086",
-          "name": "USB",
-          "value": 134
-        },
-        "slot": {
-          "bus": 0,
-          "number": 0
-        },
-        "base_class": {
-          "hex": "010f",
-          "name": "Camera",
-          "value": 271
-        },
-        "vendor": {
-          "hex": "04f2",
-          "name": "Chicony Electronics Co., Ltd.",
-          "value": 1266
-        },
-        "device": {
-          "hex": "b2e1",
-          "name": "Lenovo EasyCamera",
-          "value": 45793
-        },
-        "revision": {
-          "hex": "0000",
-          "name": "39.55",
-          "value": 0
-        },
-        "model": "Chicony Electronics Lenovo EasyCamera",
-        "sysfs_id": "/devices/pci0000:00/0000:00:1d.0/usb1/1-1/1-1.6/1-1.6:1.0",
-        "sysfs_bus_id": "1-1.6:1.0",
+        "sysfs_id": "/devices/pci0000:00/0000:00:1d.0/usb2/2-1/2-1.6/2-1.6:1.0",
+        "sysfs_bus_id": "2-1.6:1.0",
         "unix_device_names": [
           "/dev/input/by-id/usb-Vimicro_Corp._Lenovo_EasyCamera-event-if00",
           "/dev/input/by-path/pci-0000:00:1d.0-usb-0:1.6:1.0-event",
           "/dev/input/by-path/pci-0000:00:1d.0-usbv2-0:1.6:1.0-event",
-          "/dev/input/event9"
+          "/dev/input/event12"
         ],
         "resources": [
           {
@@ -536,11 +442,105 @@
         "drivers": ["uvcvideo"],
         "driver_modules": ["uvcvideo"],
         "module_alias": "usb:v04F2pB2E1d3955dcEFdsc02dp01ic0Eisc01ip00in00"
+      },
+      {
+        "index": 32,
+        "attached_to": 27,
+        "class_list": ["camera", "usb"],
+        "bus_type": {
+          "hex": "0086",
+          "name": "USB",
+          "value": 134
+        },
+        "slot": {
+          "bus": 0,
+          "number": 0
+        },
+        "base_class": {
+          "hex": "010f",
+          "name": "Camera",
+          "value": 271
+        },
+        "vendor": {
+          "hex": "04f2",
+          "name": "Chicony Electronics Co., Ltd.",
+          "value": 1266
+        },
+        "device": {
+          "hex": "b2e1",
+          "name": "Lenovo EasyCamera",
+          "value": 45793
+        },
+        "revision": {
+          "hex": "0000",
+          "name": "39.55",
+          "value": 0
+        },
+        "model": "Chicony Electronics Lenovo EasyCamera",
+        "sysfs_id": "/devices/pci0000:00/0000:00:1d.0/usb2/2-1/2-1.6/2-1.6:1.1",
+        "sysfs_bus_id": "2-1.6:1.1",
+        "resources": [
+          {
+            "type": "baud",
+            "speed": 480000000,
+            "bits": 0,
+            "stop_bits": 0,
+            "parity": 0,
+            "handshake": 0
+          }
+        ],
+        "detail": {
+          "device_class": {
+            "hex": "00ef",
+            "name": "miscellaneous",
+            "value": 239
+          },
+          "device_subclass": {
+            "hex": "0002",
+            "name": "comm",
+            "value": 2
+          },
+          "device_protocol": 1,
+          "interface_class": {
+            "hex": "000e",
+            "name": "video",
+            "value": 14
+          },
+          "interface_subclass": {
+            "hex": "0002",
+            "name": "comm",
+            "value": 2
+          },
+          "interface_protocol": 0,
+          "interface_number": 1,
+          "interface_alternate_setting": 0,
+          "interface_association": {
+            "function_class": {
+              "hex": "000e",
+              "name": "video",
+              "value": 14
+            },
+            "function_subclass": {
+              "hex": "0003",
+              "name": "hid",
+              "value": 3
+            },
+            "function_protocol": 0,
+            "interface_count": 2,
+            "first_interface": 0
+          }
+        },
+        "hotplug": "usb",
+        "driver": "uvcvideo",
+        "driver_module": "uvcvideo",
+        "drivers": ["uvcvideo"],
+        "driver_modules": ["uvcvideo"],
+        "module_alias": "usb:v04F2pB2E1d3955dcEFdsc02dp01ic0Eisc02ip00in01"
       }
     ],
     "cdrom": [
       {
-        "index": 25,
+        "index": 24,
         "attached_to": 9,
         "class_list": ["cdrom", "scsi", "block_device"],
         "bus_type": {
@@ -714,7 +714,7 @@
           "vmscape"
         ],
         "power_management": [""],
-        "bogo": 5188,
+        "bogo": 5187,
         "cache": 3072,
         "units": 16,
         "page_size": 4096,
@@ -725,7 +725,7 @@
         "fpu_exception": false,
         "cpuid_level": 13,
         "write_protect": false,
-        "tlb_size": 32766,
+        "tlb_size": 32724,
         "clflush_size": 64,
         "cache_alignment": 64,
         "address_sizes": {
@@ -736,7 +736,7 @@
     ],
     "disk": [
       {
-        "index": 26,
+        "index": 25,
         "attached_to": 9,
         "class_list": ["disk", "ide", "block_device"],
         "bus_type": {
@@ -760,27 +760,26 @@
         },
         "vendor": {
           "hex": "0000",
-          "name": "WDC",
+          "name": "Phison",
           "value": 0
         },
         "device": {
           "hex": "0000",
-          "name": "WD1600BEVT-2",
+          "name": "SATA SSD",
           "value": 0
         },
         "revision": {
           "hex": "0000",
-          "name": "1A11",
+          "name": "J1.3",
           "value": 0
         },
-        "serial": "WD-WXC908420123",
-        "model": "WDC WD1600BEVT-2",
+        "serial": "0C3307050CA900023301",
+        "model": "Phison SATA SSD",
         "sysfs_id": "/class/block/sda",
         "sysfs_bus_id": "0:0:0:0",
         "sysfs_device_link": "/devices/pci0000:00/0000:00:1f.2/ata1/host0/target0:0:0/0:0:0:0",
         "unix_device_names": [
-          "/dev/disk/by-id/ata-WDC_WD1600BEVT-22ZCT0_WD-WXC908420123",
-          "/dev/disk/by-id/wwn-0x50014ee20246cb27",
+          "/dev/disk/by-id/ata-Phison_SATA_SSD_0C3307050CA900023301",
           "/dev/disk/by-path/pci-0000:00:1f.2-ata-1",
           "/dev/disk/by-path/pci-0000:00:1f.2-ata-1.0",
           "/dev/sda"
@@ -789,7 +788,7 @@
         "resources": [
           {
             "type": "disk_geo",
-            "cylinders": 19457,
+            "cylinders": 62260,
             "heads": 255,
             "sectors": 63,
             "size": "0x0",
@@ -798,7 +797,7 @@
           {
             "type": "size",
             "unit": "sectors",
-            "value_1": 312581808,
+            "value_1": 1000215216,
             "value_2": 512
           }
         ],
@@ -810,7 +809,7 @@
     ],
     "graphics_card": [
       {
-        "index": 15,
+        "index": 14,
         "attached_to": 13,
         "class_list": ["graphics_card", "pci"],
         "bus_type": {
@@ -879,7 +878,7 @@
         "module_alias": "pci:v000010DEd00001140sv000017AAsd00003901bc03sc02i00"
       },
       {
-        "index": 22,
+        "index": 21,
         "attached_to": 0,
         "class_list": ["graphics_card", "pci"],
         "bus_type": {
@@ -955,8 +954,8 @@
     ],
     "hub": [
       {
-        "index": 28,
-        "attached_to": 35,
+        "index": 27,
+        "attached_to": 34,
         "class_list": ["usb", "hub"],
         "bus_type": {
           "hex": "0086",
@@ -981,7 +980,7 @@
           "value": 36
         },
         "model": "Hub",
-        "sysfs_id": "/devices/pci0000:00/0000:00:1a.0/usb2/2-1/2-1:1.0",
+        "sysfs_id": "/devices/pci0000:00/0000:00:1d.0/usb2/2-1/2-1:1.0",
         "sysfs_bus_id": "2-1:1.0",
         "resources": [
           {
@@ -1027,8 +1026,8 @@
         "module_alias": "usb:v8087p0024d0000dc09dsc00dp01ic09isc00ip00in00"
       },
       {
-        "index": 29,
-        "attached_to": 23,
+        "index": 28,
+        "attached_to": 22,
         "class_list": ["usb", "hub"],
         "bus_type": {
           "hex": "0086",
@@ -1046,7 +1045,7 @@
         },
         "vendor": {
           "hex": "1d6b",
-          "name": "Linux 6.18.1 xhci-hcd",
+          "name": "Linux 6.18.2 xhci-hcd",
           "value": 7531
         },
         "device": {
@@ -1060,7 +1059,7 @@
           "value": 0
         },
         "serial": "0000:00:14.0",
-        "model": "Linux 6.18.1 xhci-hcd xHCI Host Controller",
+        "model": "Linux 6.18.2 xhci-hcd xHCI Host Controller",
         "sysfs_id": "/devices/pci0000:00/0000:00:14.0/usb3/3-0:1.0",
         "sysfs_bus_id": "3-0:1.0",
         "resources": [
@@ -1108,7 +1107,7 @@
       },
       {
         "index": 30,
-        "attached_to": 23,
+        "attached_to": 22,
         "class_list": ["usb", "hub"],
         "bus_type": {
           "hex": "0086",
@@ -1126,7 +1125,7 @@
         },
         "vendor": {
           "hex": "1d6b",
-          "name": "Linux 6.18.1 xhci-hcd",
+          "name": "Linux 6.18.2 xhci-hcd",
           "value": 7531
         },
         "device": {
@@ -1140,7 +1139,7 @@
           "value": 0
         },
         "serial": "0000:00:14.0",
-        "model": "Linux 6.18.1 xhci-hcd xHCI Host Controller",
+        "model": "Linux 6.18.2 xhci-hcd xHCI Host Controller",
         "sysfs_id": "/devices/pci0000:00/0000:00:14.0/usb4/4-0:1.0",
         "sysfs_bus_id": "4-0:1.0",
         "detail": {
@@ -1178,7 +1177,7 @@
       },
       {
         "index": 31,
-        "attached_to": 21,
+        "attached_to": 19,
         "class_list": ["usb", "hub"],
         "bus_type": {
           "hex": "0086",
@@ -1196,7 +1195,7 @@
         },
         "vendor": {
           "hex": "1d6b",
-          "name": "Linux 6.18.1 ehci_hcd",
+          "name": "Linux 6.18.2 ehci_hcd",
           "value": 7531
         },
         "device": {
@@ -1209,9 +1208,9 @@
           "name": "6.18",
           "value": 0
         },
-        "serial": "0000:00:1d.0",
-        "model": "Linux 6.18.1 ehci_hcd EHCI Host Controller",
-        "sysfs_id": "/devices/pci0000:00/0000:00:1d.0/usb1/1-0:1.0",
+        "serial": "0000:00:1a.0",
+        "model": "Linux 6.18.2 ehci_hcd EHCI Host Controller",
+        "sysfs_id": "/devices/pci0000:00/0000:00:1a.0/usb1/1-0:1.0",
         "sysfs_bus_id": "1-0:1.0",
         "resources": [
           {
@@ -1257,7 +1256,7 @@
         "module_alias": "usb:v1D6Bp0002d0618dc09dsc00dp00ic09isc00ip00in00"
       },
       {
-        "index": 34,
+        "index": 33,
         "attached_to": 31,
         "class_list": ["usb", "hub"],
         "bus_type": {
@@ -1283,7 +1282,7 @@
           "value": 36
         },
         "model": "Hub",
-        "sysfs_id": "/devices/pci0000:00/0000:00:1d.0/usb1/1-1/1-1:1.0",
+        "sysfs_id": "/devices/pci0000:00/0000:00:1a.0/usb1/1-1/1-1:1.0",
         "sysfs_bus_id": "1-1:1.0",
         "resources": [
           {
@@ -1329,7 +1328,7 @@
         "module_alias": "usb:v8087p0024d0000dc09dsc00dp01ic09isc00ip00in00"
       },
       {
-        "index": 35,
+        "index": 34,
         "attached_to": 20,
         "class_list": ["usb", "hub"],
         "bus_type": {
@@ -1348,7 +1347,7 @@
         },
         "vendor": {
           "hex": "1d6b",
-          "name": "Linux 6.18.1 ehci_hcd",
+          "name": "Linux 6.18.2 ehci_hcd",
           "value": 7531
         },
         "device": {
@@ -1361,9 +1360,9 @@
           "name": "6.18",
           "value": 0
         },
-        "serial": "0000:00:1a.0",
-        "model": "Linux 6.18.1 ehci_hcd EHCI Host Controller",
-        "sysfs_id": "/devices/pci0000:00/0000:00:1a.0/usb2/2-0:1.0",
+        "serial": "0000:00:1d.0",
+        "model": "Linux 6.18.2 ehci_hcd EHCI Host Controller",
+        "sysfs_id": "/devices/pci0000:00/0000:00:1d.0/usb2/2-0:1.0",
         "sysfs_bus_id": "2-0:1.0",
         "resources": [
           {
@@ -1435,8 +1434,8 @@
     ],
     "monitor": [
       {
-        "index": 24,
-        "attached_to": 22,
+        "index": 23,
+        "attached_to": 21,
         "class_list": ["monitor"],
         "base_class": {
           "hex": "0100",
@@ -1511,7 +1510,7 @@
     ],
     "mouse": [
       {
-        "index": 62,
+        "index": 40,
         "attached_to": 0,
         "bus_type": {
           "hex": "0080",
@@ -1536,14 +1535,14 @@
           "hex": "0007",
           "value": 7
         },
-        "sysfs_id": "/devices/platform/i8042/serio1/input/input8",
-        "unix_device_names": ["/dev/input/event7", "/dev/input/ + handler"]
+        "sysfs_id": "/devices/platform/i8042/serio1/input/input9",
+        "unix_device_names": ["/dev/input/event13", "/dev/input/ + handler"]
       }
     ],
     "network_controller": [
       {
         "index": 8,
-        "attached_to": 19,
+        "attached_to": 18,
         "class_list": ["network_controller", "pci", "wlan_card"],
         "bus_type": {
           "hex": "0004",
@@ -1728,7 +1727,25 @@
     ],
     "network_interface": [
       {
-        "index": 59,
+        "index": 37,
+        "attached_to": 0,
+        "class_list": ["network_interface"],
+        "base_class": {
+          "hex": "0107",
+          "name": "Network Interface",
+          "value": 263
+        },
+        "sub_class": {
+          "hex": "0000",
+          "name": "Loopback",
+          "value": 0
+        },
+        "model": "Loopback network interface",
+        "sysfs_id": "/class/net/lo",
+        "unix_device_names": ["lo"]
+      },
+      {
+        "index": 38,
         "attached_to": 12,
         "class_list": ["network_interface"],
         "base_class": {
@@ -1761,7 +1778,7 @@
         "driver_modules": ["alx"]
       },
       {
-        "index": 60,
+        "index": 39,
         "attached_to": 8,
         "class_list": ["network_interface"],
         "base_class": {
@@ -1792,85 +1809,11 @@
         "driver_module": "brcmsmac",
         "drivers": ["brcmsmac"],
         "driver_modules": ["brcmsmac"]
-      },
-      {
-        "index": 61,
-        "attached_to": 0,
-        "class_list": ["network_interface"],
-        "base_class": {
-          "hex": "0107",
-          "name": "Network Interface",
-          "value": 263
-        },
-        "sub_class": {
-          "hex": "0000",
-          "name": "Loopback",
-          "value": 0
-        },
-        "model": "Loopback network interface",
-        "sysfs_id": "/class/net/lo",
-        "unix_device_names": ["lo"]
       }
     ],
     "pci": [
       {
-        "index": 14,
-        "attached_to": 0,
-        "class_list": ["pci", "unknown"],
-        "bus_type": {
-          "hex": "0004",
-          "name": "PCI",
-          "value": 4
-        },
-        "slot": {
-          "bus": 0,
-          "number": 22
-        },
-        "base_class": {
-          "hex": "0007",
-          "name": "Communication controller",
-          "value": 7
-        },
-        "sub_class": {
-          "hex": "0080",
-          "name": "Communication controller",
-          "value": 128
-        },
-        "vendor": {
-          "hex": "8086",
-          "name": "Intel Corporation",
-          "value": 32902
-        },
-        "sub_vendor": {
-          "hex": "17aa",
-          "value": 6058
-        },
-        "device": {
-          "hex": "1e3a",
-          "value": 7738
-        },
-        "sub_device": {
-          "hex": "3977",
-          "value": 14711
-        },
-        "revision": {
-          "hex": "0004",
-          "value": 4
-        },
-        "model": "Intel Communication controller",
-        "sysfs_id": "/devices/pci0000:00/0000:00:16.0",
-        "sysfs_bus_id": "0000:00:16.0",
-        "detail": {
-          "function": 0,
-          "command": 2,
-          "header_type": 0,
-          "secondary_bus": 0,
-          "prog_if": 0
-        },
-        "module_alias": "pci:v00008086d00001E3Asv000017AAsd00003977bc07sc80i00"
-      },
-      {
-        "index": 17,
+        "index": 16,
         "attached_to": 0,
         "class_list": ["pci", "unknown"],
         "bus_type": {
@@ -1941,7 +1884,7 @@
     ],
     "sound": [
       {
-        "index": 16,
+        "index": 15,
         "attached_to": 0,
         "class_list": ["sound", "pci"],
         "bus_type": {
@@ -2107,8 +2050,8 @@
     },
     "usb": [
       {
-        "index": 33,
-        "attached_to": 28,
+        "index": 26,
+        "attached_to": 33,
         "class_list": ["usb", "unknown"],
         "bus_type": {
           "hex": "0086",
@@ -2146,8 +2089,8 @@
         },
         "serial": "20100201396000000",
         "model": "Generic USB2.0-CRW",
-        "sysfs_id": "/devices/pci0000:00/0000:00:1a.0/usb2/2-1/2-1.4/2-1.4:1.0",
-        "sysfs_bus_id": "2-1.4:1.0",
+        "sysfs_id": "/devices/pci0000:00/0000:00:1a.0/usb1/1-1/1-1.4/1-1.4:1.0",
+        "sysfs_bus_id": "1-1.4:1.0",
         "resources": [
           {
             "type": "baud",
@@ -2194,7 +2137,7 @@
     ],
     "usb_controller": [
       {
-        "index": 20,
+        "index": 19,
         "attached_to": 0,
         "class_list": ["usb_controller", "pci"],
         "bus_type": {
@@ -2268,7 +2211,7 @@
         "module_alias": "pci:v00008086d00001E2Dsv000017AAsd00003977bc0Csc03i20"
       },
       {
-        "index": 21,
+        "index": 20,
         "attached_to": 0,
         "class_list": ["usb_controller", "pci"],
         "bus_type": {
@@ -2342,7 +2285,7 @@
         "module_alias": "pci:v00008086d00001E26sv000017AAsd00003977bc0Csc03i20"
       },
       {
-        "index": 23,
+        "index": 22,
         "attached_to": 0,
         "class_list": ["usb_controller", "pci"],
         "bus_type": {
