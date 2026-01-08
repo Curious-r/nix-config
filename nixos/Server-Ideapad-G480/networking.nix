@@ -11,7 +11,6 @@
     firewall = {
       enable = true;
       allowedTCPPorts = [
-        22
         7931
         8123
         9876

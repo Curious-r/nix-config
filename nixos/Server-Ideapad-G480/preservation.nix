@@ -7,7 +7,7 @@
       users = {
         curious = {
           directories = [
-            "homeserver"
+            "curious-services"
           ];
         };
       };

@@ -10,9 +10,7 @@
     nftables.enable = true;
     firewall = {
       enable = true;
-      allowedTCPPorts = [
-        22
-      ];
+      allowedTCPPorts = [ ];
       allowedUDPPorts = [ ];
       # checkReversePath = "loose";
       logReversePathDrops = true;
