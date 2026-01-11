@@ -1,19 +1,20 @@
-{ ... }:
+{ pkgs, ... }:
 {
+  environment.systemPackages = [
+    pkgs.impala
+  ];
   networking = {
-    hostName = "Desktop-DIY-B650"; # Define your hostname.
-    networkmanager = {
-      enable = true; # Enables NetworkManager, which will manage networking
-      wifi.backend = "iwd";
-    };
+    hostName = "Router-RaspberryPi-4B-1"; # Define your hostname.
     timeServers = [ "ntp.aliyun.com" ];
-    nftables.enable = true;
+    wireless.iwd.enable = true;
     firewall = {
       enable = true;
       allowedTCPPorts = [
-        22
+        7931
+        8123
+        9876
       ];
-      allowedUDPPorts = [ ];
+      allowedUDPPorts = [ 7931 ];
       # checkReversePath = "loose";
       logReversePathDrops = true;
       logRefusedPackets = true;
@@ -24,4 +25,5 @@
     #   noProxy = "127.0.0.1,localhost,internal.domain";
     # };
   };
+  services.firewalld.enable = true;
 }

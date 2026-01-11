@@ -7,7 +7,6 @@
       wifi.backend = "iwd";
     };
     timeServers = [ "ntp.aliyun.com" ];
-    nftables.enable = true;
     firewall = {
       enable = true;
       allowedTCPPorts = [ ];
@@ -22,4 +21,5 @@
     #   noProxy = "127.0.0.1,localhost,internal.domain";
     # };
   };
+  services.firewalld.enable = true;
 }

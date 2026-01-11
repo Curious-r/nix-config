@@ -6,7 +6,6 @@
   networking = {
     hostName = "Server-Ideapad-G480"; # Define your hostname.
     timeServers = [ "ntp.aliyun.com" ];
-    nftables.enable = true;
     wireless.iwd.enable = true;
     firewall = {
       enable = true;
@@ -26,4 +25,5 @@
     #   noProxy = "127.0.0.1,localhost,internal.domain";
     # };
   };
+  services.firewalld.enable = true;
 }

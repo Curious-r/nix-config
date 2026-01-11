@@ -7,34 +7,23 @@
     ../generic/core
     ../generic/optional/nix/substituters/mainland.nix
     ../generic/optional/disko/primary/efi-btrfs.nix
-    ../generic/optional/preservation/curious/desktop.nix
-    ../generic/optional/preservation/curious/firefox.nix
-    ../generic/optional/preservation/curious/thunderbird.nix
     ../generic/optional/boot/plymouth.nix
-    ../generic/optional/fonts.nix
-    ../generic/optional/desktop.nix
-    ../generic/optional/input-method.nix
-    ../generic/optional/daed.nix
+    ../generic/optional/docker/basic.nix
+    ../generic/optional/docker/registry-mirrors/mainland.nix
     ../generic/optional/nix/substituters/garnix.nix
-    ../generic/optional/preservation/daed.nix
-    ../generic/optional/steam.nix
-    ../generic/optional/vaultix/curious/rclone.nix
-
-    # Use nixos-facter for hardware config
-    ./nixos-facter.nix
 
     ./boot.nix
     ./vaultix.nix
     ./networking.nix
+    ./preservation.nix
+    ./dae.nix
+
+    # hardware config
+    ./hardware.nix
   ];
 
   # Enable the X11 windowing system.
   # services.xserver.enable = true;
-
-  # programs.yazi = {
-  #   enable = true;
-  #   package = inputs.yazi.packages.${pkgs.system}.default; # if you use overlays, you can omit this
-  # };
 
   # Enable CUPS to print documents.
   # services.printing.enable = true;
