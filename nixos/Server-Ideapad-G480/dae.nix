@@ -1,6 +1,5 @@
-{ inputs, config, ... }:
+{ config, ... }:
 {
-  imports = [ inputs.daeuniverse.nixosModules.dae ];
   services.dae = {
     enable = true;
 
