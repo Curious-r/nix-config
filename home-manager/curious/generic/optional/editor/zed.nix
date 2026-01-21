@@ -3,7 +3,6 @@
   programs.zed-editor = {
     enable = true;
     extensions = [
-      "nix"
       "mcp-server-context7"
     ];
     extraPackages = with pkgs; [
