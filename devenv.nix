@@ -14,6 +14,7 @@
   packages = with pkgs; [
     nixfmt
     package-version-server
+    yaml-language-server
   ];
 
   # https://devenv.sh/languages/

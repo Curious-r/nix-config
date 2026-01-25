@@ -6,8 +6,8 @@
 }:
 {
   imports = [
-    ../generic/core
-    ../generic/optional/nix/substituters/mainland.nix
+    ../common/core
+    ../common/optional/nix/substituters/mainland.nix
   ];
   # Simply install just the packages
   environment.packages = with pkgs; [

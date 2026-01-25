@@ -4,13 +4,13 @@
 { pkgs, ... }:
 {
   imports = [
-    ../generic/core
-    ../generic/optional/nix/substituters/mainland.nix
-    ../generic/optional/disko/primary/efi-btrfs.nix
-    ../generic/optional/boot/plymouth.nix
-    ../generic/optional/docker/basic.nix
-    ../generic/optional/docker/registry-mirrors/mainland.nix
-    ../generic/optional/nix/substituters/garnix.nix
+    ../common/core
+    ../common/optional/nix/substituters/mainland.nix
+    ../common/optional/disko/primary/efi-btrfs.nix
+    ../common/optional/boot/plymouth.nix
+    ../common/optional/docker/basic.nix
+    ../common/optional/docker/registry-mirrors/mainland.nix
+    ../common/optional/nix/substituters/garnix.nix
 
     ./boot.nix
     ./vaultix.nix
