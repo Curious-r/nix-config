@@ -1,10 +1,5 @@
 { ... }:
 {
-  xdg.userDirs = {
-    enable = true;
-    createDirectories = true;
-  };
-
   # 临时解决使用 dbus 通道传递 xdg openURI portal 的请求无法继承到 PATH 的问题
   # 这个问题会导致 zed 或者 flakpak 应用无法正常调起浏览器
   # 参见 https://github.com/NixOS/nixpkgs/issues/189851

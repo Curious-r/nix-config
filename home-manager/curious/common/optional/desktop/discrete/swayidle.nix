@@ -1,0 +1,4 @@
+{ ... }:
+{
+  services.swayidle.enable = true;
+}

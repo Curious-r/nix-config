@@ -3,7 +3,11 @@
   imports = [
     ../common/core
     ../common/optional/nix/substituters/mainland.nix
-    ../common/optional/desktop.nix
+
+    # Desktop
+    ../common/optional/desktop/basic.nix
+    ../common/optional/desktop/discrete/niri
+
     ../common/optional/rime
     ../common/optional/terminal/ghostty.nix
     ../common/optional/editor/zed.nix

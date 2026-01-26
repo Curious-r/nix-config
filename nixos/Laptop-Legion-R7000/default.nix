@@ -14,7 +14,8 @@
     ../common/optional/preservation/curious/thunderbird.nix
     ../common/optional/boot/plymouth.nix
     ../common/optional/fonts.nix
-    ../common/optional/desktop.nix
+    ../common/optional/desktop/discrete/dms.nix
+    ../common/optional/desktop/discrete/niri.nix
     ../common/optional/input-method.nix
     ../common/optional/daed.nix
     ../common/optional/nix/substituters/garnix.nix
