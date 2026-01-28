@@ -16,6 +16,7 @@
     ../common/optional/fonts.nix
     ../common/optional/desktop/discrete/dms.nix
     ../common/optional/desktop/discrete/niri.nix
+    ../common/optional/desktop/discrete/cursors.nix
     ../common/optional/input-method.nix
     ../common/optional/daed.nix
     ../common/optional/nix/substituters/garnix.nix
