@@ -1,6 +1,6 @@
 { config, lib, ... }:
 let
-  # 定义所有支持的 compositor 选项及其启用条件
+  # 支持的 compositor 及启用条件
   compositorOptions = [
     {
       name = "niri";
@@ -16,17 +16,28 @@ let
     }
   ];
 
-  # 找到第一个启用的 compositor
-  enabledCompositor =
-    lib.findFirst (opt: opt.condition) { name = "none"; } # 默认值，当没有支持的 compositor 启用时使用，用于提供报错信息
-      compositorOptions;
-
+  # 获取首个启用的 compositor（无启用时返回 {name="none"}）
+  enabledCompositor = lib.findFirst (opt: opt.condition) { name = "none"; } compositorOptions;
   cpt = enabledCompositor.name;
+
+  # 各 compositor 对应的 greeter 配置
+  compositorConfigs = {
+    niri = "";
+    hyprland = "";
+    sway = "";
+  };
+
+  # 使用 attrByPath
+  cptCfg = lib.attrByPath [ cpt ] "" compositorConfigs;
 in
 {
   programs.dms-shell.enable = true;
   services.displayManager.dms-greeter = {
     enable = true;
-    compositor.name = cpt;
+    compositor = {
+      name = cpt;
+      customConfig = cptCfg;
+    };
+    configHome = "/home/curious";
   };
 }
