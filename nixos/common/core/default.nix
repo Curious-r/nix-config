@@ -16,6 +16,7 @@
     ./editor.nix
     ./ssh.nix
     ./networking.nix
+    ./file-manager.nix
     ./preservation.nix
     ./home-manager.nix
     ./devenv.nix

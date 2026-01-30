@@ -22,15 +22,6 @@
     ./hardware.nix
   ];
 
-  # Enable the X11 windowing system.
-  # services.xserver.enable = true;
-
-  # Enable CUPS to print documents.
-  # services.printing.enable = true;
-
-  # Enable touchpad support (enabled default in most desktopManager).
-  # services.xserver.libinput.enable = true;
-
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
@@ -49,9 +40,6 @@
 
   # Enable the OpenSSH daemon.
   services.openssh.enable = true;
-
-  # services.desktopManager.cosmic.enable = true;
-  # services.displayManager.cosmic-greeter.enable = true;
 
   # Copy the NixOS configuration file and link it from the resulting system
   # (/run/current-system/configuration.nix). This is useful in case you
