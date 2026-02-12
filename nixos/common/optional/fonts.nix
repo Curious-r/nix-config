@@ -54,8 +54,8 @@
         ];
         monospace = [
           "Monaspace Argon"
-          "Noto Color Emoji"
           "Noto Sans Mono CJK SC"
+          "Noto Color Emoji"
         ];
         emoji = [ "Noto Color Emoji" ];
       };

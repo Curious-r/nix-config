@@ -1,4 +1,8 @@
-{ config, lib, ... }:
+{
+  config,
+  lib,
+  ...
+}:
 let
   # 支持的 compositor 及启用条件
   compositorOptions = [

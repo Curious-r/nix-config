@@ -6,6 +6,7 @@ patch:
   switches:
     - name: ascii_mode # 中英输入状态
       states: [中文, 英文]
+      reset: 1
     - name: ascii_punct # 中英标点，可以在中文输入状态输入英文符号
       states: [中标, 英标]
     - name: full_shape #全角、半角字符输出
