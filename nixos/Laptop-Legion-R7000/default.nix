@@ -13,6 +13,7 @@
     ../common/optional/preservation/curious/firefox.nix
     ../common/optional/preservation/curious/thunderbird.nix
     ../common/optional/boot/plymouth.nix
+    ../common/optional/nvidia.nix
     ../common/optional/fonts.nix
     ../common/optional/desktop/discrete/dms.nix
     ../common/optional/desktop/discrete/niri.nix
