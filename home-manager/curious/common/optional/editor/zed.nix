@@ -6,7 +6,6 @@
       "mcp-server-context7"
     ];
     extraPackages = with pkgs; [
-      qwen-code
       vscode-json-languageserver
     ];
 
@@ -29,11 +28,8 @@
       };
 
       agent_servers = {
-        "Qwen Code" = {
-          type = "custom";
-          command = "qwen";
-          args = [ "--experimental-acp" ];
-          env = { };
+        "qwen-code" = {
+          type = "registry";
         };
       };
 
