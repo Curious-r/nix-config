@@ -86,9 +86,7 @@
           "prog_if": 0
         },
         "driver": "pcieport",
-        "driver_module": "pcieportdrv",
         "drivers": ["pcieport"],
-        "driver_modules": ["pcieportdrv"],
         "module_alias": "pci:v00008086d00001E10sv000017AAsd00003977bc06sc04i00"
       },
       {
@@ -211,9 +209,7 @@
           "prog_if": 0
         },
         "driver": "pcieport",
-        "driver_module": "pcieportdrv",
         "drivers": ["pcieport"],
-        "driver_modules": ["pcieportdrv"],
         "module_alias": "pci:v00008086d00000151sv000017AAsd00003977bc06sc04i00"
       },
       {
@@ -336,16 +332,14 @@
           "prog_if": 0
         },
         "driver": "pcieport",
-        "driver_module": "pcieportdrv",
         "drivers": ["pcieport"],
-        "driver_modules": ["pcieportdrv"],
         "module_alias": "pci:v00008086d00001E12sv000017AAsd00003977bc06sc04i00"
       }
     ],
     "camera": [
       {
-        "index": 29,
-        "attached_to": 27,
+        "index": 30,
+        "attached_to": 28,
         "class_list": ["camera", "usb"],
         "bus_type": {
           "hex": "0086",
@@ -383,7 +377,7 @@
           "/dev/input/by-id/usb-Vimicro_Corp._Lenovo_EasyCamera-event-if00",
           "/dev/input/by-path/pci-0000:00:1d.0-usb-0:1.6:1.0-event",
           "/dev/input/by-path/pci-0000:00:1d.0-usbv2-0:1.6:1.0-event",
-          "/dev/input/event12"
+          "/dev/input/event6"
         ],
         "resources": [
           {
@@ -444,8 +438,8 @@
         "module_alias": "usb:v04F2pB2E1d3955dcEFdsc02dp01ic0Eisc01ip00in00"
       },
       {
-        "index": 32,
-        "attached_to": 27,
+        "index": 34,
+        "attached_to": 28,
         "class_list": ["camera", "usb"],
         "bus_type": {
           "hex": "0086",
@@ -540,7 +534,7 @@
     ],
     "cdrom": [
       {
-        "index": 24,
+        "index": 25,
         "attached_to": 9,
         "class_list": ["cdrom", "scsi", "block_device"],
         "bus_type": {
@@ -679,10 +673,6 @@
           "cpuid_fault",
           "epb",
           "pti",
-          "ssbd",
-          "ibrs",
-          "ibpb",
-          "stibp",
           "tpr_shadow",
           "flexpriority",
           "ept",
@@ -696,9 +686,7 @@
           "arat",
           "pln",
           "pts",
-          "vnmi",
-          "md_clear",
-          "flush_l1d"
+          "vnmi"
         ],
         "bugs": [
           "cpu_meltdown",
@@ -710,11 +698,10 @@
           "swapgs",
           "itlb_multihit",
           "srbds",
-          "spectre_v2_user",
-          "vmscape"
+          "mmio_unknown"
         ],
         "power_management": [""],
-        "bogo": 5187,
+        "bogo": 5188,
         "cache": 3072,
         "units": 16,
         "page_size": 4096,
@@ -725,7 +712,7 @@
         "fpu_exception": false,
         "cpuid_level": 13,
         "write_protect": false,
-        "tlb_size": 32724,
+        "tlb_size": 32569,
         "clflush_size": 64,
         "cache_alignment": 64,
         "address_sizes": {
@@ -736,7 +723,87 @@
     ],
     "disk": [
       {
-        "index": 25,
+        "index": 24,
+        "attached_to": 22,
+        "class_list": ["disk", "usb", "scsi", "block_device"],
+        "bus_type": {
+          "hex": "0084",
+          "name": "SCSI",
+          "value": 132
+        },
+        "slot": {
+          "bus": 6,
+          "number": 0
+        },
+        "base_class": {
+          "hex": "0106",
+          "name": "Mass Storage Device",
+          "value": 262
+        },
+        "sub_class": {
+          "hex": "0000",
+          "name": "Disk",
+          "value": 0
+        },
+        "vendor": {
+          "hex": "abcd",
+          "name": "Acer",
+          "value": 43981
+        },
+        "device": {
+          "hex": "1234",
+          "name": "USB Flash Drive",
+          "value": 4660
+        },
+        "revision": {
+          "hex": "0000",
+          "name": "5.00",
+          "value": 0
+        },
+        "serial": "132310020513509",
+        "model": "Acer USB Flash Drive",
+        "sysfs_id": "/class/block/sdb",
+        "sysfs_bus_id": "6:0:0:0",
+        "sysfs_device_link": "/devices/pci0000:00/0000:00:14.0/usb3/3-4/3-4:1.0/host6/target6:0:0/6:0:0:0",
+        "unix_device_names": [
+          "/dev/disk/by-id/usb-Acer_USB_Flash_Drive_132310020513509-0:0",
+          "/dev/disk/by-path/pci-0000:00:14.0-usb-0:4:1.0-scsi-0:0:0:0",
+          "/dev/disk/by-path/pci-0000:00:14.0-usbv2-0:4:1.0-scsi-0:0:0:0",
+          "/dev/sdb"
+        ],
+        "unix_device_name2": "/dev/sg2",
+        "resources": [
+          {
+            "type": "baud",
+            "speed": 480000000,
+            "bits": 0,
+            "stop_bits": 0,
+            "parity": 0,
+            "handshake": 0
+          },
+          {
+            "type": "disk_geo",
+            "cylinders": 15120,
+            "heads": 64,
+            "sectors": 32,
+            "size": "0x0",
+            "geo_type": "logical"
+          },
+          {
+            "type": "size",
+            "unit": "sectors",
+            "value_1": 30965760,
+            "value_2": 512
+          }
+        ],
+        "driver": "usb-storage",
+        "driver_module": "usb_storage",
+        "drivers": ["sd", "usb-storage"],
+        "driver_modules": ["sd_mod", "usb_storage"],
+        "module_alias": "usb:vABCDp1234d0100dc00dsc00dp00ic08isc06ip50in00"
+      },
+      {
+        "index": 26,
         "attached_to": 9,
         "class_list": ["disk", "ide", "block_device"],
         "bus_type": {
@@ -760,35 +827,34 @@
         },
         "vendor": {
           "hex": "0000",
-          "name": "Phison",
+          "name": "TOSHIBA",
           "value": 0
         },
         "device": {
           "hex": "0000",
-          "name": "SATA SSD",
+          "name": "SLC 128G",
           "value": 0
         },
         "revision": {
           "hex": "0000",
-          "name": "J1.3",
+          "name": "56",
           "value": 0
         },
-        "serial": "0C3307050CA900023301",
-        "model": "Phison SATA SSD",
+        "serial": "SN201601176",
+        "model": "TOSHIBA SLC 128G",
         "sysfs_id": "/class/block/sda",
         "sysfs_bus_id": "0:0:0:0",
         "sysfs_device_link": "/devices/pci0000:00/0000:00:1f.2/ata1/host0/target0:0:0/0:0:0:0",
         "unix_device_names": [
-          "/dev/disk/by-id/ata-Phison_SATA_SSD_0C3307050CA900023301",
+          "/dev/disk/by-id/ata-TOSHIBA_SLC_128GB_SN201601176",
           "/dev/disk/by-path/pci-0000:00:1f.2-ata-1",
           "/dev/disk/by-path/pci-0000:00:1f.2-ata-1.0",
           "/dev/sda"
         ],
-        "rom_id": "0x80",
         "resources": [
           {
             "type": "disk_geo",
-            "cylinders": 62260,
+            "cylinders": 15566,
             "heads": 255,
             "sectors": 63,
             "size": "0x0",
@@ -797,7 +863,7 @@
           {
             "type": "size",
             "unit": "sectors",
-            "value_1": 1000215216,
+            "value_1": 250069680,
             "value_2": 512
           }
         ],
@@ -954,8 +1020,8 @@
     ],
     "hub": [
       {
-        "index": 27,
-        "attached_to": 34,
+        "index": 28,
+        "attached_to": 36,
         "class_list": ["usb", "hub"],
         "bus_type": {
           "hex": "0086",
@@ -1020,13 +1086,11 @@
         },
         "hotplug": "usb",
         "driver": "hub",
-        "driver_module": "usbcore",
         "drivers": ["hub"],
-        "driver_modules": ["usbcore"],
         "module_alias": "usb:v8087p0024d0000dc09dsc00dp01ic09isc00ip00in00"
       },
       {
-        "index": 28,
+        "index": 29,
         "attached_to": 22,
         "class_list": ["usb", "hub"],
         "bus_type": {
@@ -1045,7 +1109,7 @@
         },
         "vendor": {
           "hex": "1d6b",
-          "name": "Linux 6.18.2 xhci-hcd",
+          "name": "Linux 6.6.63 xhci-hcd",
           "value": 7531
         },
         "device": {
@@ -1055,11 +1119,11 @@
         },
         "revision": {
           "hex": "0000",
-          "name": "6.18",
+          "name": "6.06",
           "value": 0
         },
         "serial": "0000:00:14.0",
-        "model": "Linux 6.18.2 xhci-hcd xHCI Host Controller",
+        "model": "Linux 6.6.63 xhci-hcd xHCI Host Controller",
         "sysfs_id": "/devices/pci0000:00/0000:00:14.0/usb3/3-0:1.0",
         "sysfs_bus_id": "3-0:1.0",
         "resources": [
@@ -1100,13 +1164,11 @@
         },
         "hotplug": "usb",
         "driver": "hub",
-        "driver_module": "usbcore",
         "drivers": ["hub"],
-        "driver_modules": ["usbcore"],
-        "module_alias": "usb:v1D6Bp0002d0618dc09dsc00dp01ic09isc00ip00in00"
+        "module_alias": "usb:v1D6Bp0002d0606dc09dsc00dp01ic09isc00ip00in00"
       },
       {
-        "index": 30,
+        "index": 32,
         "attached_to": 22,
         "class_list": ["usb", "hub"],
         "bus_type": {
@@ -1125,7 +1187,7 @@
         },
         "vendor": {
           "hex": "1d6b",
-          "name": "Linux 6.18.2 xhci-hcd",
+          "name": "Linux 6.6.63 xhci-hcd",
           "value": 7531
         },
         "device": {
@@ -1135,11 +1197,11 @@
         },
         "revision": {
           "hex": "0000",
-          "name": "6.18",
+          "name": "6.06",
           "value": 0
         },
         "serial": "0000:00:14.0",
-        "model": "Linux 6.18.2 xhci-hcd xHCI Host Controller",
+        "model": "Linux 6.6.63 xhci-hcd xHCI Host Controller",
         "sysfs_id": "/devices/pci0000:00/0000:00:14.0/usb4/4-0:1.0",
         "sysfs_bus_id": "4-0:1.0",
         "detail": {
@@ -1170,13 +1232,11 @@
         },
         "hotplug": "usb",
         "driver": "hub",
-        "driver_module": "usbcore",
         "drivers": ["hub"],
-        "driver_modules": ["usbcore"],
-        "module_alias": "usb:v1D6Bp0003d0618dc09dsc00dp03ic09isc00ip00in00"
+        "module_alias": "usb:v1D6Bp0003d0606dc09dsc00dp03ic09isc00ip00in00"
       },
       {
-        "index": 31,
+        "index": 33,
         "attached_to": 19,
         "class_list": ["usb", "hub"],
         "bus_type": {
@@ -1195,7 +1255,7 @@
         },
         "vendor": {
           "hex": "1d6b",
-          "name": "Linux 6.18.2 ehci_hcd",
+          "name": "Linux 6.6.63 ehci_hcd",
           "value": 7531
         },
         "device": {
@@ -1205,11 +1265,11 @@
         },
         "revision": {
           "hex": "0000",
-          "name": "6.18",
+          "name": "6.06",
           "value": 0
         },
         "serial": "0000:00:1a.0",
-        "model": "Linux 6.18.2 ehci_hcd EHCI Host Controller",
+        "model": "Linux 6.6.63 ehci_hcd EHCI Host Controller",
         "sysfs_id": "/devices/pci0000:00/0000:00:1a.0/usb1/1-0:1.0",
         "sysfs_bus_id": "1-0:1.0",
         "resources": [
@@ -1250,14 +1310,12 @@
         },
         "hotplug": "usb",
         "driver": "hub",
-        "driver_module": "usbcore",
         "drivers": ["hub"],
-        "driver_modules": ["usbcore"],
-        "module_alias": "usb:v1D6Bp0002d0618dc09dsc00dp00ic09isc00ip00in00"
+        "module_alias": "usb:v1D6Bp0002d0606dc09dsc00dp00ic09isc00ip00in00"
       },
       {
-        "index": 33,
-        "attached_to": 31,
+        "index": 35,
+        "attached_to": 33,
         "class_list": ["usb", "hub"],
         "bus_type": {
           "hex": "0086",
@@ -1322,13 +1380,11 @@
         },
         "hotplug": "usb",
         "driver": "hub",
-        "driver_module": "usbcore",
         "drivers": ["hub"],
-        "driver_modules": ["usbcore"],
         "module_alias": "usb:v8087p0024d0000dc09dsc00dp01ic09isc00ip00in00"
       },
       {
-        "index": 34,
+        "index": 36,
         "attached_to": 20,
         "class_list": ["usb", "hub"],
         "bus_type": {
@@ -1347,7 +1403,7 @@
         },
         "vendor": {
           "hex": "1d6b",
-          "name": "Linux 6.18.2 ehci_hcd",
+          "name": "Linux 6.6.63 ehci_hcd",
           "value": 7531
         },
         "device": {
@@ -1357,11 +1413,11 @@
         },
         "revision": {
           "hex": "0000",
-          "name": "6.18",
+          "name": "6.06",
           "value": 0
         },
         "serial": "0000:00:1d.0",
-        "model": "Linux 6.18.2 ehci_hcd EHCI Host Controller",
+        "model": "Linux 6.6.63 ehci_hcd EHCI Host Controller",
         "sysfs_id": "/devices/pci0000:00/0000:00:1d.0/usb2/2-0:1.0",
         "sysfs_bus_id": "2-0:1.0",
         "resources": [
@@ -1402,10 +1458,8 @@
         },
         "hotplug": "usb",
         "driver": "hub",
-        "driver_module": "usbcore",
         "drivers": ["hub"],
-        "driver_modules": ["usbcore"],
-        "module_alias": "usb:v1D6Bp0002d0618dc09dsc00dp00ic09isc00ip00in00"
+        "module_alias": "usb:v1D6Bp0002d0606dc09dsc00dp00ic09isc00ip00in00"
       }
     ],
     "memory": [
@@ -1535,8 +1589,8 @@
           "hex": "0007",
           "value": 7
         },
-        "sysfs_id": "/devices/platform/i8042/serio1/input/input9",
-        "unix_device_names": ["/dev/input/event13", "/dev/input/ + handler"]
+        "sysfs_id": "/devices/platform/i8042/serio1/input/input8",
+        "unix_device_names": ["/dev/input/event7", "/dev/input/ + handler"]
       }
     ],
     "network_controller": [
@@ -1588,7 +1642,7 @@
         "model": "Broadcom WLAN controller",
         "sysfs_id": "/devices/pci0000:00/0000:00:1c.1/0000:03:00.0",
         "sysfs_bus_id": "0000:03:00.0",
-        "unix_device_names": ["wlan0"],
+        "unix_device_names": ["wlp3s0b1"],
         "resources": [
           {
             "type": "hwaddr",
@@ -1787,14 +1841,14 @@
           "value": 263
         },
         "sub_class": {
-          "hex": "000a",
-          "name": "WLAN",
-          "value": 10
+          "hex": "0001",
+          "name": "Ethernet",
+          "value": 1
         },
-        "model": "WLAN network interface",
-        "sysfs_id": "/class/net/wlan0",
+        "model": "Ethernet network interface",
+        "sysfs_id": "/class/net/wlp3s0b1",
         "sysfs_device_link": "/devices/pci0000:00/0000:00:1c.1/0000:03:00.0/bcma0:1",
-        "unix_device_names": ["wlan0"],
+        "unix_device_names": ["wlp3s0b1"],
         "resources": [
           {
             "type": "hwaddr",
@@ -2050,8 +2104,8 @@
     },
     "usb": [
       {
-        "index": 26,
-        "attached_to": 33,
+        "index": 27,
+        "attached_to": 35,
         "class_list": ["usb", "unknown"],
         "bus_type": {
           "hex": "0086",

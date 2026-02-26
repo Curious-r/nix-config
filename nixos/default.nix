@@ -37,23 +37,12 @@ in
       #   它适合简单、局部的配置定义，写起来比较方便
       specialArgs = {
         inherit inputs self;
-        primaryDiskWwid = "ata-Phison_SATA_SSD_0C3307050CA900023301";
+        primaryDiskWwid = "ata-TOSHIBA_SLC_128GB_SN201601176";
         swapSize = "8G";
       };
       modules = [
         # > Our main nixos configuration file <
         ./Server-Ideapad-G480
-      ];
-    };
-    Desktop-DIY-B650 = nixpkgs.lib.nixosSystem {
-      specialArgs = {
-        inherit inputs self;
-        primaryDiskWwid = "ata-WDC_PC_SN520_SDAPNUW-512G_19529C801253";
-        swapSize = "16G";
-      };
-      modules = [
-        # > Our main nixos configuration file <
-        ./Desktop-DIY-B650
       ];
     };
     Laptop-Legion-R7000 = nixpkgs.lib.nixosSystem {
