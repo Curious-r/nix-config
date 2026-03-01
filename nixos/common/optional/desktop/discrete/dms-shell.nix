@@ -23,6 +23,9 @@
 
     plugins = {
       # Simply enable plugins by their ID (from the registry)
+      nixMonitor.enable = true;
+      nvidiaGpuMonitor.enable = true;
+      powerUsagePlugin.enable = true;
       dankBatteryAlerts.enable = true;
       dockerManager.enable = true;
     };
