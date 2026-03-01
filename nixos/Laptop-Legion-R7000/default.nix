@@ -15,7 +15,9 @@
     ../common/optional/boot/plymouth.nix
     ../common/optional/nvidia.nix
     ../common/optional/fonts.nix
-    ../common/optional/desktop/discrete/dms.nix
+    ../common/optional/desktop/discrete/dms-shell.nix
+    ../common/optional/desktop/discrete/dms-greeter.nix
+    ../common/optional/desktop/discrete/upower.nix
     ../common/optional/desktop/discrete/niri.nix
     ../common/optional/desktop/discrete/cursors.nix
     ../common/optional/desktop/discrete/icon.nix
