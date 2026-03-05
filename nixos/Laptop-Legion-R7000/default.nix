@@ -6,6 +6,8 @@
   imports = [
     ../common/core
     ../common/optional/nix/substituters/mainland.nix
+    ../common/optional/nix/substituters/garnix.nix
+    ../common/optional/nix/substituters/g480.nix
     ../common/optional/disko/primary/efi-btrfs.nix
     ../common/optional/preservation/curious/desktop.nix
     # zen-browser 基于 firefox，不仅使用自己的 .zen 目录，也使用 .mozilla
@@ -23,7 +25,6 @@
     ../common/optional/desktop/discrete/icon.nix
     ../common/optional/input-method.nix
     ../common/optional/daed.nix
-    ../common/optional/nix/substituters/garnix.nix
     ../common/optional/preservation/daed.nix
     ../common/optional/steam.nix
     ../common/optional/vaultix/curious/rclone.nix

@@ -11,13 +11,13 @@
     ../common/optional/docker/basic.nix
     ../common/optional/docker/registry-mirrors/mainland.nix
     ../common/optional/nix/substituters/garnix.nix
-    ../common/optional/ncps.nix
 
     ./boot.nix
     ./vaultix.nix
     ./networking.nix
     ./preservation.nix
     ./dae.nix
+    ./ncps.nix
 
     # hardware config
     ./hardware.nix
