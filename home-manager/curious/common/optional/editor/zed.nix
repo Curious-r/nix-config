@@ -14,7 +14,6 @@
 
       agent = {
         enabled = true;
-        preferred_completion_mode = "normal";
         button = true;
         dock = "right";
         default_width = 600;
@@ -57,7 +56,7 @@
           };
         };
         env = {
-          TERM = "alacritty";
+          TERM = "xterm-ghostty";
         };
         font_family = "Monaspace Neon Var";
         font_features = {
