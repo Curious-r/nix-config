@@ -27,6 +27,8 @@
     ../common/optional/daed.nix
     ../common/optional/preservation/daed.nix
     ../common/optional/steam.nix
+    ../common/optional/vaultix/curious/ssh.nix
+    ../common/optional/vaultix/curious/git.nix
     ../common/optional/vaultix/curious/rclone.nix
     ../common/optional/solaar.nix
     ../common/optional/openrazer.nix

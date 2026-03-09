@@ -1,19 +1,35 @@
-{ ... }:
+{ config, ... }:
+
 {
   vaultix.secrets = {
-    "rclone.conf" = {
-      file = ../../../../../secrets/nixos/generic/optional/curious/rclone.conf.age;
-      mode = "644";
-      owner = "curious";
-      group = "users";
-      path = "/home/curious/.config/rclone/rclone.conf";
+    # 这里的 ID 是 "rclone-user"
+    "rclone-user" = {
+      file = ../../../../../secrets/nixos/common/optional/curious/rclone-user.age;
+    };
+    "rclone-pass" = {
+      file = ../../../../../secrets/nixos/common/optional/curious/rclone-pass.age;
     };
   };
-  systemd.tmpfiles.settings.rclone = {
-    "/home/curious/.config/rclone".d = {
-      user = "curious";
+
+  vaultix.templates = {
+    "rclone-config" = {
+      name = "rclone.conf";
+      path = "/home/curious/.config/rclone/rclone.conf";
+      owner = "curious";
       group = "users";
-      mode = "0755";
+      mode = "0600"; # 包含密码的文件，严格建议 600
+
+      # 直接在 Nix 里维护配置结构
+      content = ''
+        [curious-drive]
+        type = webdav
+        url = https://drive.curious.host/dav
+        vendor = other
+        user = ${config.vaultix.placeholder.rclone-user}
+        pass = ${config.vaultix.placeholder.rclone-pass}
+      '';
+
+      trim = true; # 确保注入密码时不会带上多余的换行符
     };
   };
 }

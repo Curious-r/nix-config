@@ -84,7 +84,6 @@
             ".local/share"
           ];
           files = [
-            ".gitconfig"
           ];
         };
         root = {
