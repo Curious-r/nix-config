@@ -84,6 +84,7 @@
             ".local/share"
           ];
           files = [
+            ".bash_history"
           ];
         };
         root = {
