@@ -55,9 +55,6 @@
             activate_script = "default";
           };
         };
-        env = {
-          TERM = "xterm-ghostty";
-        };
         font_family = "Monaspace Neon Var";
         font_features = {
           calt = true;

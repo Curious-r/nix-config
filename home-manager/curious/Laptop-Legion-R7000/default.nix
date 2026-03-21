@@ -4,7 +4,7 @@
     ../common/core
     ../common/optional/nix/substituters/mainland.nix
     ../common/optional/nix/substituters/garnix.nix
-    ../common/optional/nix/substituters/g480.nix
+    # ../common/optional/nix/substituters/g480.nix
 
     # Desktop
     ../common/optional/desktop/basic.nix
