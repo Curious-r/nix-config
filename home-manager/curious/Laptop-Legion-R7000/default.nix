@@ -18,6 +18,8 @@
     ../common/optional/thunderbird.nix
     ../common/optional/openscad.nix
     ../common/optional/rclone.nix
+    ../common/optional/wechat.nix
+    ../common/optional/qq.nix
   ];
   home.stateVersion = "26.05";
 }
