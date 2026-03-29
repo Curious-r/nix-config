@@ -26,9 +26,36 @@ let
 
   # 各 compositor 对应的 greeter 配置
   compositorConfigs = {
-    niri = "";
-    hyprland = "";
-    sway = "";
+    niri = ''
+      hotkey-overlay {
+          skip-at-startup
+      }
+
+      environment {
+          DMS_RUN_GREETER "1"
+      }
+
+      gestures {
+        hot-corners {
+          off
+        }
+      }
+
+      layout {
+        background-color "#000000"
+      }
+    '';
+    hyprland = ''
+      env = DMS_RUN_GREETER,1
+
+      misc {
+          disable_hyprland_logo = true
+      }
+    '';
+    sway = ''
+      # Sway greeter configuration
+      # The exec command to launch the greeter is automatically appended by dms-greeter
+    '';
   };
 
   # 使用 attrByPath
