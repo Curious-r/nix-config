@@ -26,5 +26,4 @@
     #   noProxy = "127.0.0.1,localhost,internal.domain";
     # };
   };
-  services.firewalld.enable = true;
 }
