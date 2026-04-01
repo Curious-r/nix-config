@@ -17,6 +17,7 @@
     ./networking.nix
     ./preservation.nix
     ./dae.nix
+    ./raspberrypi-tools.nix
 
     # hardware config
     ./hardware.nix
