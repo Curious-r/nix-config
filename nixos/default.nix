@@ -56,5 +56,16 @@ in
         ./Laptop-Legion-R7000
       ];
     };
+    Router-RaspberryPi-4B-1 = nixpkgs.lib.nixosSystem {
+      specialArgs = {
+        inherit inputs self;
+        primaryDiskWwid = "usb-SMI_USB_DISK_CCYYMMDDHHmmSSXM5IKH-0:0";
+        swapSize = "1G";
+      };
+      modules = [
+        # > Our main nixos configuration file <
+        ./Router-RaspberryPi-4B-1
+      ];
+    };
   };
 }
