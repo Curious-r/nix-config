@@ -41,13 +41,6 @@
                 # Subvolumes must set a mountpoint in order to be mounted,
                 # unless their parent is mounted
                 subvolumes = {
-                  "@" = {
-                    mountOptions = [
-                      "compress=zstd"
-                      "noatime"
-                    ];
-                    mountpoint = "/";
-                  };
                   "@nix" = {
                     mountOptions = [
                       "compress=zstd"
@@ -73,6 +66,18 @@
               };
             };
           };
+        };
+      };
+
+      nodev = {
+        "/" = {
+          fsType = "tmpfs";
+          mountOptions = [
+            "defaults"
+            "size=25%"
+            "mode=755"
+            "relatime"
+          ];
         };
       };
     };
