@@ -31,6 +31,7 @@
     ../common/optional/users/users/curious/openrazer.nix
 
     ./boot.nix
+    ./users.nix
     ./vaultix.nix
     ./networking.nix
 

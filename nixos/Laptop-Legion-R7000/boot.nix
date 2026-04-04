@@ -7,5 +7,7 @@
       systemd-boot.consoleMode = "auto";
       efi.canTouchEfiVariables = true;
     };
+    # 用于为其他架构构建系统
+    binfmt.emulatedSystems = [ "aarch64-linux" ];
   };
 }
