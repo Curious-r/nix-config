@@ -23,7 +23,6 @@ in
   boot.kernel.sysctl = {
     "net.ipv4.ip_forward" = 1;
     "net.ipv6.conf.all.forwarding" = 1;
-    # 强制接受光猫侧的 RA，确保我的 PPPoE 拨号或 DHCPv6 能获取到前缀
     "net.ipv6.conf.${wanInterface}.accept_ra" = 2;
   };
 
@@ -31,25 +30,23 @@ in
     hostName = "Router-RaspberryPi-4B-1";
     timeServers = [ "ntp.aliyun.com" ];
 
-    # 虽然 common 里没开，但这里为了保险起见显式关闭无线客户端，
-    # 确保我的网卡完全交给 hostapd 作为 AP 使用。
     wireless.enable = lib.mkForce false;
     wireless.iwd.enable = lib.mkForce false;
 
     # -----------------------------------------------------------------------
     # 2. 桥接与物理接口基础配置
     # -----------------------------------------------------------------------
-    # 创建网桥，并把物理有线口直接插进网桥
-    # (注意：无线口 wlan0 暂不在这里写，hostapd 启动时会自动把它桥接进来)
+    # [测试模式修改]：暂时创建空网桥，因为还没买usb网卡，避免系统超长等待
     # bridges.${bridgeInterface}.interfaces = [ lanInterface ];
-    # 暂时创建空网桥，因为还没买usb网卡，这样可以避免系统在到达 网络目标 时的超长等待
     bridges.${bridgeInterface}.interfaces = [ ];
 
-    # 物理接口只做二层数据包转发，不再配置任何 IP
-    interfaces.${wanInterface}.useDHCP = false;
+    # [测试模式修改]：开启物理 WAN 口作为 DHCP 客户端，方便接入家用局域网排查
+    # interfaces.${wanInterface}.useDHCP = false;
+    interfaces.${wanInterface}.useDHCP = true;
+
     # interfaces.${lanInterface}.useDHCP = false;
 
-    # 所有的内网 IP 统统绑定到我的虚拟网桥上
+    # 所有的内网 IP 都绑定到虚拟网桥上
     interfaces.${bridgeInterface} = {
       useDHCP = false;
       ipv4.addresses = [
@@ -71,10 +68,12 @@ in
     # -----------------------------------------------------------------------
     nat = {
       enable = true;
-      externalInterface = "ppp0"; # 拨号成功后的虚拟 WAN 接口
-      internalInterfaces = [ bridgeInterface ]; # 局域网出口设为网桥
+      # [测试模式修改]：由于不拨号，将 NAT 出口从 ppp0 切换为物理口
+      # externalInterface = "ppp0";
+      externalInterface = wanInterface;
+      
+      internalInterfaces = [ bridgeInterface ];
 
-      # 把外部访问的 7931 端口转发到我内网特定机器的 7931 端口 (仅限 IPv4)
       forwardPorts = [
         {
           sourcePort = 7931;
@@ -94,12 +93,9 @@ in
     # -----------------------------------------------------------------------
     firewall = {
       enable = true;
-      trustedInterfaces = [ bridgeInterface ]; # 完全放行来自我内网网桥的所有流量
-
+      trustedInterfaces = [ bridgeInterface ];
       logReversePathDrops = true;
       logRefusedPackets = true;
-
-      # 在 FORWARD 链中放行特定 IPv6 流量
       extraForwardRules = ''
         meta nfproto ipv6 tcp dport 7931 accept
         meta nfproto ipv6 udp dport 7931 accept
@@ -109,17 +105,19 @@ in
     # -----------------------------------------------------------------------
     # 5. IPv6 公网前缀委派 (PD) 获取
     # -----------------------------------------------------------------------
-    dhcpcd = {
-      enable = true;
-      allowInterfaces = [ "ppp0" ];
-      extraConfig = ''
-        noipv6rs
-        interface ppp0
-        ipv6rs
-        # 向上游提取一个 /64 的公网子网，并分配给我的内网网桥
-        ia_pd 1 ${bridgeInterface}/0/64
-      '';
-    };
+    # [测试模式修改]：暂时注释掉，避免在此模式下报错
+    /*
+      dhcpcd = {
+        enable = true;
+        allowInterfaces = [ "ppp0" ];
+        extraConfig = ''
+          noipv6rs
+          interface ppp0
+          ipv6rs
+          ia_pd 1 ${bridgeInterface}/0/64
+        '';
+      };
+    */
   };
 
   # -------------------------------------------------------------------------
@@ -128,16 +126,18 @@ in
   services.hostapd = {
     enable = true;
     radios.${wlanInterface} = {
-      # 树莓派天线较弱，我在这里使用 2.4G 频段保证更好的穿墙与设备兼容性
       band = "2g";
       channel = 6;
+      # 驱动要求： 必须配置国家码，才能解锁网卡发射权限
+      countryCode = "CN";
       networks.${wlanInterface} = {
-        ssid = "RaspberryPi-Router"; # 要广播的 Wi-Fi 名称
+        ssid = "Router-RaspberryPi-4B-1";
         authentication = {
-          mode = "wpa2-sha256";
+          # 使用 wpa3 会由于内置网卡闭源固件的问题导致无法连接成功，而 wpa2-sha256 会被部分 Android 设备识别为企业认证类型
+          # 因此这里我们使用 wpa2-sha1 模式
+          mode = "wpa2-sha1";
           wpaPasswordFile = config.vaultix.secrets."wifi-password".path;
         };
-        # [核心逻辑]：让 hostapd 将启动后的无线网卡直接桥接到 br-lan，实现无线有线互通
         settings.bridge = bridgeInterface;
       };
     };
@@ -146,23 +146,26 @@ in
   # -------------------------------------------------------------------------
   # 7. PPPoE 宽带拨号
   # -------------------------------------------------------------------------
-  services.pppd = {
-    enable = true;
-    peers.homenet = {
-      autostart = true;
+  # [测试模式修改]：暂时屏蔽拨号服务，避免无限重连
+  /*
+    services.pppd = {
       enable = true;
-      config = ''
-        plugin pppoe.so ${wanInterface}
-        file ${config.vaultix.secrets."pppoe-auth".path}
-        persist
-        maxfail 0
-        holdoff 5
-        noauth
-        defaultroute
-        defaultroute-metric 10
-      '';
+      peers.homenet = {
+        autostart = true;
+        enable = true;
+        config = ''
+          plugin pppoe.so ${wanInterface}
+          file ${config.vaultix.secrets."pppoe-auth".path}
+          persist
+          maxfail 0
+          holdoff 5
+          noauth
+          defaultroute
+          defaultroute-metric 10
+        '';
+      };
     };
-  };
+  */
 
   # -------------------------------------------------------------------------
   # 8. IPv4 DHCP 服务 (Kea)
@@ -170,7 +173,7 @@ in
   services.kea.dhcp4 = {
     enable = true;
     settings = {
-      interfaces-config.interfaces = [ bridgeInterface ]; # 只监听我的网桥
+      interfaces-config.interfaces = [ bridgeInterface ];
       lease-database = {
         name = "/var/lib/kea/dhcp4.leases";
         persist = true;
@@ -216,7 +219,6 @@ in
           subnet = "${ulaPrefix}/64";
           pools = [ { pool = "${ulaPrefix}1000 - ${ulaPrefix}2000"; } ];
           option-data = [
-            # 下发网桥自己作为 DNS 服务器 (如果我内网跑了 AdGuard/Mosdns 等)
             {
               name = "dns-servers";
               data = "${ulaPrefix}1";
@@ -235,18 +237,14 @@ in
     config = ''
       interface ${bridgeInterface} {
         AdvSendAdvert on;
-
-        # M=1, O=1: 指示客户端使用 DHCPv6 获取 ULA 地址和 DNS
         AdvManagedFlag on;
         AdvOtherConfigFlag on;
-
-        # 兜底 DNS 下发 (照顾不支持 DHCPv6 的 Android 设备)
         RDNSS ${ulaPrefix}1 { AdvRDNSSLifetime 3600; };
 
-        # 动态追踪我通过 ppp0 拿到的公网前缀并广播
-        prefix ::/64 { AdvOnLink on; AdvAutonomous on; AdvRouterAddr on; };
+        # [测试模式修改]：由于没有 ppp0，暂时注释掉公网前缀的追踪，防止报错
+        # prefix ::/64 { AdvOnLink on; AdvAutonomous on; AdvRouterAddr on; };
 
-        # 广播我的自定义 ULA 前缀，确保局域网所有设备拥有稳定互通的内网 IPv6
+        # 广播我的自定义 ULA 前缀
         prefix ${ulaPrefix}/64 { AdvOnLink on; AdvAutonomous on; AdvRouterAddr on; };
       };
     '';
