@@ -15,7 +15,7 @@
           # 替换插槽 1：局域网接口
           "56d78a9b2c1e4f3a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a" = {
             order = 0;
-            content = "docker0,hs-cloudreve,hs-tts,hs-conduit,hs-default,hs-cinny,hs-kanidm";
+            content = "br-lan,docker0,hs-default";
           };
 
           # 替换插槽 2：高级分流规则
