@@ -4,22 +4,22 @@
 // see the documentation: https://zed.dev/docs/configuring-zed#settings-files
 {
   "auto_install_extensions": {
-    "nix": true,
+    "nix": true
   },
   "languages": {
     "Nix": {
       "formatter": "language_server",
       "format_on_save": "on",
-      "language_servers": ["nixd", "!nil"],
-    },
+      "language_servers": ["nixd", "!nil"]
+    }
   },
   "lsp": {
     "nixd": {
       "initialization_options": {
         "formatting": {
-          "command": ["nixfmt"],
-        },
-      },
-    },
-  },
+          "command": ["nixfmt"]
+        }
+      }
+    }
+  }
 }

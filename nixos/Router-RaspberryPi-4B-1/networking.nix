@@ -71,7 +71,7 @@ in
       # [测试模式修改]：由于不拨号，将 NAT 出口从 ppp0 切换为物理口
       # externalInterface = "ppp0";
       externalInterface = wanInterface;
-      
+
       internalInterfaces = [ bridgeInterface ];
 
       forwardPorts = [

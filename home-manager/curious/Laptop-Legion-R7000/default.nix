@@ -13,6 +13,7 @@
     ../common/optional/rime
     ../common/optional/terminal/ghostty.nix
     ../common/optional/editor/zed.nix
+    ../common/optional/asciinema.nix
     ../common/optional/browser/zen.nix
     ../common/optional/browser/servo.nix
     ../common/optional/thunderbird.nix
