@@ -13,6 +13,7 @@
     ./users.nix
     ./security.nix
     ./console.nix
+    ./fonts.nix
     ./editor.nix
     ./ssh.nix
     ./networking.nix

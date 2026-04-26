@@ -7,7 +7,6 @@
     ../common/core
     ../common/optional/nix/substituters/mainland.nix
     ../common/optional/disko/primary/efi-btrfs.nix
-    ../common/optional/boot/plymouth.nix
     ../common/optional/docker/basic.nix
     ../common/optional/docker/registry-mirrors/mainland.nix
     ../common/optional/nix/substituters/garnix.nix
