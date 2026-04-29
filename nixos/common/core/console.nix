@@ -31,7 +31,7 @@
   # It supports a richer feature set than the standard linux console VT,
   # including full unicode support, and when the video card supports drm should be much faster.
   services.kmscon = {
-    enable = false;
+    enable = true;
     extraOptions = "--term xterm-256color";
     # Whether to use 3D hardware acceleration to render the console.
     hwRender = true;
