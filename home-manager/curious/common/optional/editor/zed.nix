@@ -11,10 +11,25 @@
 
     ## everything inside of these brackets are Zed options.
     userSettings = {
-
+      status_bar = {
+        active_encoding_button = "enabled";
+      };
+      outline_panel = {
+        dock = "left";
+      };
+      collaboration_panel = {
+        dock = "left";
+      };
+      git_panel = {
+        dock = "left";
+      };
+      project_panel = {
+        dock = "left";
+      };
       agent = {
         enabled = true;
         button = true;
+        sidebar_side = "right";
         dock = "right";
         default_width = 600;
         default_height = 300;
