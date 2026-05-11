@@ -14,11 +14,16 @@
     ../common/optional/terminal/ghostty.nix
     ../common/optional/editor/zed.nix
     ../common/optional/asciinema.nix
+
     ../common/optional/browser/zen.nix
     ../common/optional/browser/servo.nix
     ../common/optional/thunderbird.nix
+
     ../common/optional/openscad.nix
+    ../common/optional/obs-studio.nix
+
     ../common/optional/rclone.nix
+
     ../common/optional/wechat.nix
     ../common/optional/qq.nix
   ];
