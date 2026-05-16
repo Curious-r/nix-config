@@ -5,6 +5,7 @@
   fetchFromGitHub,
   pkg-config,
   copyDesktopItems,
+  wrapGAppsHook3,
   gtk3,
   webkitgtk_4_1,
   glib,
@@ -49,6 +50,7 @@ buildGoModule {
   nativeBuildInputs = [
     pkg-config
     copyDesktopItems
+    wrapGAppsHook3
   ];
 
   buildInputs = [
