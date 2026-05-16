@@ -3,4 +3,5 @@
 pkgs: {
   # example = pkgs.callPackage ./example { };
   rime-wanxiang = pkgs.callPackage ./rime-wanxiang.nix { };
+  aerion = pkgs.callPackage ./aerion.nix { };
 }
