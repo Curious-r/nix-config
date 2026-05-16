@@ -17,7 +17,8 @@
 
     ../common/optional/browser/zen.nix
     ../common/optional/browser/servo.nix
-    ../common/optional/thunderbird.nix
+    ../common/optional/mail-client/thunderbird.nix
+    ../common/optional/mail-client/aerion.nix
 
     ../common/optional/openscad.nix
     ../common/optional/obs-studio.nix

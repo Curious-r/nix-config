@@ -13,7 +13,7 @@
 
 let
   version = "0.2.3";
-  commitRev = "d20282c971c18b8c19732c25bc01effb9765d32a";
+  commitRev = "95a57a27bf58be762e82ca25f66048d1d4504034";
 
   src = fetchFromGitHub {
     owner = "hkdb";
