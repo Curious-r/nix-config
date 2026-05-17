@@ -632,3 +632,5 @@ include "dms/wpblur.kdl"
 include "dms/cursor.kdl"
 include "dms/outputs.kdl"
 include "dms/windowrules.kdl"
+
+include "animations/dither-glitch.kdl"
