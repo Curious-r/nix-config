@@ -105,9 +105,9 @@ buildGoModule {
   '';
 
   meta = with lib; {
-    description = "A standalone lightweight e-mail client inspired by Geary";
+    description = "An Open Source Lightweight E-Mail Client";
     homepage = "https://github.com/hkdb/aerion";
-    license = licenses.mit;
+    license = licenses.asl20;
     mainProgram = "aerion";
     maintainers = with maintainers; [ curious ];
   };
