@@ -33,6 +33,7 @@
     ./users.nix
     ./vaultix.nix
     ./networking.nix
+    ./nix-ld.nix
 
     # hardware config
     ./hardware.nix
