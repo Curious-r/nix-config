@@ -2,9 +2,7 @@
 {
   programs.zed-editor = {
     enable = true;
-    extensions = [
-      "mcp-server-context7"
-    ];
+
     extraPackages = with pkgs; [
       vscode-json-languageserver
     ];
@@ -39,12 +37,6 @@
           model = "claude-sonnet-4";
         };
         single_file_review = true;
-      };
-
-      agent_servers = {
-        "qwen-code" = {
-          type = "registry";
-        };
       };
 
       node = {
