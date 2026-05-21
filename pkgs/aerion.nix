@@ -14,8 +14,8 @@
 }:
 
 let
-  version = "0.2.3";
-  commitRev = "95a57a27bf58be762e82ca25f66048d1d4504034";
+  version = "0.2.4";
+  commitRev = "fca2ef4a2d979050a812325086c3f3262f39ae41";
 
   archMap = {
     "x86_64-linux" = "x86_64";
@@ -39,7 +39,7 @@ let
     owner = "hkdb";
     repo = "aerion";
     rev = commitRev;
-    hash = "sha256-Bf3ezUC5Jbqqw3Z0fbWDKBj8hdpRPxuMhVtwF2sD4eQ=";
+    hash = "sha256-4QJ0Wz/EvwWb24aj6eOdEU3AQ9rGa2iClZug5/E5u8I=";
   };
 
   frontend = buildNpmPackage {
@@ -48,7 +48,7 @@ let
 
     sourceRoot = "${src.name}/frontend";
 
-    npmDepsHash = "sha256-l42ufs3uNM7jgh1VGaj/Pw10d1Tlvnua+gvSxfyWw7Y=";
+    npmDepsHash = "sha256-uwTESXk+ziu5UxWg1PftlYvcKj19EXgrwsii6NfklYs=";
 
     buildPhase = ''
       npm run build
