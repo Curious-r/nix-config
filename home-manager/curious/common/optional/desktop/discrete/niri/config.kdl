@@ -633,4 +633,4 @@ include "dms/cursor.kdl"
 include "dms/outputs.kdl"
 include "dms/windowrules.kdl"
 
-include "animations/dither-glitch.kdl"
+include "animations/smoke.kdl"
