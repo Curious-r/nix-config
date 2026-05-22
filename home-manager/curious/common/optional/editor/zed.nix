@@ -62,7 +62,7 @@
             activate_script = "default";
           };
         };
-        font_family = "Monaspace Neon Var";
+        font_family = "Monaspace Neon";
         font_features = {
           calt = true;
           liga = true;
@@ -101,7 +101,7 @@
 
       # 各种字体设置
       # 编辑器缓冲区字体
-      buffer_font_family = "Monaspace Argon Var";
+      buffer_font_family = "Monaspace Argon";
       buffer_font_fallbacks = [ "Noto Sans Mono CJK SC" ];
       buffer_font_features = {
         calt = true;
