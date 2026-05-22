@@ -299,6 +299,11 @@ animations {
 
     // Slow down all animations by this factor. Values below 1 speed them up instead.
     // slowdown 3.0
+
+    horizontal-view-movement {
+        duration-ms 600
+        curve "ease-out-cubic"
+    }
 }
 
 // Window rules let you adjust behavior for individual windows.
@@ -633,4 +638,4 @@ include "dms/cursor.kdl"
 include "dms/outputs.kdl"
 include "dms/windowrules.kdl"
 
-include "animations/smoke.kdl"
+include "animations/ink-splash.kdl"
