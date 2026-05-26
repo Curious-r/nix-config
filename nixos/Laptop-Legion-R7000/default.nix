@@ -26,8 +26,8 @@
     ../common/optional/vaultix/curious/git.nix
     ../common/optional/vaultix/curious/rclone.nix
     ../common/optional/solaar.nix
-    ../common/optional/openrazer.nix
-    ../common/optional/users/users/curious/openrazer.nix
+    # ../common/optional/openrazer.nix
+    # ../common/optional/users/users/curious/openrazer.nix
 
     ./boot.nix
     ./users.nix
