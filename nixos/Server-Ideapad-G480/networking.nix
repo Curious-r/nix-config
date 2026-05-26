@@ -10,12 +10,12 @@
     firewall = {
       enable = true;
       allowedTCPPorts = [
-        7931
+        39710
         8123
         8501
         9876
       ];
-      allowedUDPPorts = [ 7931 ];
+      allowedUDPPorts = [ 39710 ];
       # checkReversePath = "loose";
       logReversePathDrops = true;
       logRefusedPackets = true;
