@@ -3,4 +3,5 @@
 pkgs: {
   # example = pkgs.callPackage ./example { };
   aerion = pkgs.callPackage ./aerion.nix { };
+  aerion-creds = pkgs.callPackage ./aerion-creds.nix { };
 }

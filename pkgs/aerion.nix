@@ -4,42 +4,24 @@
   buildGoModule,
   buildNpmPackage,
   fetchFromGitHub,
-  fetchurl,
   pkg-config,
-  copyDesktopItems,
   wrapGAppsHook3,
   gtk3,
   webkitgtk_4_1,
   glib,
+
+  aerion-creds,
+  withOAuth ? false,
 }:
 
 let
-  version = "0.2.4";
-  commitRev = "fca2ef4a2d979050a812325086c3f3262f39ae41";
-
-  archMap = {
-    "x86_64-linux" = "x86_64";
-    "aarch64-linux" = "aarch64";
-  };
-  sysArch =
-    archMap.${stdenv.hostPlatform.system}
-      or (throw "Unsupported architecture: ${stdenv.hostPlatform.system}");
-
-  shimHashes = {
-    "x86_64" = "sha256-Wn0hj/L8C69KNlCFHxmVEgTpIuBlmsNewhTXayMIV2s=";
-    "aarch64" = "sha256-4ZxJ1qTJYd2kC5zsHvOzAiST0SgWuezNM+iPrQT0eMY=";
-  };
-
-  credsShim = fetchurl {
-    url = "https://github.com/hkdb/aerion/releases/download/v${version}/flathub-build-env-v${version}-linux-${sysArch}";
-    hash = shimHashes.${sysArch};
-  };
+  version = "0.2.5";
 
   src = fetchFromGitHub {
     owner = "hkdb";
     repo = "aerion";
-    rev = commitRev;
-    hash = "sha256-4QJ0Wz/EvwWb24aj6eOdEU3AQ9rGa2iClZug5/E5u8I=";
+    rev = "v${version}";
+    hash = "sha256-lAOEZICHcQu9yQmdvli1e2mt5RhvSBuWs8YazI8IN5E=";
   };
 
   frontend = buildNpmPackage {
@@ -48,7 +30,7 @@ let
 
     sourceRoot = "${src.name}/frontend";
 
-    npmDepsHash = "sha256-uwTESXk+ziu5UxWg1PftlYvcKj19EXgrwsii6NfklYs=";
+    npmDepsHash = "sha256-bBo+oVhSfgomh3wvS5hzK05SHX1hXZzH3DJzQhGTX9s=";
 
     buildPhase = ''
       npm run build
@@ -65,27 +47,28 @@ buildGoModule {
   pname = "aerion";
   inherit version src;
 
+  __structuredAttrs = true;
+
   vendorHash = "sha256-yItu45n6UGbRWR1lMeknnY5SUV65AixFV8waeCLksIs=";
 
   nativeBuildInputs = [
     pkg-config
-    copyDesktopItems
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isLinux [
     wrapGAppsHook3
   ];
 
-  buildInputs = [
+  buildInputs = lib.optionals stdenv.hostPlatform.isLinux [
     gtk3
     webkitgtk_4_1
     glib
   ];
 
-  desktopItems = [
-    "build/linux/aerion.desktop"
-  ];
-
   tags = [
-    "desktop"
     "production"
+  ]
+  ++ lib.optionals stdenv.hostPlatform.isLinux [
+    "desktop"
     "webkit2_41"
   ];
 
@@ -94,15 +77,16 @@ buildGoModule {
     cp -r ${frontend}/* frontend/dist/
   '';
 
-  postInstall = ''
-    mkdir -p $out/share/applications $out/share/pixmaps
-    if [ -f build/linux/aerion.png ]; then
+  postInstall = lib.optionalString stdenv.hostPlatform.isLinux (
+    ''
       install -Dm644 build/linux/aerion.png $out/share/pixmaps/io.github.hkdb.Aerion.png
-    fi
-
-    cp ${credsShim} $out/bin/aerion-creds
-    chmod +x $out/bin/aerion-creds
-  '';
+      install -Dm644 build/linux/aerion.desktop $out/share/applications/io.github.hkdb.Aerion.desktop
+    ''
+    + lib.optionalString withOAuth ''
+      rm -f $out/bin/aerion-creds
+      ln -s ${aerion-creds}/bin/aerion-creds $out/bin/aerion-creds
+    ''
+  );
 
   meta = with lib; {
     description = "An Open Source Lightweight E-Mail Client";

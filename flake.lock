@@ -52,11 +52,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1778992304,
-        "narHash": "sha256-/YuOAhEMeI1FSyThL0EM6cSUue0NUIoN/NawZjawGQc=",
+        "lastModified": 1779856798,
+        "narHash": "sha256-Q1BTTk45eEvP6R6/VQQ6P1GhTQHVZMhyyu3qDmYEwhQ=",
         "owner": "daeuniverse",
         "repo": "flake.nix",
-        "rev": "967208dff05ca447f147ac10602cfdcf843271f6",
+        "rev": "a4f652e35e792173b30c5b9c7897f9ecebc63cc8",
         "type": "github"
       },
       "original": {
