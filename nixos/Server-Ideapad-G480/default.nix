@@ -10,7 +10,6 @@
     ../common/optional/boot/plymouth.nix
     ../common/optional/docker/basic.nix
     ../common/optional/docker/registry-mirrors/mainland.nix
-    ../common/optional/nix/substituters/garnix.nix
     ../common/optional/vaultix/curious/ssh.nix
     ../common/optional/vaultix/curious/git.nix
 
