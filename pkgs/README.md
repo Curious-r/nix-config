@@ -2,8 +2,12 @@
 
 ### A Collection of Custom-Packaged Tools
 
-These are the custom packages I've packaged for personal use.
-Most packages are compatible with all systems specified in `flake.nix`. If a package is system-specific, this will be noted in its description.
+These are the custom packages I've packaged for personal use:
+
+- `aerion`: A custom tool/package.
+- `aerion-creds`: Credentials or configuration for Aerion.
+
+Most packages are compatible with all systems specified in `flake.nix`.
 
 ---
 
