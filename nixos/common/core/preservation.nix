@@ -84,7 +84,7 @@
             ".local/share"
           ];
           files = [
-            ".bash_history"
+            # 用户级别同样可以持久化文件
           ];
         };
         root = {

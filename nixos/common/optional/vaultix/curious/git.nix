@@ -3,7 +3,7 @@
   #  部署 Git 全局配置
   vaultix.templates."git-config" = {
     name = ".gitconfig";
-    path = "/home/curious/.gitconfig";
+    path = "/home/curious/.config/git/config";
     owner = "curious";
     group = "users";
     mode = "0644"; # Git 配置文件给 644 即可

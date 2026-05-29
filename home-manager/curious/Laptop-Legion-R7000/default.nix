@@ -5,6 +5,14 @@
     ../common/optional/nix/substituters/mainland.nix
     # ../common/optional/nix/substituters/g480.nix
 
+    # XDG ENV
+    ../common/optional/xdg-env/basic.nix
+    ../common/optional/xdg-env/nvidia.nix
+    ../common/optional/xdg-env/cargo.nix
+    ../common/optional/xdg-env/npm.nix
+
+    ../common/optional/bash.nix
+
     # Desktop
     ../common/optional/desktop/basic.nix
     ../common/optional/desktop/discrete/niri

@@ -31,6 +31,8 @@
         "nix-command"
         "flakes"
       ];
+
+      use-xdg-base-directories = true;
       warn-dirty = false;
 
       # given the users in this list the right to specify additional substituters via:
