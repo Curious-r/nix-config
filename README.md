@@ -9,7 +9,7 @@ My personal NixOS and Home Manager configurations, managed with Flakes.
 - [Lix](https://git.lix.systems/lix-project/lix) - A delicious Nix fork
 - [flake-parts](https://github.com/hercules-ci/flake-parts) - Simplify flake setup
 - [vaultix](https://github.com/milieuim/vaultix) - Secret management
-- [preservation](https://github.com/nix-community/preservation) - Opt-in state preservation (Impermanence)
+- [preservation](https://github.com/nix-community/preservation) - Opt-in state preservation
 - [disko](https://github.com/nix-community/disko) - Declarative disk partitioning
 - [treefmt-nix](https://github.com/numtide/treefmt-nix) - All-in-one formatter
 - [devenv](https://github.com/cachix/devenv) - Developer environments
