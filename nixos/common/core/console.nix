@@ -26,21 +26,15 @@
   };
 
   # https://wiki.archlinux.org/title/KMSCON
-  # Use kmscon as the virtual console instead of gettys.
-  # kmscon is a kms/dri-based userspace virtual terminal implementation.
-  # It supports a richer feature set than the standard linux console VT,
-  # including full unicode support, and when the video card supports drm should be much faster.
   services.kmscon = {
     enable = true;
+
     extraOptions = "--term xterm-256color";
-    # Whether to use 3D hardware acceleration to render the console.
-    hwRender = true;
-    fonts = [
-      {
-        name = "Monaspace Krypton";
-        package = pkgs.monaspace;
-      }
-    ];
-    extraConfig = "font-size=16";
+
+    config = {
+      font-name = "Monaspace Krypton";
+      font-size = 16;
+      hwaccel = true;
+    };
   };
 }
