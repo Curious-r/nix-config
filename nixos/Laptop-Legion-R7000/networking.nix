@@ -2,11 +2,12 @@
 {
   networking = {
     hostName = "Laptop-Legion-R7000"; # Define your hostname.
-    networkmanager = {
-      enable = true; # Enables NetworkManager, which will manage networking
-      wifi.backend = "iwd";
-    };
+
     timeServers = [ "ntp.aliyun.com" ];
+
+    wireless.iwd.enable = true;
+    useNetworkd = true;
+
     firewall = {
       enable = true;
       allowedTCPPorts = [ ];
@@ -15,10 +16,20 @@
       logReversePathDrops = true;
       logRefusedPackets = true;
     };
-    # Configure network proxy if necessary
-    # proxy = {
-    #   default = "socks://192.168.1.8:7890";
-    #   noProxy = "127.0.0.1,localhost,internal.domain";
-    # };
+  };
+
+  systemd.network = {
+    networks."10-lan" = {
+      matchConfig.Name = "eno1";
+
+      networkConfig = {
+        DHCP = "yes";
+        IPv6AcceptRA = true;
+      };
+
+      ipv6AcceptRAConfig = {
+        Token = "::fade:7000";
+      };
+    };
   };
 }

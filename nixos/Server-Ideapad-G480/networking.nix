@@ -3,11 +3,15 @@
   environment.systemPackages = [
     pkgs.impala
   ];
+
   networking = {
     hostName = "Server-Ideapad-G480"; # Define your hostname.
+
     timeServers = [ "ntp.aliyun.com" ];
+
     wireless.iwd.enable = true;
     useNetworkd = true;
+
     firewall = {
       enable = true;
       allowedTCPPorts = [
@@ -21,12 +25,8 @@
       logReversePathDrops = true;
       logRefusedPackets = true;
     };
-    # Configure network proxy if necessary
-    # proxy = {
-    #   default = "socks://192.168.1.8:7890";
-    #   noProxy = "127.0.0.1,localhost,internal.domain";
-    # };
   };
+
   systemd.network = {
     networks."10-lan" = {
       matchConfig.Name = "enp2s0";
