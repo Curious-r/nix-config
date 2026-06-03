@@ -8,6 +8,7 @@
     ../common/optional/nix/substituters/mainland.nix
     ../common/optional/disko/primary/efi-btrfs.nix
     ../common/optional/boot/plymouth.nix
+    ../common/optional/kmscon.nix
     ../common/optional/docker/basic.nix
     ../common/optional/docker/registry-mirrors/mainland.nix
     ../common/optional/vaultix/curious/ssh.nix

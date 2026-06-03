@@ -10,7 +10,7 @@
     ../common/optional/disko/primary/efi-btrfs.nix
     ../common/optional/preservation/curious/desktop.nix
     ../common/optional/boot/plymouth.nix
-    ../common/optional/nvidia.nix
+    ../common/optional/kmscon.nix
     ../common/optional/desktop/discrete/dms-shell.nix
     ../common/optional/desktop/discrete/dms-greeter.nix
     ../common/optional/desktop/discrete/upower.nix
@@ -36,6 +36,7 @@
 
     # hardware config
     ./hardware.nix
+    ./nvidia.nix
   ];
 
   # List packages installed in system profile. To search, run:

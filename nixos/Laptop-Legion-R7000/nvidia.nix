@@ -5,7 +5,7 @@
 {
   hardware.nvidia = {
     open = true;
-    branch = "production";
+    branch = "latest";
     nvidiaSettings = true;
 
     powerManagement.enable = true;

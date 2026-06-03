@@ -59,7 +59,7 @@ in
     Router-RaspberryPi-4B-1 = nixpkgs.lib.nixosSystem {
       specialArgs = {
         inherit inputs self;
-        primaryDiskWwid = "usb-SMI_USB_DISK_CCYYMMDDHHmmSSXM5IKH-0:0";
+        primaryDiskWwid = "usb-General_UDisk-0:0";
         swapSize = "1G";
       };
       modules = [
