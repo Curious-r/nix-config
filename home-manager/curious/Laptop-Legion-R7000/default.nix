@@ -33,6 +33,8 @@
 
     ../common/optional/wechat.nix
     ../common/optional/qq.nix
+
+    ../common/optional/mangohud.nix
   ];
   home.stateVersion = "26.05";
 }
