@@ -8,7 +8,7 @@ This directory contains the NixOS system configurations for various hosts.
     - `core/`: Critical configurations included by every host.
     - `optional/`: Optional feature modules.
 - `Laptop-Legion-R7000`: Main workstation.
-- `Server-Ideapad-G480`: Home server.
+- `Server-IdeaPad-G480`: Home server.
 - `Router-RaspberryPi-4B-1`: Raspberry Pi 4B acting as a router.
 
 ## 🚀 Deployment

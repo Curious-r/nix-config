@@ -28,7 +28,7 @@ My personal NixOS and Home Manager configurations, managed with Flakes.
 
 ### NixOS
 - `Laptop-Legion-R7000`: Main laptop
-- `Server-Ideapad-G480`: Home server
+- `Server-IdeaPad-G480`: Home server
 - `Router-RaspberryPi-4B-1`: Raspberry Pi 4B router
 
 ### Nix-on-Droid

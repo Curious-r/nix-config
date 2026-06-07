@@ -6,7 +6,7 @@
     };
     secrets = {
       "config.dae" = {
-        file = ../../secrets/nixos/Server-Ideapad-G480/config.dae.age;
+        file = ../../secrets/nixos/Server-IdeaPad-G480/config.dae.age;
         mode = "640";
         owner = "root";
         group = "users";

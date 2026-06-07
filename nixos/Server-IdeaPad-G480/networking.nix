@@ -5,7 +5,7 @@
   ];
 
   networking = {
-    hostName = "Server-Ideapad-G480"; # Define your hostname.
+    hostName = "Server-IdeaPad-G480"; # Define your hostname.
 
     timeServers = [ "ntp.aliyun.com" ];
 

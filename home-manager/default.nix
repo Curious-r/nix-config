@@ -9,14 +9,14 @@ in
   # Available through 'home-manager --flake .#your-username@your-hostname'
   flake.homeConfigurations = {
     # FIXME replace with your username@hostname
-    "curious@Server-Ideapad-G480" = home-manager.lib.homeManagerConfiguration {
+    "curious@Server-IdeaPad-G480" = home-manager.lib.homeManagerConfiguration {
       pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux; # Home-manager requires 'pkgs' instance
       extraSpecialArgs = {
         inherit inputs self;
       };
       modules = [
         # > Our main home-manager configuration file <
-        ./curious/Server-Ideapad-G480
+        ./curious/Server-IdeaPad-G480
         {
           nixpkgs = {
             # you can add global overlays here
