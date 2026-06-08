@@ -5,8 +5,8 @@ This directory contains encrypted secrets managed by [Vaultix](https://github.co
 ## 📁 Structure
 
 - `nixos/`: Secrets for NixOS configurations.
-    - `common/`: Shared secrets (e.g., user passwords, database keys).
-    - `<hostname>/`: Host-specific secrets (e.g., network credentials, private configs).
+  - `common/`: Shared secrets (e.g., user passwords, database keys).
+  - `<hostname>/`: Host-specific secrets (e.g., network credentials, private configs).
 - `cache/`: Vaultix's internal cache for encrypted secrets. **Do not modify manually.**
 
 ## 🛠️ Usage

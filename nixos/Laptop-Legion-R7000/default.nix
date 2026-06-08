@@ -34,6 +34,9 @@
     ./networking.nix
     ./nix-ld.nix
 
+    # 仅作样例，暂时不启用
+    # ./ollama.nix
+
     # hardware config
     ./hardware.nix
     ./nvidia.nix
@@ -69,5 +72,5 @@
   # this value at the release version of the first install of this system.
   # Before changing this value read the documentation for this option
   # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
-  system.stateVersion = "26.05"; # Did you read the comment?
+  system.stateVersion = "26.11"; # Did you read the comment?
 }

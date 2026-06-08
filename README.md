@@ -27,11 +27,13 @@ My personal NixOS and Home Manager configurations, managed with Flakes.
 ## 🖥️ Hosts
 
 ### NixOS
+
 - `Laptop-Legion-R7000`: Main laptop
 - `Server-IdeaPad-G480`: Home server
 - `Router-RaspberryPi-4B-1`: Raspberry Pi 4B router
 
 ### Nix-on-Droid
+
 - `Phone-Redmi-K50Pro`: Personal phone
 - `Pad-Vivo-3Pro`: Tablet
 
