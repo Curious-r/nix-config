@@ -3,6 +3,7 @@
   imports = [
     ../common/core
     ../common/optional/nix/substituters/mainland.nix
+    ../common/optional/nix/substituters/numtide.nix
 
     # XDG ENV
     ../common/optional/xdg-env/basic.nix

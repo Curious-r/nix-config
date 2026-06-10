@@ -6,6 +6,7 @@
   imports = [
     ../common/core
     ../common/optional/nix/substituters/mainland.nix
+    ../common/optional/nix/substituters/numtide.nix
     # ../common/optional/nix/substituters/g480.nix
     ../common/optional/disko/primary/efi-btrfs.nix
     ../common/optional/preservation/curious/desktop.nix
