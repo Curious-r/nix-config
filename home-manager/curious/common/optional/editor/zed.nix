@@ -31,11 +31,6 @@
         dock = "right";
         default_width = 600;
         default_height = 300;
-        default_view = "thread";
-        default_model = {
-          provider = "zed.dev";
-          model = "claude-sonnet-4";
-        };
         single_file_review = true;
       };
 
