@@ -3,7 +3,7 @@
   ...
 }:
 {
-  imports = [ inputs.dms-plugin-registry.modules.default ];
+  imports = [ inputs.dms-plugin-registry.nixosModules.default ];
 
   programs.dms-shell = {
     enable = true;
