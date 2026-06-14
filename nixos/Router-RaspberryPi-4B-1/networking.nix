@@ -1,10 +1,11 @@
 { config, lib, ... }:
 
 let
-  wanInterface = "enabcm6e4ei0"; # 当前连接到光猫的物理网口 (仅作承载层)
-  lanInterface = "enu2"; # 有线内网接口
-  wlanInterface = "wlan0"; # 树莓派内置无线网卡
-  bridgeInterface = "br-lan"; # 局域网核心虚拟网桥
+  onboardNic = "enabcm6e4ei0"; # 当前连接到光猫的物理网口
+  usbNic = "enu2"; # 有线内网接口
+  wirelessNic = "wlan0"; # 树莓派内置无线网卡
+  wan = "ppp0";
+  lan = "br-lan";
 
   ipv4Gateway = "192.168.32.1";
   ulaPrefix = "fd00:dafa:cade::"; # 内网固定的 IPv6 ULA 前缀
@@ -26,29 +27,49 @@ in
     nat = {
       enable = true;
       # NAT 出口从物理网卡改为拨号产生的 ppp0
-      externalInterface = "ppp0";
-      internalInterfaces = [ bridgeInterface ];
-      forwardPorts = [
-        {
-          sourcePort = 7931;
-          destination = "192.168.1.100:7931";
-          proto = "tcp";
-        }
-        {
-          sourcePort = 7931;
-          destination = "192.168.1.100:7931";
-          proto = "udp";
-        }
-      ];
+      externalInterface = wan;
+      internalInterfaces = [ lan ];
+
+      # 端口转发示例
+      # forwardPorts = [
+      #   {
+      #     sourcePort = 7931;
+      #     destination = "192.168.32.100:7931";
+      #     proto = "tcp";
+      #   }
+      #   {
+      #     sourcePort = 7931;
+      #     destination = "192.168.32.100:7931";
+      #     proto = "udp";
+      #   }
+      # ];
     };
 
-    # 防火墙规则
+    # 防火墙
+    nftables.enable = true;
     firewall = {
       enable = true;
-      trustedInterfaces = [ bridgeInterface ];
+      trustedInterfaces = [ lan ];
       logReversePathDrops = true;
       logRefusedPackets = true;
+
+      # 允许路由通告等必要的 ICMPv6 通过
+      allowPing = true;
+
       extraForwardRules = ''
+        # 丢弃无效状态的数据包
+        ct state invalid drop
+
+        # 允许内网设备的所有 IPv6 流量出站 (IPv4 已经由 NAT 模块自动处理了)
+        iifname "${lan}" oifname "${wan}" meta nfproto ipv6 accept
+
+        # 允许外网响应给内网的流量返回 (已建立或相关的连接)
+        oifname "${lan}" ct state { established, related } accept
+
+        # TCP MSS 钳制（Clamping），解决 PPPoE 导致的 MTU 黑洞问题
+        oifname "${wan}" tcp flags syn tcp option maxseg size set rt mtu
+
+        # 自定义 IPv6 端口放行
         meta nfproto ipv6 tcp dport 7931 accept
         meta nfproto ipv6 udp dport 7931 accept
       '';
@@ -63,8 +84,10 @@ in
         autostart = true;
         enable = true;
         config = ''
-          plugin pppoe.so ${wanInterface}
+          plugin pppoe.so ${onboardNic}
           file ${config.vaultix.secrets."pppoe-auth".path}
+
+          ifname ${wan}
 
           persist
           maxfail 0
@@ -110,7 +133,7 @@ in
     kea.dhcp6 = {
       enable = true;
       settings = {
-        interfaces-config.interfaces = [ bridgeInterface ];
+        interfaces-config.interfaces = [ lan ];
         lease-database = {
           name = "/var/lib/kea/dhcp6.leases";
           persist = true;
@@ -136,12 +159,12 @@ in
     # Hostapd: 无线 AP 模式
     hostapd = {
       enable = true;
-      radios.${wlanInterface} = {
+      radios.${wirelessNic} = {
         band = "2g";
         channel = 6;
         # 驱动要求： 必须配置国家码，才能解锁网卡发射权限
         countryCode = "CN";
-        networks.${wlanInterface} = {
+        networks.${wirelessNic} = {
           ssid = "Router-RaspberryPi-4B-1";
           authentication = {
             # 使用 wpa3 会由于内置网卡闭源固件的问题导致无法连接成功，而 wpa2-sha256 会被部分 Android 设备识别为企业认证类型
@@ -149,7 +172,7 @@ in
             mode = "wpa2-sha1";
             wpaPasswordFile = config.vaultix.secrets."wifi-password".path;
           };
-          settings.bridge = bridgeInterface;
+          settings.bridge = lan;
         };
       };
     };
@@ -159,17 +182,17 @@ in
   systemd.network = {
     enable = true;
 
-    netdevs."10-br-lan" = {
+    netdevs."10-${lan}" = {
       netdevConfig = {
-        Name = bridgeInterface;
+        Name = lan;
         Kind = "bridge";
       };
     };
 
     networks = {
-      # --- 物理 WAN 口：仅做 PPPoE 的承载层 ---
-      "20-wan-physical" = {
-        matchConfig.Name = wanInterface;
+      # --- WAN 的下层承载接口 ---
+      "20-${onboardNic}" = {
+        matchConfig.Name = onboardNic;
         networkConfig = {
           LinkLocalAddressing = false;
           LLDP = false;
@@ -181,9 +204,9 @@ in
         };
       };
 
-      # --- 拨号产生的逻辑接口 ppp0 ---
-      "21-wan-ppp" = {
-        matchConfig.Name = "ppp0";
+      # --- 拨号产生的逻辑接口 ---
+      "21-${wan}" = {
+        matchConfig.Name = "${wan}";
         networkConfig = {
           IPv4Forwarding = true;
           IPv6Forwarding = true;
@@ -207,15 +230,15 @@ in
         };
       };
 
-      # --- 局域网物理接口绑定 ---
-      "30-lan-ports" = {
-        matchConfig.Name = "${lanInterface} ${wlanInterface}";
-        networkConfig.Bridge = bridgeInterface;
+      # --- 网桥成员（Slave 接口绑定） ---
+      "30-${lan}-members" = {
+        matchConfig.Name = "${usbNic} ${wirelessNic}";
+        networkConfig.Bridge = lan;
       };
 
-      # --- 局域网核心网桥：IP、IPv4 DHCP 与 IPv6 RA 广播 ---
-      "40-br-lan" = {
-        matchConfig.Name = bridgeInterface;
+      # --- LAN 网桥三层配置 ---
+      "40-${lan}-core" = {
+        matchConfig.Name = lan;
         address = [
           "${ipv4Gateway}/24"
           "${ulaPrefix}1/64"
@@ -228,9 +251,9 @@ in
           DHCPPrefixDelegation = true;
         };
 
-        # 将 ppp0 获取到的公网前缀委派给 br-lan 分发
+        # 将从上游获取到的公网前缀委派给 br-lan 分发
         dhcpPrefixDelegationConfig = {
-          UplinkInterface = "ppp0";
+          UplinkInterface = wan;
           Announce = true;
           Assign = true;
         };

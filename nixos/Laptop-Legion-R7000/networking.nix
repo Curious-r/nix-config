@@ -7,6 +7,7 @@
 
     wireless.iwd.enable = true;
     useNetworkd = true;
+    nftables.enable = true;
 
     firewall = {
       enable = true;
