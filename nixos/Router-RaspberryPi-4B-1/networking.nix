@@ -1,8 +1,8 @@
 { config, lib, ... }:
 
 let
-  onboardNic = "enabcm6e4ei0"; # 当前连接到光猫的物理网口
-  usbNic = "enu2"; # 有线内网接口
+  onboardNic = "enabcm6e4ei0"; # 板载以太网卡
+  usbNic = "enu2"; # 外接 USB 网卡
   wirelessNic = "wlan0"; # 树莓派内置无线网卡
   wan = "ppp0";
   lan = "br-lan";
@@ -84,7 +84,7 @@ in
         autostart = true;
         enable = true;
         config = ''
-          plugin pppoe.so ${onboardNic}
+          plugin pppoe.so ${usbNic}
           file ${config.vaultix.secrets."pppoe-auth".path}
 
           ifname ${wan}
@@ -191,8 +191,8 @@ in
 
     networks = {
       # --- WAN 的下层承载接口 ---
-      "20-${onboardNic}" = {
-        matchConfig.Name = onboardNic;
+      "20-${usbNic}" = {
+        matchConfig.Name = usbNic;
         networkConfig = {
           LinkLocalAddressing = false;
           LLDP = false;
@@ -232,7 +232,7 @@ in
 
       # --- 网桥成员（Slave 接口绑定） ---
       "30-${lan}-members" = {
-        matchConfig.Name = "${usbNic} ${wirelessNic}";
+        matchConfig.Name = "${onboardNic} ${wirelessNic}";
         networkConfig.Bridge = lan;
       };
 
