@@ -15,13 +15,13 @@
 }:
 
 let
-  version = "0.2.5";
+  version = "0.3.0";
 
   src = fetchFromGitHub {
     owner = "hkdb";
     repo = "aerion";
     rev = "v${version}";
-    hash = "sha256-lAOEZICHcQu9yQmdvli1e2mt5RhvSBuWs8YazI8IN5E=";
+    hash = "sha256-PjA3iyk9wtj/cnRcy70nV6Zf21G4LovoEz3PumjBhq8=";
   };
 
   frontend = buildNpmPackage {
@@ -30,7 +30,7 @@ let
 
     sourceRoot = "${src.name}/frontend";
 
-    npmDepsHash = "sha256-bBo+oVhSfgomh3wvS5hzK05SHX1hXZzH3DJzQhGTX9s=";
+    npmDepsHash = "sha256-JGasC2Ehwss4S6a9QOy5JDaJZgyUsra4+ur/PaoqSGs=";
 
     buildPhase = ''
       npm run build
@@ -49,7 +49,7 @@ buildGoModule {
 
   __structuredAttrs = true;
 
-  vendorHash = "sha256-yItu45n6UGbRWR1lMeknnY5SUV65AixFV8waeCLksIs=";
+  vendorHash = "sha256-ptsrOpJo3i+yRSCGuHynbzi+C+GD/mBmPuHqWSVV/+4=";
 
   nativeBuildInputs = [
     pkg-config
