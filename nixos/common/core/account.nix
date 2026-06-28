@@ -1,5 +1,6 @@
 { config, ... }:
 {
+  security.account-utils.enable = true;
   users = {
     mutableUsers = false;
     users = {
