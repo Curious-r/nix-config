@@ -157,13 +157,6 @@
               programs = {
                 nixfmt.enable = true;
                 prettier.enable = true;
-                kdlfmt.enable = true;
-              };
-              settings.formatter.kdlfmt = {
-                options = [
-                  "--wrap"
-                  "0" # 防止乱折行破坏着色器代码结构
-                ];
               };
             };
           };
