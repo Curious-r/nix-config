@@ -56,7 +56,7 @@
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
 
     # Vaultix, a secret manage scheme for NixOS
-    vaultix.url = "github:milieuim/vaultix";
+    vaultix.url = "github:Curious-r/vaultix/merged-wip";
 
     # 使 NixOS 不保留预期之外的副作用
     preservation.url = "github:nix-community/preservation";
@@ -159,6 +159,7 @@
                 prettier.enable = true;
               };
             };
+            vaultix.extraPackages = [ pkgs.age-plugin-yubikey ];
           };
 
         flake = {
@@ -168,9 +169,6 @@
             identity = ./secrets/yubikey-vaultix-stub.txt;
             extraRecipients = [
               "age1x8a36nac7w9fr8ajnng0ft65z2m2uctw6u57tnsvkt8yxjfdlddsrgjr8n"
-            ];
-            extraPackages = [
-              inputs.nixpkgs.legacyPackages."x86_64-linux".age-plugin-yubikey
             ];
           };
         };
