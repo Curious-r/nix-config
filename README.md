@@ -13,6 +13,7 @@ My personal NixOS and Home Manager configurations, managed with Flakes.
 - [disko](https://github.com/nix-community/disko) - Declarative disk partitioning
 - [treefmt-nix](https://github.com/numtide/treefmt-nix) - All-in-one formatter
 - [devenv](https://github.com/cachix/devenv) - Developer environments
+- [RS-Key](https://github.com/TheMaxMur/RS-Key) - Security key. FIDO/OpenPGP firmware for RP2350
 
 ## 🏗️ Project Structure
 
