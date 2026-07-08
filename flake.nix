@@ -171,8 +171,14 @@
         flake = {
           vaultix = {
             nodes = self.nixosConfigurations;
-            cache = "./secrets/cache"; # default, optional
-            identity = "/var/lib/vaultix/key.txt";
+            cache = "./secrets/cache";
+            identity = ./secrets/yubikey-vaultix-stub.txt;
+            extraRecipients = [
+              "age1x8a36nac7w9fr8ajnng0ft65z2m2uctw6u57tnsvkt8yxjfdlddsrgjr8n"
+            ];
+            extraPackages = [
+              inputs.nixpkgs.legacyPackages."x86_64-linux".age-plugin-yubikey
+            ];
           };
         };
       }
