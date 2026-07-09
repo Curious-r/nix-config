@@ -1,4 +1,4 @@
-{ lib, pkgs, ... }:
+{ pkgs, ... }:
 {
   security = {
     pam = {
@@ -24,8 +24,7 @@
       };
     };
 
-    # 有些桌面环境的模块里会开启 polkit，这里我使用 lib.mkDefault 来避免冲突
-    polkit.enable = lib.mkDefault true;
+    # 用 run0 了，sudo 系彻底掰掰
     sudo.enable = false;
   };
 
@@ -38,6 +37,10 @@
       libfido2
     ];
   };
+
+  # 在 nixos-rebuild 中允许目标主机支持来自远程的 run0 提权激活
+  # 这会自动启用 run0
+  system.tools.nixos-rebuild.enableRun0Elevation = true;
 
   environment.systemPackages = with pkgs; [
     libfido2
