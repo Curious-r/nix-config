@@ -5,7 +5,7 @@
 }:
 
 let
-  version = "0.3.0";
+  version = "0.3.1";
 
   archMap = {
     "x86_64-linux" = "x86_64";
