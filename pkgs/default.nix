@@ -3,10 +3,11 @@
 pkgs:
 let
   aerion-creds = pkgs.callPackage ./aerion-creds.nix { };
+  polkit-stdin-agent = pkgs.callPackage ./polkit-stdin-agent.nix { };
 in
 {
   # example = pkgs.callPackage ./example { };
-  inherit aerion-creds;
+  inherit aerion-creds polkit-stdin-agent;
 
   # aerion-creds is explicitly passed here (not relying on callPackage to find it in pkgs),
   # because aerion-creds is defined in this same set and may not be available in the pkgs
