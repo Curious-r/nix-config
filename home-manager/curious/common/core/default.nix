@@ -4,7 +4,6 @@
     ./nix.nix
     ./vcs.nix
     ./cli-tools.nix
-    ./yubico
   ];
   home = {
     username = "curious";

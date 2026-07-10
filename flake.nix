@@ -58,6 +58,10 @@
     # Vaultix, a secret manage scheme for NixOS
     vaultix.url = "github:Curious-r/vaultix/merged-wip";
 
+    # Authenticate PAM (e.g. polkit's run0) on a remote host by touching a FIDO2
+    # authenticator plugged into your local workstation, over an SSH-forwarded Unix socket
+    pam-fido-remote.url = "git+https://codeberg.org/r-vdp/pam-fido-remote";
+
     # 使 NixOS 不保留预期之外的副作用
     preservation.url = "github:nix-community/preservation";
 

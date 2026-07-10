@@ -11,7 +11,7 @@
     ./git.nix # git 被 nix flakes 强依赖，devenv 也用得到
     ./vaultix.nix # secrets management
     ./account.nix
-    ./security.nix
+    ./security
     ./console.nix
     ./fonts.nix
     ./editor.nix

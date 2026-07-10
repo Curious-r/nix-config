@@ -1,5 +1,7 @@
-{ pkgs, ... }:
+{ inputs, pkgs, ... }:
 {
+  imports = [ inputs.pam-fido-remote.nixosModules.default ];
+
   security = {
     pam = {
       sshAgentAuth.enable = true;
@@ -10,6 +12,7 @@
         control = "sufficient"; # U2F 验证成功即可直接放行，无需再输入系统密码
         settings = {
           interactive = true; # 强制进行交互验证（要求触摸硬件设备）
+          authfile = ./u2f_keys_local;
         };
       };
 
@@ -21,6 +24,15 @@
         "polkit-1".u2fAuth = true;
         # 本地 TTY 终端登录
         login.u2fAuth = true;
+      };
+
+      # 为本机提供远程 fido 支持，功能来自 pam-fido-remote
+      fido-remote = {
+        enable = true;
+        services = [
+          "polkit-1"
+        ];
+        credentials.curious = builtins.readFile ./u2f_keys_remote;
       };
     };
 
@@ -36,6 +48,12 @@
     udev.packages = with pkgs; [
       libfido2
     ];
+
+    # 开启 fido-remote-agent 服务，在有远程鉴权需求时接管 fido 密钥
+    fido-remote-agent = {
+      enable = true;
+      rpIdAllow = [ "pam://gen1.remote.curious.host" ];
+    };
   };
 
   # 在 nixos-rebuild 中允许目标主机支持来自远程的 run0 提权激活
