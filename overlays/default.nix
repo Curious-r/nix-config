@@ -1,4 +1,4 @@
-{ inputs, self, ... }:
+{ self, ... }:
 {
   flake.overlays = {
     # This one brings our custom packages from the 'pkgs' directory.
@@ -15,14 +15,16 @@
       # example = prev.example.overrideAttrs (oldAttrs: rec {
       # ...
       # });
-    };
 
-    # When applied, the unstable nixpkgs set (declared in the flake inputs) will
-    # be accessible through 'pkgs.unstable'
-    stable-packages = final: _prev: {
-      stable = import inputs.nixpkgs-stable {
-        stdenv.hostPlatform.system = final.stdenv.hostPlatform.system;
-        config.allowUnfree = true;
+      # 临时修复 py 3.14 引起的 khal 构建失败：使用 overrideScope 局部修改 python3Packages 作用域
+      khal = prev.khal.override {
+        python3Packages = prev.python3Packages.overrideScope (
+          pythonFinal: pythonPrev: {
+            click-threading = pythonPrev.click-threading.overridePythonAttrs (old: {
+              doCheck = false;
+            });
+          }
+        );
       };
     };
   };
