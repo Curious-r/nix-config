@@ -11,7 +11,10 @@
         enable = true;
         control = "sufficient"; # U2F 验证成功即可直接放行，无需再输入系统密码
         settings = {
+          # 这里不用 interactive, 因为与 `nixos-rebuild boot --elevate run0 --ask-elevate-passowrd`
+          # 中使用的 polkit-stdin-agent 不兼容，查看：https://codeberg.org/r-vdp/polkit-stdin-agent/issues/23
           cue = true;
+
           authfile = ./u2f_keys_local;
         };
       };
