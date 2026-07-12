@@ -11,7 +11,7 @@
         enable = true;
         control = "sufficient"; # U2F 验证成功即可直接放行，无需再输入系统密码
         settings = {
-          interactive = true; # 强制进行交互验证（要求触摸硬件设备）
+          cue = true;
           authfile = ./u2f_keys_local;
         };
       };
