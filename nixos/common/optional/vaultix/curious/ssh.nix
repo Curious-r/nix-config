@@ -62,7 +62,12 @@
 
       # 默认全局配置 ：显式指定默认使用通用私钥
       Host *
-        IdentityFile /home/curious/.ssh/id_ed25519
+        IdentityFile ''${HOME}/.ssh/id_ed25519
+
+        # pam-fido-remote 转发规则
+        # 远程路径：使用 %r 标记，动态替换为远程服务器的登录用户名
+        # 本地路径：使用 SSH 客户端环境变量，动态获取当前执行用户的 XDG_RUNTIME_DIR
+        RemoteForward /run/fido-remote/%r/agent.sock ''${XDG_RUNTIME_DIR}/fido-remote/agent.sock
     '';
     trim = true;
   };
