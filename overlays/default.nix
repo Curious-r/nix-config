@@ -15,17 +15,6 @@
       # example = prev.example.overrideAttrs (oldAttrs: rec {
       # ...
       # });
-
-      # 临时修复 py 3.14 引起的 khal 构建失败：使用 overrideScope 局部修改 python3Packages 作用域
-      khal = prev.khal.override {
-        python3Packages = prev.python3Packages.overrideScope (
-          pythonFinal: pythonPrev: {
-            click-threading = pythonPrev.click-threading.overridePythonAttrs (old: {
-              doCheck = false;
-            });
-          }
-        );
-      };
     };
   };
 }
