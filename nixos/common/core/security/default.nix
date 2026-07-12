@@ -32,7 +32,17 @@
         services = [
           "polkit-1"
         ];
-        credentials.curious = builtins.readFile ./u2f_keys_remote;
+
+        # 必须与 fido-remote-agent 的 rpIdAllow 绝对匹配
+        rpId = "pam://gen1.remote.curious.host";
+
+        # 与本地 u2f 一致的 Nix Store 路径写法
+        # 我认为对于公钥来说扔在只读的 Nix Store 下就足够安全了，甚至我的配置都是公开的
+        authFile = "${./u2f_keys_remote}";
+
+        # 因为绕过了 credentials 的自动推导逻辑，
+        # 这里必须显式声明 users，以便系统通过 tmpfiles 预先创建 Socket 目录
+        users = [ "curious" ];
       };
     };
 
