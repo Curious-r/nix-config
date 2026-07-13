@@ -60,7 +60,10 @@
 
     # Authenticate PAM (e.g. polkit's run0) on a remote host by touching a FIDO2
     # authenticator plugged into your local workstation, over an SSH-forwarded Unix socket
-    pam-fido-remote.url = "git+https://codeberg.org/r-vdp/pam-fido-remote";
+    pam-fido-remote = {
+      url = "git+https://codeberg.org/r-vdp/pam-fido-remote";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
     # 使 NixOS 不保留预期之外的副作用
     preservation.url = "github:nix-community/preservation";
@@ -82,8 +85,6 @@
     # 产物与二进制缓存 hash 不一致，从而引起大量编译。
     # 典型的如 Helix 编辑器
     # helix.url = "github:helix-editor/helix/25.01.1";
-
-    daeuniverse.url = "github:daeuniverse/flake.nix";
 
     zen-browser = {
       url = "github:youwen5/zen-browser-flake";
