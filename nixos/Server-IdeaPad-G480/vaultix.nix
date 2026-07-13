@@ -38,6 +38,12 @@
         # 自动清理未匹配的占位符（防止意外残留导致 dae 报错）
         cleanPlaceholder = true;
       };
+      "ddns-go.yaml" = {
+        file = ../../secrets/nixos/Server-IdeaPad-G480/ddns-go.yaml.age;
+        mode = "640";
+        owner = "root";
+        group = "users";
+      };
     };
   };
 }

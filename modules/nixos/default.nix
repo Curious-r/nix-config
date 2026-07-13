@@ -5,4 +5,5 @@
   # my-module = import ./my-module.nix;
 
   daed = import ./daed.nix;
+  ddns-go = import ./ddns-go.nix;
 }

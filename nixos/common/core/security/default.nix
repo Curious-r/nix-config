@@ -41,6 +41,9 @@
 
         # 与本地 u2f 一致的 Nix Store 路径写法
         # 我认为对于公钥来说扔在只读的 Nix Store 下就足够安全了，甚至我的配置都是公开的
+        #
+        # 需要使用字符串插值形式在评估时展开 path 类型的值，因为上游模块这里使用的类型（模
+        # 块检查器层面）不是 lib.types.path 而是 lib.types.str
         authFile = "${./u2f_keys_remote}";
 
         # 因为绕过了 credentials 的自动推导逻辑，

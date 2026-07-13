@@ -21,6 +21,7 @@
     ./preservation.nix
     ./dae.nix
     ./ncps.nix
+    ./ddns-go.nix
 
     # hardware config
     ./hardware.nix
