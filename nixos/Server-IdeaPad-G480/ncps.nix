@@ -3,7 +3,7 @@
   services.ncps = {
     enable = true;
     cache = {
-      hostName = "Server-Ideapad-G480";
+      hostName = "Server-IdeaPad-G480";
       maxSize = "50G";
       lru.schedule = "0 2 * * *";
       allowPutVerb = true;
