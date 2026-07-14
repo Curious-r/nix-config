@@ -27,6 +27,8 @@
     ../common/optional/browser/servo.nix
     ../common/optional/mail-client/aerion.nix
 
+    ../common/optional/gh.nix
+
     ../common/optional/openscad.nix
     ../common/optional/obs-studio.nix
 
