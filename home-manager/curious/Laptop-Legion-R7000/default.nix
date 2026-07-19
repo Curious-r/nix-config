@@ -29,7 +29,7 @@
 
     ../common/optional/gh.nix
 
-    ../common/optional/openscad.nix
+    # ../common/optional/openscad.nix
     ../common/optional/obs-studio.nix
 
     ../common/optional/rclone.nix

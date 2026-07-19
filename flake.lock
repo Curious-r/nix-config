@@ -268,11 +268,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1784351324,
-        "narHash": "sha256-By+kuRJZRqs2TuXgtR8vJ8cTKWXw33YG/Yollu5cO1U=",
+        "lastModified": 1784407317,
+        "narHash": "sha256-iZrxHToDJWnvt+5LGAtvuQMTy1NZYlNEKbKaVtBJNcc=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "460108009ca1ff69ca2ff19079ca2c838d6e3080",
+        "rev": "39411a8e12a5526d992e65bc7e3dc9a4414d6713",
         "type": "github"
       },
       "original": {
@@ -539,11 +539,11 @@
         "treefmt-nix": "treefmt-nix"
       },
       "locked": {
-        "lastModified": 1784153239,
-        "narHash": "sha256-4dvbeKVt6lS2VkVaHokcYkDlvIJi94BsluN7Ulxk3v8=",
+        "lastModified": 1784410798,
+        "narHash": "sha256-7ncB0OLBAkA1ZdrsUyvvw5mr0lrevBD07u0c9fpH9C8=",
         "ref": "refs/heads/main",
-        "rev": "365294babbffd8e0a44d3aba378891c00afe6b82",
-        "revCount": 143,
+        "rev": "4d049287aa8dd50f7cd24fc581b993ecb3279aac",
+        "revCount": 145,
         "type": "git",
         "url": "https://codeberg.org/r-vdp/pam-fido-remote"
       },
