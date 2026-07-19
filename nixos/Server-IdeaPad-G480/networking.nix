@@ -20,8 +20,19 @@
         8123
         8501
         9876
+        7881 # LiveKit: ICE-TCP 降级应急视频传输通道
       ];
+
       allowedUDPPorts = [ 39710 ];
+
+      # 使用 Ranges 来批量放行连续的端口段
+      allowedUDPPortRanges = [
+        {
+          from = 50100;
+          to = 50200;
+        } # LiveKit: WebRTC UDP 核心音视频流直连通道
+      ];
+
       # checkReversePath = "loose";
       logReversePathDrops = true;
       logRefusedPackets = true;
