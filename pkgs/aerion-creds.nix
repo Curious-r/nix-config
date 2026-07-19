@@ -5,7 +5,7 @@
 }:
 
 let
-  version = "0.3.1";
+  version = "0.3.2";
 
   archMap = {
     "x86_64-linux" = "x86_64";
@@ -16,8 +16,8 @@ let
       or (throw "Unsupported architecture: ${stdenv.hostPlatform.system}");
 
   shimHashes = {
-    "x86_64" = "sha256-7fxV/EYa/L6fLKizBRIS2Qh2/w2vG8DQmUKa1heq0ow=";
-    "aarch64" = "sha256-rYcH9zAyhvXuyaO3ggI/fhOkG5hLQgj0Har0jN6dZ/w=";
+    "x86_64" = "sha256-8WvuQgWTJNe4UpmS6uSYDYm46sIqxJbwVZ/J3CRz0OI=";
+    "aarch64" = "sha256-4RvFbxJGwM70huziY2ELoCouTrtMasgoqFUncBeBFvU=";
   };
 in
 stdenv.mkDerivation {
@@ -44,15 +44,15 @@ stdenv.mkDerivation {
     runHook postInstall
   '';
 
-  meta = with lib; {
+  meta = {
     description = "OAuth credentials shim for Aerion";
     homepage = "https://github.com/hkdb/aerion";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ curious ];
+    license = lib.licenses.asl20;
+    maintainers = with lib.maintainers; [ curious ];
     platforms = [
       "x86_64-linux"
       "aarch64-linux"
     ];
-    sourceProvenance = with sourceTypes; [ binaryNativeCode ];
+    sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
   };
 }

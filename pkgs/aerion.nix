@@ -15,13 +15,13 @@
 }:
 
 let
-  version = "0.3.1";
+  version = "0.3.2";
 
   src = fetchFromGitHub {
     owner = "hkdb";
     repo = "aerion";
     rev = "v${version}";
-    hash = "sha256-EPIGrc+Ew6Kbqj75SyDSD++m7t1PAa3B26lOaNC/6/I=";
+    hash = "sha256-elmk4huz4mvc7t+5/ZM5AK2R4pSKrLsZM0HxWFmQldE=";
   };
 
   frontend = buildNpmPackage {
@@ -30,7 +30,7 @@ let
 
     sourceRoot = "${src.name}/frontend";
 
-    npmDepsHash = "sha256-2Z8mrU96kjejlG0MQC7c95tkNfhZOHJCYnpcv4TT/fI=";
+    npmDepsHash = "sha256-dC+xGwSqdzItIfDipAVIVnbUJHiFkmzanjV/5xFsbkc=";
 
     buildPhase = ''
       npm run build
@@ -88,11 +88,11 @@ buildGoModule {
     ''
   );
 
-  meta = with lib; {
+  meta = {
     description = "An Open Source Lightweight E-Mail Client";
     homepage = "https://github.com/hkdb/aerion";
-    license = licenses.asl20;
+    license = lib.licenses.asl20;
     mainProgram = "aerion";
-    maintainers = with maintainers; [ curious ];
+    maintainers = with lib.maintainers; [ curious ];
   };
 }
