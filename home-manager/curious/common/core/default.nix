@@ -2,7 +2,7 @@
 {
   imports = [
     ./nix.nix
-    ./vcs.nix
+    ./vcs
     ./cli-tools.nix
   ];
   home = {

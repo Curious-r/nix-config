@@ -110,11 +110,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1784457376,
-        "narHash": "sha256-QoEZEk3+LjLQXMrNUtE1yWummEeGR12LOGU5H6zbkvY=",
+        "lastModified": 1784659595,
+        "narHash": "sha256-F5fhOyMKNlsoCqCAjG4/FikbGdX/kCwGJRUf9Hv3aYs=",
         "owner": "AvengeMedia",
         "repo": "dms-plugin-registry",
-        "rev": "105655299c6ea33476e8425f15fa16ada43ab12d",
+        "rev": "40a4d398b5d28b00de2312bb7070e059dfee6e29",
         "type": "github"
       },
       "original": {
@@ -268,11 +268,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1784489491,
-        "narHash": "sha256-j9maqjx1T8+ljAVntAdSI5hSGCm77QNZz64JF1rJNu0=",
+        "lastModified": 1784588016,
+        "narHash": "sha256-ouZe80aWEhMLVMkqICFDN+JUw+0FJtCr/bh+hHtRtMg=",
         "owner": "nix-community",
         "repo": "home-manager",
-        "rev": "3139deb8cafbe73b39b24451255b2fdd3426077e",
+        "rev": "deeb6b7eb7e0c44ae1819c051ce175bd92a85100",
         "type": "github"
       },
       "original": {
@@ -460,11 +460,11 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1784356753,
-        "narHash": "sha256-12KrbMiWLcf8m7pCvAtZh1ZrgF85ZXDXvfR/fWTKy84=",
+        "lastModified": 1784497964,
+        "narHash": "sha256-vlHUuqAcbcH2RKmHbPiuQzbv1pnzzavXnI62RD0bqCU=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "61b7c44c4073f0b827768aff0049561b5110ea5a",
+        "rev": "241313f4e8e508cb9b13278c2b0fa25b9ca27163",
         "type": "github"
       },
       "original": {
@@ -539,11 +539,11 @@
         "treefmt-nix": "treefmt-nix"
       },
       "locked": {
-        "lastModified": 1784503365,
-        "narHash": "sha256-dFQze4pUnDr8lhbCF4JjN0BH68fdPslAb4lgG0mW/aA=",
+        "lastModified": 1784556968,
+        "narHash": "sha256-CU9yZCebBsgQKVoyK3b1BqgROuKnQp6sJFZ0c1BrSjw=",
         "ref": "refs/heads/main",
-        "rev": "7e37249d774621472fa115953846434e9a732a6b",
-        "revCount": 153,
+        "rev": "ad0c49345b560723f3213e27c28711d7c86a83bf",
+        "revCount": 159,
         "type": "git",
         "url": "https://codeberg.org/r-vdp/pam-fido-remote"
       },
