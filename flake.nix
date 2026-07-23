@@ -7,6 +7,7 @@
       "flakes"
     ];
     extra-substituters = [
+      "https://mirrors.tuna.tsinghua.edu.cn/nix-channels/store"
       "https://mirrors.sjtug.sjtu.edu.cn/nix-channels/store"
       # nix community's cache server
       "https://nix-community.cachix.org"
