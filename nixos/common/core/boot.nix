@@ -6,6 +6,10 @@
       enable = lib.mkDefault true;
       emergencyAccess = lib.mkDefault true;
     };
+    supportedFilesystems = {
+      ntfs = lib.mkDefault true;
+      exfat = lib.mkDefault true;
+    };
   };
   system = {
     nixos-init.enable = true;

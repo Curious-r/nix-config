@@ -21,6 +21,7 @@
     ./preservation.nix
     ./home-manager.nix
     ./devenv.nix
+    ./udisks2.nix
   ];
 
   nixpkgs = {

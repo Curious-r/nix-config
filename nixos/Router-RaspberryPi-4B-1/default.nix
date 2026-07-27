@@ -12,6 +12,7 @@
     ../common/optional/docker/registry-mirrors/mainland.nix
     ../common/optional/vaultix/curious/ssh.nix
     ../common/optional/vaultix/curious/git.nix
+    ../common/optional/devmon.nix
 
     ./boot.nix
     ./vaultix.nix

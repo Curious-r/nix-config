@@ -17,6 +17,7 @@
     # Desktop
     ../common/optional/desktop/basic.nix
     ../common/optional/desktop/discrete/niri
+    ../common/optional/desktop/discrete/udiskie.nix
 
     ../common/optional/rime
     ../common/optional/terminal/ghostty.nix
