@@ -16,7 +16,8 @@
     ../common/optional/desktop/discrete/dms-greeter.nix
     ../common/optional/desktop/discrete/upower.nix
     ../common/optional/desktop/discrete/niri.nix
-    ../common/optional/desktop/discrete/oo7.nix
+    ../common/optional/desktop/discrete/oo7/basic.nix
+    ../common/optional/desktop/discrete/oo7/greetd.nix
     ../common/optional/desktop/discrete/cursors.nix
     ../common/optional/desktop/discrete/icon.nix
     ../common/optional/input-method.nix
@@ -29,6 +30,7 @@
     ../common/optional/solaar.nix
     ../common/optional/openrazer.nix
     ../common/optional/users/users/curious/openrazer.nix
+    ../common/optional/seahorse.nix
 
     ./boot.nix
     ./users.nix
