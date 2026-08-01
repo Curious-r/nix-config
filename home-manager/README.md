@@ -7,7 +7,8 @@ Standalone Home Manager configurations for managing user environments.
 - `curious`: Main user configuration.
   - `common/`: Shared user settings.
   - `Laptop-Legion-R7000`: Host-specific overrides for the laptop.
-  - `Server-Ideapad-G480`: Host-specific overrides for the server.
+  - `Server-IdeaPad-G480`: Host-specific overrides for the server.
+  -  `Router-RaspberryPi-4B1`: Host-specific overrides for the router.
 
 ## 🚀 Deployment
 
