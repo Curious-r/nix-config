@@ -30,4 +30,6 @@
       dockerManager.enable = true;
     };
   };
+
+  programs.dsearch.enable = true;
 }
