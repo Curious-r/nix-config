@@ -4,6 +4,7 @@
     ../common/core
     ../common/optional/nix/substituters/mainland.nix
     ../common/optional/nix/substituters/numtide.nix
+    ../common/optional/bottom.nix
 
     # XDG ENV
     ../common/optional/xdg-env/basic.nix

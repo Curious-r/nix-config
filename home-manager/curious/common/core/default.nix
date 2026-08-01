@@ -3,7 +3,7 @@
   imports = [
     ./nix.nix
     ./vcs
-    ./cli-tools.nix
+    ./zellij.nix
   ];
   home = {
     username = "curious";
