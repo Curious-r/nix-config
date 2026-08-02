@@ -10,6 +10,9 @@
   # https://devenv.sh/basics/
   env.GREET = "devenv";
 
+  # From Secret Spec
+  env.NIX_CONFIG = config.secretspec.secrets.NIX_CONFIG;
+
   # https://devenv.sh/packages/
   packages = with pkgs; [
     nixfmt
