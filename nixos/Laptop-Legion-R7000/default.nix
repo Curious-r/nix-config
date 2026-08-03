@@ -30,7 +30,6 @@
     ../common/optional/solaar.nix
     ../common/optional/openrazer.nix
     ../common/optional/users/users/curious/openrazer.nix
-    ../common/optional/seahorse.nix
 
     ./boot.nix
     ./users.nix
