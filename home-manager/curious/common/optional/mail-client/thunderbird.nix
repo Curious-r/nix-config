@@ -1,4 +1,4 @@
 { pkgs, ... }:
 {
-  home.packages = with pkgs; [ thunderbird ];
+  home.packages = [ pkgs.thunderbird ];
 }

@@ -48,11 +48,11 @@ stdenv.mkDerivation {
     description = "OAuth credentials shim for Aerion";
     homepage = "https://github.com/hkdb/aerion";
     license = lib.licenses.asl20;
-    maintainers = with lib.maintainers; [ curious ];
+    maintainers = [ lib.maintainers.curious ];
     platforms = [
       "x86_64-linux"
       "aarch64-linux"
     ];
-    sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
+    sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
   };
 }

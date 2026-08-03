@@ -1,6 +1,6 @@
 { pkgs, ... }:
 {
-  environment.systemPackages = with pkgs; [
-    catppuccin-cursors.latteLight
+  environment.systemPackages = [
+    pkgs.catppuccin-cursors.latteLight
   ];
 }

@@ -6,10 +6,10 @@
 
     fcitx5.waylandFrontend = true;
 
-    fcitx5.addons = with pkgs; [
-      fcitx5-material-color # a color theme
-      (fcitx5-rime.override {
-        rimeDataPkgs = [ rime-wanxiang ];
+    fcitx5.addons = [
+      pkgs.fcitx5-material-color # a color theme
+      (pkgs.fcitx5-rime.override {
+        rimeDataPkgs = [ pkgs.rime-wanxiang ];
       })
     ];
 

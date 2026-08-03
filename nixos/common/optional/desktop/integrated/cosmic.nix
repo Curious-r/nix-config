@@ -12,8 +12,8 @@
     enable = true;
     xwayland.enable = true;
   };
-  environment.cosmic.excludePackages = with pkgs; [
-    cosmic-edit
-    cosmic-term
+  environment.cosmic.excludePackages = [
+    pkgs.cosmic-edit
+    pkgs.cosmic-term
   ];
 }

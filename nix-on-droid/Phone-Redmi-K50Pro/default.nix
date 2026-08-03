@@ -10,7 +10,7 @@
     ../common/optional/nix/substituters/mainland.nix
   ];
   # Simply install just the packages
-  environment.packages = with pkgs; [
+  environment.packages = [
     # User-facing stuff that you really really want to have
 
     # Some common stuff that people expect to have

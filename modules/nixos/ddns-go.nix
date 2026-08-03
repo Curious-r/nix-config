@@ -15,7 +15,7 @@ let
   # Generate merged ddns-go config with secrets.
   gen-ddns-go-config = pkgs.writeShellApplication {
     name = "gen-ddns-go-config";
-    runtimeInputs = with pkgs; [ yq-go ];
+    runtimeInputs = [ pkgs.yq-go ];
     text =
       utils.genJqSecretsReplacementSnippet cfg.settings "/run/ddns-go/new"
       # Merge existing config with new settings, overriding existing values with new ones
@@ -37,7 +37,7 @@ let
   };
 in
 {
-  meta.maintainers = with lib.maintainers; [ moraxyc ];
+  meta.maintainers = [ lib.maintainers.moraxyc ];
 
   options = {
     services.ddns-go = {

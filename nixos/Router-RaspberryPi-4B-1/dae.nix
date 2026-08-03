@@ -13,7 +13,7 @@
 
       package = inputs.daeuniverse.packages.x86_64-linux.dae;
       disableTxChecksumIpGeneric = false;
-      assets = with pkgs; [ v2ray-geoip v2ray-domain-list-community ];
+      assets = [ pkgs.v2ray-geoip pkgs.v2ray-domain-list-community ];
     */
 
     # alternative of `assets`, a dir contains geo database.

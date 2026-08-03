@@ -4,7 +4,7 @@
   fonts = {
     fontDir.enable = lib.mkDefault true;
 
-    packages = with pkgs; [
+    packages = [
       # icon fonts
       # material-design-icons
       # font-awesome
@@ -12,10 +12,10 @@
       # Noto 系列字体是 Google 主导的。名字的含义是「没有豆腐」（no tofu），因为缺字时显示的方框或者方框被叫作 tofu
       # Noto 系列字族名只支持英文，命名规则是 Noto Sans/Serif <变体名>
       # 其中汉字部分叫 Noto Sans/Serif CJK SC/TC/HK/JP/KR，最后一个词是地区变种
-      noto-fonts # 大部分文字的常见样式，不包含汉字
-      noto-fonts-cjk-serif # 汉字部分，有衬线
-      noto-fonts-cjk-sans # 汉字部分，无衬线
-      noto-fonts-color-emoji # 彩色的表情符号字体
+      pkgs.noto-fonts # 大部分文字的常见样式，不包含汉字
+      pkgs.noto-fonts-cjk-serif # 汉字部分，有衬线
+      pkgs.noto-fonts-cjk-sans # 汉字部分，无衬线
+      pkgs.noto-fonts-color-emoji # 彩色的表情符号字体
 
       # 思源系列字体是 Adobe 主导的。其中汉字部分被称为「思源黑体」和「思源宋体」，是由 Adobe + Google 共同开发的
       # source-sans # 无衬线字体，不含汉字。字族名是Source Sans Pro（旧版）和Source Sans 3（新版），以及变体
@@ -33,7 +33,7 @@
 
       # An innovative superfamily of fonts for code
       # Monaspace Neon, Monaspace Argon, Monaspace Xenon, Monaspace Radon, Monaspace Krypton
-      monaspace
+      pkgs.monaspace
     ];
 
     # user defined fonts

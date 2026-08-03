@@ -1,4 +1,4 @@
 { pkgs, ... }:
 {
-  home.packages = with pkgs; [ servo ];
+  home.packages = [ pkgs.servo ];
 }

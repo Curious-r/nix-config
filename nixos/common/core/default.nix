@@ -33,7 +33,7 @@
   };
 
   # Enable all unfree hardware support.
-  hardware.firmware = with pkgs; [ linux-firmware ];
+  hardware.firmware = [ pkgs.linux-firmware ];
   hardware.enableAllFirmware = true;
   hardware.enableRedistributableFirmware = true;
 }

@@ -14,10 +14,10 @@
   env.NIX_CONFIG = config.secretspec.secrets.NIX_CONFIG;
 
   # https://devenv.sh/packages/
-  packages = with pkgs; [
-    nixfmt
-    package-version-server
-    yaml-language-server
+  packages = [
+    pkgs.nixfmt
+    pkgs.package-version-server
+    pkgs.yaml-language-server
   ];
 
   # https://devenv.sh/languages/

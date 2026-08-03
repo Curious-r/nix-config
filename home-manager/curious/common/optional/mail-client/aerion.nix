@@ -1,4 +1,4 @@
 { pkgs, ... }:
 {
-  home.packages = with pkgs; [ (aerion.override { withOAuth = true; }) ];
+  home.packages = [ (pkgs.aerion.override { withOAuth = true; }) ];
 }

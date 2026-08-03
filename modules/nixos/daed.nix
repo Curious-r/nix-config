@@ -72,12 +72,12 @@ in
     };
 
     assets = mkOption {
-      type = with types; listOf path;
-      default = with pkgs; [
-        v2ray-geoip
-        v2ray-domain-list-community
+      type = types.listOf types.path;
+      default = [
+        pkgs.v2ray-geoip
+        pkgs.v2ray-domain-list-community
       ];
-      defaultText = literalExpression "with pkgs; [ v2ray-geoip v2ray-domain-list-community ]";
+      defaultText = literalExpression "[ pkgs.v2ray-geoip pkgs.v2ray-domain-list-community ]";
       description = "Assets required to run daed.";
     };
 
@@ -190,5 +190,5 @@ in
       "d ${cfg.configDir} 0750 root root - -"
     ];
   };
-  meta.maintainers = with lib.maintainers; [ ccicnce113424 ];
+  meta.maintainers = [ lib.maintainers.ccicnce113424 ];
 }

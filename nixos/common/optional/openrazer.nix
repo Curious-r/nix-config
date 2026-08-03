@@ -4,7 +4,7 @@
     enable = true;
     users = [ "curious" ];
   };
-  environment.systemPackages = with pkgs; [
-    polychromatic
+  environment.systemPackages = [
+    pkgs.polychromatic
   ];
 }

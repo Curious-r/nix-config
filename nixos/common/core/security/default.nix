@@ -61,8 +61,8 @@
     pcscd.enable = true;
 
     # 放行 FIDO2 (HID) 权限与依赖
-    udev.packages = with pkgs; [
-      libfido2
+    udev.packages = [
+      pkgs.libfido2
     ];
 
     # 开启 fido-remote-agent 服务，在有远程鉴权需求时接管 fido 密钥
@@ -76,9 +76,9 @@
   # 这会自动启用 run0
   system.tools.nixos-rebuild.enableRun0Elevation = true;
 
-  environment.systemPackages = with pkgs; [
-    libfido2
-    pam_u2f
-    pcsc-tools
+  environment.systemPackages = [
+    pkgs.libfido2
+    pkgs.pam_u2f
+    pkgs.pcsc-tools
   ];
 }

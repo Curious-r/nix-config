@@ -93,6 +93,6 @@ buildGoModule {
     homepage = "https://github.com/hkdb/aerion";
     license = lib.licenses.asl20;
     mainProgram = "aerion";
-    maintainers = with lib.maintainers; [ curious ];
+    maintainers = [ lib.maintainers.curious ];
   };
 }

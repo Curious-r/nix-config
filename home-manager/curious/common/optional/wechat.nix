@@ -1,4 +1,4 @@
 { pkgs, ... }:
 {
-  home.packages = with pkgs; [ wechat ];
+  home.packages = [ pkgs.wechat ];
 }

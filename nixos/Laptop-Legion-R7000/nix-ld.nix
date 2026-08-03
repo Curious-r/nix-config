@@ -2,12 +2,12 @@
 {
   programs.nix-ld = {
     enable = true;
-    libraries = with pkgs; [
-      stdenv.cc.cc.lib
-      zlib
-      openssl
-      curl
-      glibc
+    libraries = [
+      pkgs.stdenv.cc.cc.lib
+      pkgs.zlib
+      pkgs.openssl
+      pkgs.curl
+      pkgs.glibc
     ];
   };
 }

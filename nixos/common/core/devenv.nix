@@ -3,7 +3,7 @@
   programs = {
     direnv.enable = true;
   };
-  environment.systemPackages = with pkgs; [
-    devenv
+  environment.systemPackages = [
+    pkgs.devenv
   ];
 }
