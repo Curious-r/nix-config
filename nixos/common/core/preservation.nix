@@ -55,6 +55,8 @@
           how = "symlink";
           configureParent = true;
         }
+
+        # 不适合符号链接的直接使用默认的绑定挂载
         "/var/lib/usbguard/rules.conf"
 
         # creates a symlink on the volatile root
@@ -137,13 +139,9 @@
     };
   };
 
-  # systemd-machine-id-commit.service would fail, but it is not relevant
-  # in this specific setup for a persistent machine-id so we disable it
-  #
-  # see the firstboot example below for an alternative approach
-  systemd.suppressedSystemUnits = [ "systemd-machine-id-commit.service" ];
-
-  # let the service commit the transient ID to the persistent volume
+  # 通过去掉 suppressedSystemUnits 修复了上游文档示例自相矛盾的问题
+  # 参考： https://github.com/nix-community/preservation/issues/29
+  # adapt the stock service to commit the transient ID to the persistent volume
   systemd.services.systemd-machine-id-commit = {
     unitConfig.ConditionPathIsMountPoint = [
       ""
