@@ -58,6 +58,11 @@
 
         # 不适合符号链接的直接使用默认的绑定挂载
         "/var/lib/usbguard/rules.conf"
+        # systemd-creds 要求主机密钥权限严格为 0400
+        {
+          file = "/var/lib/systemd/credential.secret";
+          mode = "0400";
+        }
 
         # creates a symlink on the volatile root
         # creates an empty directory on the persistent volume, i.e. /persistent/var/lib/systemd

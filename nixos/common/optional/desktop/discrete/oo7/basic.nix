@@ -30,13 +30,22 @@
   };
 
   # NOTE:
-  # 针对 u2f 登录时不能通过密码自动解锁钥匙环的情况，暂时使用 systemd-creds
-  # 来加密存储密码，这样在用户登录后密码自动在内存中解密，对用户无感
+  # 针对 u2f 登录时不能通过密码自动解锁钥匙环的情况，暂时使用 systemd-creds 来加密存储密码，这样在用户登录后密码自
+  # 动在内存中解密，用户无感
   # 参考：https://github.com/linux-credentials/oo7/commit/8891a9cc09d0ed502800e1910ad6e880f1bbbae9
-  # 使用如下命令创建：
+  #
+  # 必要工作：
+  # ```bash
+  # echo -n "mypasswd" | systemd-creds encrypt \
+  #   --user \
+  #   --tpm2-pcrs=0+7 \
+  #   --name=oo7.keyring-encryption-password \
+  #   - ~/.config/credstore.encrypted/oo7.keyring-encryption-password
   # ```
-  # echo -n "mypasswd" | systemd-creds encrypt --user --name=oo7.keyring-encryption-password - ~/.config/credstore.encrypted/oo7.keyring-encryption-password
-  # ```
+  # 注意，此凭据的正确加密、解密，有众多因子参与，包括主机密钥（/var/lib/systemd/credential.secret）、
+  # machine-id、用户名、UID、TPM，因此如果使用了不可变系统相关技术，要注意处理相应状态的持久化，一旦其中
+  # 有因子发生变化，现有凭据就会解密失败
+  # 尤其是主机密钥，systemd-creds 不接受符号链接，文件权限严格要求为 0400，这在绑定挂载时也要注意
   #
   # 或许日后会有更好的方法集成 u2f，但目前这样也能接受
 }
