@@ -12,3 +12,8 @@ inputs:
 # If you have more than one devenv you can merge them
 #imports:
 # - ./backend
+
+secretspec:
+  enable: true
+  provider: keyring  # keyring, dotenv, env, 1password, lastpass
+  profile: default   # profile from secretspec.toml

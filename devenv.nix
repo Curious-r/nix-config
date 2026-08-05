@@ -11,7 +11,7 @@
   env.GREET = "devenv";
 
   # From Secret Spec
-  env.NIX_CONFIG = config.secretspec.secrets.NIX_CONFIG;
+  env.NIX_CONFIG = config.secretspec.secrets.NIX_CONFIG or "";
 
   # https://devenv.sh/packages/
   packages = [

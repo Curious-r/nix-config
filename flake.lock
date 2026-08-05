@@ -110,11 +110,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1785722135,
-        "narHash": "sha256-JdRdyTRpaMYLqiKNO+pXPoA8OiORXd8adZtCTfE3xlk=",
+        "lastModified": 1785895687,
+        "narHash": "sha256-cr+L7Zl8XnH0WzWURpD7SFDcymLihmo92WjiiunVqkw=",
         "owner": "AvengeMedia",
         "repo": "dms-plugin-registry",
-        "rev": "d6882e8b97a5660ee82abf9b6615611babe473be",
+        "rev": "29ebe90f6bfa302c350db530b3b953af508e661c",
         "type": "github"
       },
       "original": {
@@ -437,11 +437,11 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1785571196,
-        "narHash": "sha256-KoTsyMQqnXQZq8deCEnu4QkyldkwH/bpMMhUcfMdGIw=",
+        "lastModified": 1785828668,
+        "narHash": "sha256-8fsyqeO+mJqvIzeO4xIpgJe/f7MTbbVTEC6RT6WSXNs=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "148bab9c1c3c53136ecb44a6ea356a0ed5b39b06",
+        "rev": "e72e4f299401a3689d4b3d5fc6496b11db7064eb",
         "type": "github"
       },
       "original": {
@@ -516,11 +516,11 @@
         "treefmt-nix": "treefmt-nix"
       },
       "locked": {
-        "lastModified": 1785710029,
-        "narHash": "sha256-jPScKyRwug35KzvTK24Am43pl4tTBmvfI1BES3wVaUs=",
+        "lastModified": 1785849097,
+        "narHash": "sha256-fIsyPbrSUysNSpN4Ew9++flGF9fAOUdJJiqmESY2ISc=",
         "ref": "refs/heads/main",
-        "rev": "d3e1b8f31ac8086ef8ab9f6d70ed5a3457af2058",
-        "revCount": 171,
+        "rev": "2d7e31436c844a89407ab39a80a8608a66748479",
+        "revCount": 173,
         "type": "git",
         "url": "https://codeberg.org/r-vdp/pam-fido-remote"
       },
