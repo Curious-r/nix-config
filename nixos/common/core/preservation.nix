@@ -58,7 +58,8 @@
 
         # 不适合符号链接的直接使用默认的绑定挂载
         "/var/lib/usbguard/rules.conf"
-        # systemd-creds 要求主机密钥权限严格为 0400
+        # systemd-creds 要求主机密钥权限严格为 0400，且 systemd-creds setup 使用原子更新来生成此文件，这在符号链接和
+        # 绑定挂载时都无法正常工作，需要手工生成并搬运，具体参考 oo7 配置文件内的注释
         {
           file = "/var/lib/systemd/credential.secret";
           mode = "0400";
