@@ -83,6 +83,22 @@
         "type": "github"
       }
     },
+    "dank-qml-common": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786062187,
+        "narHash": "sha256-i9tB3+PoM2d5NHfb7bvNc5IHvymp088OW3ThMAL+39I=",
+        "owner": "AvengeMedia",
+        "repo": "dank-qml-common",
+        "rev": "3513b348ba425eab27d35b27ce924a0e324dc359",
+        "type": "github"
+      },
+      "original": {
+        "owner": "AvengeMedia",
+        "repo": "dank-qml-common",
+        "type": "github"
+      }
+    },
     "disko": {
       "inputs": {
         "nixpkgs": [
@@ -100,6 +116,29 @@
       "original": {
         "owner": "nix-community",
         "repo": "disko",
+        "type": "github"
+      }
+    },
+    "dms": {
+      "inputs": {
+        "dank-qml-common": "dank-qml-common",
+        "flake-compat": "flake-compat",
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1786088822,
+        "narHash": "sha256-Ag9Z/6B3t60eL7LS+hWEf13Bi61sv3EVkuksLEETBp8=",
+        "owner": "Curious-r",
+        "repo": "DankMaterialShell",
+        "rev": "9af0db7f6268b769da06f6911bcd221f85469194",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Curious-r",
+        "ref": "feat/location-search-settings",
+        "repo": "DankMaterialShell",
         "type": "github"
       }
     },
@@ -124,6 +163,22 @@
       }
     },
     "flake-compat": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1767039857,
+        "narHash": "sha256-vNpUSpF5Nuw8xvDLj2KCwwksIbjua2LZCqhV1LNRDns=",
+        "owner": "NixOS",
+        "repo": "flake-compat",
+        "rev": "5edf11c44bc78a0d334f6334cdaf7d60d732daab",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "flake-compat",
+        "type": "github"
+      }
+    },
+    "flake-compat_2": {
       "flake": false,
       "locked": {
         "lastModified": 1767039857,
@@ -531,7 +586,7 @@
     },
     "pre-commit": {
       "inputs": {
-        "flake-compat": "flake-compat",
+        "flake-compat": "flake-compat_2",
         "gitignore": "gitignore",
         "nixpkgs": [
           "lanzaboote",
@@ -595,6 +650,7 @@
     "root": {
       "inputs": {
         "disko": "disko",
+        "dms": "dms",
         "dms-plugin-registry": "dms-plugin-registry",
         "flake-parts": "flake-parts",
         "home-manager": "home-manager",
