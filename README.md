@@ -38,6 +38,14 @@ My personal NixOS and Home Manager configurations, managed with Flakes.
 - `Phone-Redmi-K50Pro`: Personal phone
 - `Pad-Vivo-3Pro`: Tablet
 
+## 🤖 CI/CD
+
+GitHub Actions 覆盖了 PR 和 main 的自动检查：
+
+- `CI`:gitleaks 密钥扫描、flake.lock 健康检查、actionlint、`nix flake check`(含 aarch64-linux 求值)、x86_64 主机的 NixOS toplevel 与 home-manager 构建
+- `Update flake.lock`:每周自动提交 flake.lock 更新 PR
+- Dependabot:每周批量更新 GitHub Actions 版本
+
 ---
 
 [![Nix Flake](https://img.shields.io/badge/Nix-Flake-blue.svg?logo=NixOS&logoColor=white)](https://nixos.wiki/wiki/Flakes)
