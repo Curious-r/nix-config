@@ -95,7 +95,9 @@
     };
 
     solaar = {
-      url = "https://flakehub.com/f/Svenum/Solaar-Flake/*.tar.gz"; # For latest stable version
+      # 使用 flakehub 的规范 pinned URL（无查询参数），避免 Lix 与 Determinate Nix
+      # 对重定向 URL 的规范化结果不一致，导致干净环境（CI）报 "mismatch in field 'url'"
+      url = "https://api.flakehub.com/f/pinned/Svenum/Solaar-Flake/0.1.8/019f242c-41c0-7c53-8623-829eb5b3e441/source.tar.gz";
       #url = "https://flakehub.com/f/Svenum/Solaar-Flake/0.1.1.tar.gz"; # uncomment line for solaar version 1.1.13
       #url = "github:Svenum/Solaar-Flake/main"; # Uncomment line for latest unstable version
       inputs.nixpkgs.follows = "nixpkgs";
