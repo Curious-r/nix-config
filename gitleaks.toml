@@ -1,0 +1,17 @@
+title = "nix-config gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Vaultix encrypted secrets and their caches are expected to look like secrets"
+paths = [
+  '''(^|/)secrets/.*\.age$''',
+  '''(^|/)secrets/cache/''',
+  '''(^|/)secrets/yubikey-vaultix-stub\.txt$''',
+]
+regexes = [
+  # Pijul identity public key (ssh-ed25519), committed deliberately.
+  # The private key lives in the [secret_key] section and is NOT allowlisted.
+  '''AAAAC3NzaC1lZDI1NTE5AAAAIC\+tr1tdtkWIyEHe7PUHoxTIasBtPn1mtAI2KxSjlvHs''',
+]

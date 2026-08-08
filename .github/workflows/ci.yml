@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: gitleaks.toml
+
+  check:
+    name: Flake check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra_nix_config: |
+            connect-timeout = 3
+            extra-substituters = https://cache.nixos.org https://nix-community.cachix.org https://cache.numtide.com
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=
+      - name: Cache builds
+        uses: DeterminateSystems/flakehub-cache-action@main
+      - name: Check flake.lock health
+        uses: DeterminateSystems/flake-checker-action@v13
+        with:
+          fail-mode: true
+      - name: Lint workflows
+        run: nix run nixpkgs#actionlint
+      - name: Check flake
+        run: nix flake check
+
+  build:
+    name: Build ${{ matrix.attr }}
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - attr: nixosConfigurations.Laptop-Legion-R7000.config.system.build.toplevel
+          - attr: nixosConfigurations.Server-IdeaPad-G480.config.system.build.toplevel
+          - attr: 'homeConfigurations."curious@Laptop-Legion-R7000".activationPackage'
+          - attr: 'homeConfigurations."curious@Server-IdeaPad-G480".activationPackage'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra_nix_config: |
+            connect-timeout = 3
+            extra-substituters = https://cache.nixos.org https://nix-community.cachix.org https://cache.numtide.com
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=
+      - name: Cache builds
+        uses: DeterminateSystems/flakehub-cache-action@main
+      - name: Build
+        # 单引号包裹以保留 attr 中 homeConfigurations."curious@host" 的引号
+        run: nix build '.#${{ matrix.attr }}'
