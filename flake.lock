@@ -110,11 +110,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1786125114,
-        "narHash": "sha256-kI7YDDulG4JgLxNqBJXmzGIFcOt8PYB+9kaqNVIfmFQ=",
+        "lastModified": 1786188029,
+        "narHash": "sha256-/aODNzyx8oCWBsV/sOLwqWEV9k9qYu9c4o8y7JXKMCo=",
         "owner": "AvengeMedia",
         "repo": "dms-plugin-registry",
-        "rev": "51dae0e39470fb74b007d265b517512bbfa0d2c2",
+        "rev": "88afebc258d4cf79d325d1fc9ed59aaee30bd32d",
         "type": "github"
       },
       "original": {
@@ -516,11 +516,11 @@
         "treefmt-nix": "treefmt-nix"
       },
       "locked": {
-        "lastModified": 1786025569,
-        "narHash": "sha256-G3R0YKK/4SjBDsYolgTMh2M6U1Pt13K9DXL4ZPjdDFI=",
+        "lastModified": 1786173994,
+        "narHash": "sha256-jAfOcrFxD5iHIMAbUO24ha1SObOXRRDnX+vggSGtG2Y=",
         "ref": "refs/heads/main",
-        "rev": "19edb78fd9314877935c985a95e071201a89ca71",
-        "revCount": 175,
+        "rev": "8f442eb2e27a9728c03cf97e6f7583228a1b9ebd",
+        "revCount": 177,
         "type": "git",
         "url": "https://codeberg.org/r-vdp/pam-fido-remote"
       },
@@ -786,11 +786,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1785480078,
-        "narHash": "sha256-wWRW/Teo+58EMeTpVVEAqYid1qLzpB/PViQJCv7Xxvc=",
+        "lastModified": 1786164819,
+        "narHash": "sha256-tvBlGAYyzHYdLwn035bRCrB1mcMjvNNavcNZ293AIIA=",
         "owner": "youwen5",
         "repo": "zen-browser-flake",
-        "rev": "b7d4cc2778143a228675cd8bb7efdfa111638ac8",
+        "rev": "f9af5f7017cea1c159e17922288fb38ff94d28cd",
         "type": "github"
       },
       "original": {

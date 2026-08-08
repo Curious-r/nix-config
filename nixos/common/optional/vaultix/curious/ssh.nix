@@ -60,6 +60,11 @@
         IdentityFile /home/curious/.ssh/id_ed25519_github
         ServerAliveInterval 60
 
+      # Nest 专用配置
+      Host nest.pijul.com
+        User curious
+        IdentityFile ~/.ssh/id_ed25519_github
+
       # 默认全局配置 ：显式指定默认使用通用私钥
       Host *
         IdentityFile ''${HOME}/.ssh/id_ed25519
