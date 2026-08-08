@@ -32,3 +32,5 @@ jobs:
           pr-labels: |
             dependencies
             automated
+          # 注意：GitHub Actions 不会自动在 bot 打开的 PR 上运行 CI。
+          # 如需自动验证，可配置 PAT（secrets.GH_TOKEN_FOR_UPDATES）并传入 token 输入。

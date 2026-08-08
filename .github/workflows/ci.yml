@@ -81,6 +81,7 @@ jobs:
           - attr: nixosConfigurations.Server-IdeaPad-G480.config.system.build.toplevel
           - attr: 'homeConfigurations."curious@Laptop-Legion-R7000".activationPackage'
           - attr: 'homeConfigurations."curious@Server-IdeaPad-G480".activationPackage'
+          - attr: 'homeConfigurations."curious@Router-RaspberryPi-4B-1".activationPackage'
     steps:
       - name: Checkout
         uses: actions/checkout@v6
