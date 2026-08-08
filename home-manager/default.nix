@@ -47,14 +47,14 @@ in
         }
       ];
     };
-    "curious@Router-RaspberryPi-4B1" = home-manager.lib.homeManagerConfiguration {
+    "curious@Router-RaspberryPi-4B-1" = home-manager.lib.homeManagerConfiguration {
       pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux; # Home-manager requires 'pkgs' instance
       extraSpecialArgs = {
         inherit inputs self;
       };
       modules = [
         # > Our main home-manager configuration file <
-        ./curious/Router-RaspberryPi-4B1
+        ./curious/Router-RaspberryPi-4B-1
         {
           nixpkgs = {
             # you can add global overlays here
