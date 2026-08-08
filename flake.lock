@@ -657,14 +657,16 @@
       "locked": {
         "lastModified": 1783018147,
         "narHash": "sha256-mqQiBqpTYNFxA/LyOdTIpvV+B1/cNOB38aYyXj3iXvY=",
+        "owner": "Svenum",
+        "repo": "Solaar-Flake",
         "rev": "1870d5bd8c5ddb54b64eb67c6c32fead1aab9276",
-        "revCount": 87,
-        "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/Svenum/Solaar-Flake/0.1.8/019f242c-41c0-7c53-8623-829eb5b3e441/source.tar.gz?rev=1870d5bd8c5ddb54b64eb67c6c32fead1aab9276&revCount=87"
+        "type": "github"
       },
       "original": {
-        "type": "tarball",
-        "url": "https://api.flakehub.com/f/pinned/Svenum/Solaar-Flake/0.1.8/019f242c-41c0-7c53-8623-829eb5b3e441/source.tar.gz"
+        "owner": "Svenum",
+        "ref": "0.1.8",
+        "repo": "Solaar-Flake",
+        "type": "github"
       }
     },
     "systems": {
