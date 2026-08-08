@@ -66,7 +66,7 @@ jobs:
         run: nix flake check --no-build --system aarch64-linux
 
   build:
-    name: Build ${{ matrix.attr }}
+    name: Build ${{ matrix.name }}
     needs: check
     runs-on: ubuntu-latest
     timeout-minutes: 180
@@ -77,11 +77,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - attr: nixosConfigurations.Laptop-Legion-R7000.config.system.build.toplevel
-          - attr: nixosConfigurations.Server-IdeaPad-G480.config.system.build.toplevel
-          - attr: 'homeConfigurations."curious@Laptop-Legion-R7000".activationPackage'
-          - attr: 'homeConfigurations."curious@Server-IdeaPad-G480".activationPackage'
-          - attr: 'homeConfigurations."curious@Router-RaspberryPi-4B-1".activationPackage'
+          - name: Laptop NixOS toplevel
+            attr: nixosConfigurations.Laptop-Legion-R7000.config.system.build.toplevel
+          - name: Server NixOS toplevel
+            attr: nixosConfigurations.Server-IdeaPad-G480.config.system.build.toplevel
+          - name: Laptop home-manager
+            attr: 'homeConfigurations."curious@Laptop-Legion-R7000".activationPackage'
+          - name: Server home-manager
+            attr: 'homeConfigurations."curious@Server-IdeaPad-G480".activationPackage'
+          - name: Router home-manager
+            attr: 'homeConfigurations."curious@Router-RaspberryPi-4B-1".activationPackage'
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -94,6 +99,8 @@ jobs:
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=
       - name: Cache builds
         uses: DeterminateSystems/flakehub-cache-action@v3.21.9
+      # 首次全量构建较慢（约 40-60 分钟，含 zen-browser/dae 等源码构建），
+      # FlakeHub Cache 会持久化闭包，后续运行会显著加快。
       - name: Build
         # 单引号包裹以保留 attr 中 homeConfigurations."curious@host" 的引号
-        run: nix build '.#${{ matrix.attr }}'
+        run: nix build --no-link '.#${{ matrix.attr }}'
