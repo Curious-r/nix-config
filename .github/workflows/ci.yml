@@ -105,40 +105,52 @@ jobs:
               - 'secrets/**'
               - '.github/workflows/ci.yml'
 
+  matrix:
+    name: Generate build matrix
+    needs: changes
+    # 与 build 同样的门控：不涉及构建的改动不用生成矩阵
+    if: needs.changes.outputs.build == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.gen.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra_nix_config: |
+            connect-timeout = 3
+            extra-substituters = https://cache.nixos.org https://nix-community.cachix.org https://cache.numtide.com
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=
+      # 矩阵来自 flake 的 ci.jobs：机器清单与配置保持单一事实来源
+      - name: Generate matrix
+        id: gen
+        run: |
+          matrix="$(nix eval --impure --json --accept-flake-config .#ci.jobs)"
+          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
+
   build:
-    name: Build ${{ matrix.name }}
+    name: ${{ matrix.name }}
     needs:
       - secrets
       - check
       - changes
+      - matrix
     # 只在实际涉及构建产物的变更上跑构建；
     # workflow_dispatch 手动触发时无条件构建。
     if: needs.changes.outputs.build == 'true' || github.event_name == 'workflow_dispatch'
-    runs-on: ${{ matrix.runs-on }}
+    runs-on: ${{ matrix.runsOn }}
     timeout-minutes: 180
     permissions:
       contents: read
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - name: Laptop NixOS toplevel
-            attr: nixosConfigurations.Laptop-Legion-R7000.config.system.build.toplevel
-            runs-on: ubuntu-latest
-          - name: Server NixOS toplevel
-            attr: nixosConfigurations.Server-IdeaPad-G480.config.system.build.toplevel
-            runs-on: ubuntu-latest
-          - name: Laptop home-manager
-            attr: 'homeConfigurations."curious@Laptop-Legion-R7000".activationPackage'
-            runs-on: ubuntu-latest
-          - name: Server home-manager
-            attr: 'homeConfigurations."curious@Server-IdeaPad-G480".activationPackage'
-            runs-on: ubuntu-latest
-          # 树莓派是 aarch64，x86_64 runner 上构建的闭包在本地无法替换，
-          # 用免费的 arm64 runner 构建才能填上路由器需要的缓存。
-          - name: Router home-manager (aarch64)
-            attr: 'homeConfigurations."curious@Router-RaspberryPi-4B-1".activationPackage'
-            runs-on: ubuntu-24.04-arm
+        include: ${{ fromJSON(needs.matrix.outputs.matrix) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -162,4 +174,5 @@ jobs:
           pushFilter: "(-source$|nixpkgs\\.tar\\.gz$)"
       - name: Build
         # 单引号包裹以保留 attr 中 homeConfigurations."curious@host" 的引号
-        run: nix build --no-link '.#${{ matrix.attr }}'
+        # nix-on-droid 求值依赖 builtins.currentSystem，需要 --impure
+        run: nix build --no-link ${{ matrix.impure && '--impure' || '' }} '.#${{ matrix.attr }}'

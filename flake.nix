@@ -146,6 +146,64 @@
         moduleWithSystem,
         ...
       }:
+      let
+        inherit (inputs) nixpkgs;
+        lib = nixpkgs.lib;
+
+        # GitHub Actions runner 标签映射（只覆盖当前实际使用的平台）
+        runnerFor = {
+          x86_64-linux = "ubuntu-latest";
+          aarch64-linux = "ubuntu-24.04-arm";
+        };
+
+        # homeConfigurations 的键形如 "curious@Host"，取出主机名部分
+        hmHost =
+          key:
+          let
+            parts = lib.splitString "@" key;
+          in
+          if builtins.length parts != 2 then
+            throw "ci.jobs: homeConfigurations 键 '${key}' 不符合 user@host 格式"
+          else
+            builtins.elemAt parts 1;
+
+        # 机器清单直接来自各配置输出，加机器时 CI 自动覆盖
+        machines = lib.unique (
+          (builtins.attrNames self.nixosConfigurations)
+          ++ (map hmHost (builtins.attrNames self.homeConfigurations))
+          ++ (builtins.attrNames self.nixOnDroidConfigurations)
+        );
+
+        mkRow = target: machine: system: attr: {
+          name = "${target} ${machine} (${system})";
+          target = target;
+          machine = machine;
+          system = system;
+          attr = attr;
+          runsOn = runnerFor.${system} or (throw "ci.jobs: 没有为 ${system} 映射 GitHub runner（机器 ${machine}）");
+          # nix-on-droid 求值依赖 builtins.currentSystem，需要 --impure
+          impure = target == "nix-on-droid";
+        };
+
+        mkRows =
+          machine:
+          (lib.optional (builtins.hasAttr machine self.nixosConfigurations) (
+            mkRow "nixos" machine self.nixosConfigurations.${machine}.config.system.build.toplevel.system
+              "nixosConfigurations.${machine}.config.system.build.toplevel"
+          ))
+          ++ (lib.optional (builtins.hasAttr "curious@${machine}" self.homeConfigurations) (
+            mkRow "home-manager" "curious@${machine}"
+              self.homeConfigurations."curious@${machine}".activationPackage.system
+              "homeConfigurations.\"curious@${machine}\".activationPackage"
+          ))
+          ++ (lib.optional (builtins.hasAttr machine self.nixOnDroidConfigurations) (
+            mkRow "nix-on-droid" machine
+              self.nixOnDroidConfigurations.${machine}.config.build.activationPackage.system
+              "nixOnDroidConfigurations.${machine}.config.build.activationPackage"
+          ));
+
+        ciJobs = builtins.sort (a: b: a.name < b.name) (lib.concatLists (map mkRows machines));
+      in
       {
         imports = [
           treefmt-nix.flakeModule
@@ -184,6 +242,11 @@
           };
 
         flake = {
+          # CI 构建矩阵：由各配置输出自动推导，避免手写清单漂移
+          ci = {
+            jobs = ciJobs;
+          };
+
           vaultix = {
             nodes = self.nixosConfigurations;
             cache = "./secrets/cache";
