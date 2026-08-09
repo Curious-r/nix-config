@@ -17,3 +17,6 @@ secretspec:
   enable: true
   provider: keyring # keyring, dotenv, env, 1password, lastpass
   profile: default # profile from secretspec.toml
+  # devenv 通过 SecretSpec 解析 CACHIX_AUTH_TOKEN（首次交互式运行会提示输入并存入 keyring），
+  # 解析后用于私有缓存拉取/推送，不导出到 shell 环境。
+  cachix_auth_token: true
