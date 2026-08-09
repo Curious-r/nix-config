@@ -10,6 +10,9 @@
   # https://devenv.sh/basics/
   env.GREET = "devenv";
 
+  # 订阅自己的 Cachix 缓存：CI 构建产物
+  cachix.pull = [ "curious" ];
+
   # From Secret Spec
   env.NIX_CONFIG = config.secretspec.secrets.NIX_CONFIG or "";
 
