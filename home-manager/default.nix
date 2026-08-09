@@ -48,7 +48,8 @@ in
       ];
     };
     "curious@Router-RaspberryPi-4B-1" = home-manager.lib.homeManagerConfiguration {
-      pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux; # Home-manager requires 'pkgs' instance
+      # 树莓派是 aarch64：固定 x86_64 会导致闭包平台错配，本地无法替换
+      pkgs = inputs.nixpkgs.legacyPackages.aarch64-linux; # Home-manager requires 'pkgs' instance
       extraSpecialArgs = {
         inherit inputs self;
       };
