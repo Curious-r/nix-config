@@ -5,6 +5,7 @@
 {
   imports = [
     ./locale.nix # localization settings
+    ./nix.nix # nix settings and substituters
     ./tools.nix # basic tools
   ];
 
