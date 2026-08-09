@@ -31,7 +31,7 @@ jobs:
         uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_CONFIG: gitleaks.toml
+          GITLEAKS_CONFIG: .gitleaks.toml
           # fork PR 的 GITHUB_TOKEN 是只读的，不能写评论；
           # push 事件没有 PR 上下文，也不开评论。
           GITLEAKS_ENABLE_COMMENTS: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
