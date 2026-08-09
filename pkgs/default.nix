@@ -8,8 +8,8 @@ in
   # example = pkgs.callPackage ./example { };
 
   # ======================================================================================
-  # Aerion has been merged into nixpkgs, keep it there to be a example for packages with
-  # optianal binary shim
+  # Aerion has been merged into nixpkgs, keep it there as an example for packages with
+  # optional binary shim
   # inherit aerion-creds;
 
   # `aerion-creds` is explicitly passed here (not relying on callPackage to find it in pkgs),

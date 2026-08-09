@@ -22,7 +22,7 @@
       # source-serif # 衬线字体，不含汉字。字族名应为Source Serif Pro（旧版）或Source Serif 4（新版），以及变体
       # source-code-pro # 等宽编程字体，字族名为Source Code Pro
       # source-han-sans # 思源黑体，包含汉字，字族名为 Source Han Sans <变体名>
-      # source-han-serif # 思源宋体，包含汉字，字族名为 Source Han Sans <变体名>
+      # source-han-serif # 思源宋体，包含汉字，字族名为 Source Han Serif <变体名>
 
       # nerdfonts
       # https://github.com/NixOS/nixpkgs/blob/nixos-unstable-small/pkgs/data/fonts/nerd-fonts/manifests/fonts.json

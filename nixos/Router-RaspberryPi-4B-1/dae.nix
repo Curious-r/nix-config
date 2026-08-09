@@ -11,7 +11,7 @@
     /*
       default options
 
-      package = inputs.daeuniverse.packages.x86_64-linux.dae;
+      package = pkgs.dae;
       disableTxChecksumIpGeneric = false;
       assets = [ pkgs.v2ray-geoip pkgs.v2ray-domain-list-community ];
     */
