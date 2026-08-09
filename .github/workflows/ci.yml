@@ -42,7 +42,6 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
-      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -53,8 +52,12 @@ jobs:
             connect-timeout = 3
             extra-substituters = https://cache.nixos.org https://nix-community.cachix.org https://cache.numtide.com
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=
-      - name: Cache builds
-        uses: DeterminateSystems/flakehub-cache-action@v3.21.9
+      # 只拉不推：check 构建的都是 nixpkgs 已有路径，不需要占用自家缓存。
+      - name: Configure Cachix
+        uses: cachix/cachix-action@v17
+        with:
+          name: curious
+          skipPush: true
       - name: Check flake.lock health
         uses: DeterminateSystems/flake-checker-action@v13
         with:
@@ -111,25 +114,31 @@ jobs:
     # 只在实际涉及构建产物的变更上跑构建；
     # workflow_dispatch 手动触发时无条件构建。
     if: needs.changes.outputs.build == 'true' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runs-on }}
     timeout-minutes: 180
     permissions:
       contents: read
-      id-token: write
     strategy:
       fail-fast: false
       matrix:
         include:
           - name: Laptop NixOS toplevel
             attr: nixosConfigurations.Laptop-Legion-R7000.config.system.build.toplevel
+            runs-on: ubuntu-latest
           - name: Server NixOS toplevel
             attr: nixosConfigurations.Server-IdeaPad-G480.config.system.build.toplevel
+            runs-on: ubuntu-latest
           - name: Laptop home-manager
             attr: 'homeConfigurations."curious@Laptop-Legion-R7000".activationPackage'
+            runs-on: ubuntu-latest
           - name: Server home-manager
             attr: 'homeConfigurations."curious@Server-IdeaPad-G480".activationPackage'
-          - name: Router home-manager
+            runs-on: ubuntu-latest
+          # 树莓派是 aarch64，x86_64 runner 上构建的闭包在本地无法替换，
+          # 用免费的 arm64 runner 构建才能填上路由器需要的缓存。
+          - name: Router home-manager (aarch64)
             attr: 'homeConfigurations."curious@Router-RaspberryPi-4B-1".activationPackage'
+            runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -140,10 +149,17 @@ jobs:
             connect-timeout = 3
             extra-substituters = https://cache.nixos.org https://nix-community.cachix.org https://cache.numtide.com
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=
-      - name: Cache builds
-        uses: DeterminateSystems/flakehub-cache-action@v3.21.9
-      # 首次全量构建较慢（约 40-60 分钟，含 zen-browser/dae 等源码构建），
-      # FlakeHub Cache 会持久化闭包，后续运行会显著加快。
+      # 构建前先订阅自家缓存加速 CI 之间复用；
+      # 构建后通过 post-build hook 推送新产物，本地机器也能直接拉取。
+      # Cachix 侧记得在 Settings > Upstream caches 里把 nix-community 等公共缓存
+      # 配成上游，已存在的路径不会重复占用存储。
+      - name: Configure Cachix
+        uses: cachix/cachix-action@v17
+        with:
+          name: curious
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          # 排除源码包，减少存储消耗（公共缓存没有的独有闭包仍会推送）
+          pushFilter: "(-source$|nixpkgs\\.tar\\.gz$)"
       - name: Build
         # 单引号包裹以保留 attr 中 homeConfigurations."curious@host" 的引号
         run: nix build --no-link '.#${{ matrix.attr }}'
