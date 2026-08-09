@@ -11,8 +11,6 @@
         "https://nix-community.cachix.org"
         # 自己的 Cachix 缓存：CI 构建产物
         "https://curious.cachix.org"
-        # 鸭子
-        "https://yazi.cachix.org"
       ];
 
       trusted-public-keys = [
@@ -21,7 +19,6 @@
         "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
         # 自己的 Cachix 缓存
         "curious.cachix.org-1:5dkD/spZ5UAuL9K84Fy2xCdtfey1TAWj2RKUu2sjy3E="
-        "yazi.cachix.org-1:Dcdz63NZKfvUCbDGngQDAZq6kOroIrFoyO064uvLh8k="
       ];
     };
   };

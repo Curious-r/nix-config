@@ -6,7 +6,6 @@
   imports = [
     ../common/core
     ../common/optional/nix/substituters/mainland.nix
-    ../common/optional/nix/substituters/numtide.nix
     ../common/optional/disko/primary/efi-btrfs.nix
     ../common/optional/docker/basic.nix
     ../common/optional/docker/registry-mirrors/mainland.nix
