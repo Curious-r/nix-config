@@ -32,6 +32,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: gitleaks.toml
+          # fork PR 的 GITHUB_TOKEN 是只读的，不能写评论；
+          # push 事件没有 PR 上下文，也不开评论。
+          GITLEAKS_ENABLE_COMMENTS: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
 
   check:
     name: Flake check
@@ -65,9 +68,49 @@ jobs:
       - name: Check flake (aarch64-linux eval)
         run: nix flake check --no-build --system aarch64-linux
 
+  changes:
+    name: Detect relevant changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      build: ${{ steps.filter.outputs.build }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Filter changed paths
+        id: filter
+        uses: dorny/paths-filter@v4
+        with:
+          # push 到 main 时对比同分支上次推送的提交；
+          # pull_request 事件自动对比 base 分支（忽略此输入）。
+          base: ${{ github.ref }}
+          filters: |
+            build:
+              - 'flake.nix'
+              - 'flake.lock'
+              - 'modules/**'
+              - 'overlays/**'
+              - 'pkgs/**'
+              - 'nixos/**'
+              - 'home-manager/**'
+              - 'nix-on-droid/**'
+              - 'secrets/**'
+              - '.github/workflows/ci.yml'
+
   build:
     name: Build ${{ matrix.name }}
-    needs: check
+    needs:
+      - secrets
+      - check
+      - changes
+    # 只在实际涉及构建产物的变更上跑构建；
+    # workflow_dispatch 手动触发时无条件构建。
+    if: needs.changes.outputs.build == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 180
     permissions:
