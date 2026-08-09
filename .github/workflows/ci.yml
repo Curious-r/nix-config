@@ -50,8 +50,8 @@ jobs:
         with:
           extra-conf: |
             connect-timeout = 3
-            extra-substituters = https://cache.nixos.org https://nix-community.cachix.org https://cache.numtide.com
-            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=
+            extra-substituters = https://cache.nixos.org https://nix-community.cachix.org https://cache.numtide.com https://nix-on-droid.cachix.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g= nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=
       # 只拉不推：check 构建的都是 nixpkgs 已有路径，不需要占用自家缓存。
       - name: Configure Cachix
         uses: cachix/cachix-action@v17
@@ -124,8 +124,8 @@ jobs:
         with:
           extra-conf: |
             connect-timeout = 3
-            extra-substituters = https://cache.nixos.org https://nix-community.cachix.org https://cache.numtide.com
-            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=
+            extra-substituters = https://cache.nixos.org https://nix-community.cachix.org https://cache.numtide.com https://nix-on-droid.cachix.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g= nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=
       # 矩阵来自 flake 的 ci.jobs：机器清单与配置保持单一事实来源
       - name: Generate matrix
         id: gen
@@ -159,8 +159,8 @@ jobs:
         with:
           extra-conf: |
             connect-timeout = 3
-            extra-substituters = https://cache.nixos.org https://nix-community.cachix.org https://cache.numtide.com
-            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=
+            extra-substituters = https://cache.nixos.org https://nix-community.cachix.org https://cache.numtide.com https://nix-on-droid.cachix.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g= nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=
       # 构建前先订阅自家缓存加速 CI 之间复用；
       # 构建后通过 post-build hook 推送新产物，本地机器也能直接拉取。
       # Cachix 侧记得在 Settings > Upstream caches 里把 nix-community 等公共缓存
