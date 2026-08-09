@@ -24,7 +24,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Gitleaks
@@ -42,7 +42,7 @@ jobs:
       id-token: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -89,7 +89,7 @@ jobs:
             attr: 'homeConfigurations."curious@Router-RaspberryPi-4B-1".activationPackage'
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
