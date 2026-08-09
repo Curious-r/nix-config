@@ -54,7 +54,11 @@
     # TODO: Add any other flake you might need
 
     # Hardware collection
-    nixos-hardware.url = "github:NixOS/nixos-hardware/master";
+    nixos-hardware = {
+      url = "github:NixOS/nixos-hardware/master";
+      # 与系统共用同一份 nixpkgs，避免锁文件里残留过期的独立 tarball 节点
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
     # Vaultix, a secret manage scheme for NixOS
     vaultix.url = "github:Curious-r/vaultix/merged-wip";
