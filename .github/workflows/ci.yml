@@ -172,6 +172,15 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
           # 排除源码包，减少存储消耗（公共缓存没有的独有闭包仍会推送）
           pushFilter: "(-source$|nixpkgs\\.tar\\.gz$)"
+      # nix-on-droid 的 proot-static 是上游硬编码的 store path，
+      # Nix 实例化 derivation 时只认本地 store，先预取进来才能求值。
+      - name: Prefetch nix-on-droid bootstrap paths
+        if: matrix.prefetch != ''
+        run: |
+          for p in ${{ matrix.prefetch }}; do
+            nix copy --from https://nix-on-droid.cachix.org \
+              --option extra-trusted-public-keys 'nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=' "$p"
+          done
       - name: Build
         # 单引号包裹以保留 attr 中 homeConfigurations."curious@host" 的引号
         # nix-on-droid 求值依赖 builtins.currentSystem，需要 --impure

@@ -174,12 +174,15 @@
           ++ (builtins.attrNames self.nixOnDroidConfigurations)
         );
 
-        mkRow = target: machine: system: attr: {
+        mkRow = target: machine: system: attr: prefetchPaths: {
           name = "${target} ${machine} (${system})";
           target = target;
           machine = machine;
           system = system;
           attr = attr;
+          # nix-on-droid 硬编码的 bootstrap store path，构建前需先从
+          # nix-on-droid.cachix.org 预取进本地 store（Nix 实例化时不查 substituter）
+          prefetch = lib.concatStringsSep " " prefetchPaths;
           runsOn = runnerFor.${system} or (throw "ci.jobs: 没有为 ${system} 映射 GitHub runner（机器 ${machine}）");
           # nix-on-droid 求值依赖 builtins.currentSystem，需要 --impure
           impure = target == "nix-on-droid";
@@ -190,16 +193,21 @@
           (lib.optional (builtins.hasAttr machine self.nixosConfigurations) (
             mkRow "nixos" machine self.nixosConfigurations.${machine}.config.system.build.toplevel.system
               "nixosConfigurations.${machine}.config.system.build.toplevel"
+              [ ]
           ))
           ++ (lib.optional (builtins.hasAttr "curious@${machine}" self.homeConfigurations) (
             mkRow "home-manager" "curious@${machine}"
               self.homeConfigurations."curious@${machine}".activationPackage.system
               "homeConfigurations.\"curious@${machine}\".activationPackage"
+              [ ]
           ))
           ++ (lib.optional (builtins.hasAttr machine self.nixOnDroidConfigurations) (
-            mkRow "nix-on-droid" machine
-              self.nixOnDroidConfigurations.${machine}.config.build.activationPackage.system
+            let
+              droid = self.nixOnDroidConfigurations.${machine};
+            in
+            mkRow "nix-on-droid" machine droid.config.build.activationPackage.system
               "nixOnDroidConfigurations.${machine}.config.build.activationPackage"
+              [ droid.config.environment.files.prootStatic ]
           ));
 
         ciJobs = builtins.sort (a: b: a.name < b.name) (lib.concatLists (map mkRows machines));
