@@ -17,17 +17,15 @@
   # 有些模块如 niri 硬编码了 portal.Secret，我们在此覆盖它
   xdg.portal.config.niri."org.freedesktop.impl.portal.Secret" = lib.mkForce "oo7-portal";
   systemd.user.services.oo7-daemon.serviceConfig = {
-    # 上游包 pkgs.oo7-server 提供的 .service 文件中，ExecStart 指向的是
-    # Nix Store 里的原始路径（/nix/store/.../libexec/oo7-daemon），而不是
-    # Wrapper 路径（/run/wrappers/bin/oo7-daemon）
+    # nixpkgs 已把 unit 的 ExecStart 替换成 /run/wrappers/bin/oo7-daemon
+    # （wrapper 带 cap_ipc_lock=ep），但上游 unit 里有 NoNewPrivileges=true，
+    # exec 时 file capabilities 会被丢弃，wrapper 的提权实际不生效（Archwiki
+    # 的 setcap 方案同理无效），而用户级 systemd 服务也没有 AmbientCapabilities
+    # 可用。
     #
-    # 但 Systemd User Services（用户级服务）在启动进程时，无法继承赋予给可执行
-    # 文件的 Capabilities (提权能力)
-    #
-    # 导致无法使用使用 mlock 系统调用将这块内存锁在物理内存中，因此暂时允许该服务
-    # 锁定最多 8MB 的物理内存
-    #
-    # 预计也会在 #544377 中修复，虽然目前来看还没有实际改动，可能被上游阻塞
+    # 所以这里用 LimitMEMLOCK 提升 RLIMIT_MEMLOCK：无需 CAP_IPC_LOCK 也能调用
+    # mlock 把密钥材料锁在物理内存中。这是当前 unit 下的有效手段，不是临时补丁。
+    # （#544377 只涉及 pam 与显示管理器，与此无关。）
     LimitMEMLOCK = "8388608";
   };
 
