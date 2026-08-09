@@ -5,6 +5,15 @@
     oo7.enable = true;
   };
 
+  # oo7 启动时会用 mlockall 尝试锁住全部内存，失败只打一条 WARN 后继续运行
+  # （密钥材料可能被换出到磁盘）。实测（kernel 7.1.6 + systemd user manager）：
+  # 本内核的 mlock 只认初始用户命名空间里的 CAP_IPC_LOCK，RLIMIT_MEMLOCK 不再
+  # 对无特权进程生效；而 systemd 用户服务的沙箱选项（PrivateTmp/ProtectSystem/
+  # PrivateNetwork/PrivateDevices/...）都会通过私有 userns 实现，能力被关在子
+  # 命名空间里，无法满足该检查。因此上游 unit 自带沙箱时 mlock 必然失败，我们
+  # 保留上游原样并接受这条警告；覆盖 NoNewPrivileges/PrivateUsers 或加大
+  # LimitMEMLOCK 均无效。
+
   # 用于认证弹窗
   environment.systemPackages = [ pkgs.gcr ];
   services.dbus.packages = [ pkgs.gcr ];
@@ -16,18 +25,6 @@
 
   # 有些模块如 niri 硬编码了 portal.Secret，我们在此覆盖它
   xdg.portal.config.niri."org.freedesktop.impl.portal.Secret" = lib.mkForce "oo7-portal";
-  systemd.user.services.oo7-daemon.serviceConfig = {
-    # nixpkgs 已把 unit 的 ExecStart 替换成 /run/wrappers/bin/oo7-daemon
-    # （wrapper 带 cap_ipc_lock=ep），但上游 unit 里有 NoNewPrivileges=true，
-    # exec 时 file capabilities 会被丢弃，wrapper 的提权实际不生效（Archwiki
-    # 的 setcap 方案同理无效），而用户级 systemd 服务也没有 AmbientCapabilities
-    # 可用。
-    #
-    # 所以这里用 LimitMEMLOCK 提升 RLIMIT_MEMLOCK：无需 CAP_IPC_LOCK 也能调用
-    # mlock 把密钥材料锁在物理内存中。这是当前 unit 下的有效手段，不是临时补丁。
-    # （#544377 只涉及 pam 与显示管理器，与此无关。）
-    LimitMEMLOCK = "8388608";
-  };
 
   # NOTE:
   # 针对 u2f 登录时不能通过密码自动解锁钥匙环的情况，暂时使用 systemd-creds 来加密存储密码，这样在用户登录后密码自
