@@ -95,7 +95,10 @@
     };
 
     solaar = {
-      url = "https://flakehub.com/f/Svenum/Solaar-Flake/*.tar.gz"; # For latest stable version
+      # 用 GitHub 源而不是 flakehub tarball：Lix 锁定 tarball 时会追加 rev/revCount
+      # 查询参数，而 Determinate Nix 解析时不带参数，导致干净环境（CI）报
+      # "mismatch in field 'url'"
+      url = "github:Svenum/Solaar-Flake/0.1.8";
       #url = "https://flakehub.com/f/Svenum/Solaar-Flake/0.1.1.tar.gz"; # uncomment line for solaar version 1.1.13
       #url = "github:Svenum/Solaar-Flake/main"; # Uncomment line for latest unstable version
       inputs.nixpkgs.follows = "nixpkgs";
