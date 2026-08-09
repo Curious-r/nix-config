@@ -1,14 +1,13 @@
-# 🚀 Overlays
+# Overlays
 
-My set of overlays for packages to be applied on different set of configurations.
+Overlays applied to nixpkgs in this flake.
 
-### 🔨 Available Overlays
+## Available Overlays
 
-- `additions`: Brings custom packages from the `pkgs` directory into `pkgs`.
-- `modifications`: (Empty placeholder) For overriding existing packages.
-- `stable-packages`: Exposes a `stable` attribute in `pkgs` pointing to the stable nixpkgs input.
+- `additions`: Brings custom packages from the `pkgs` directory into `pkgs`
+- `modifications`: Placeholder for overriding existing packages
 
-### 🔨 Import the overlay on the config
+## Importing an Overlay
 
 ```nix
 { self, ... }:

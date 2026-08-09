@@ -1,47 +1,28 @@
-# 🚀 Custom Packages Packaged by Me
+# 📦 Custom Packages
 
-### A Collection of Custom-Packaged Tools
+`pkgs/` is a scaffold for packaging tools that are not in nixpkgs yet.
 
-These are the custom packages I've packaged for personal use:
+It is currently empty: `aerion` has been merged into nixpkgs upstream, and its packages are kept here as commented-out examples.
 
-- `aerion`: A custom tool/package.
-- `aerion-creds`: Credentials or configuration for Aerion.
-
-Most packages are compatible with all systems specified in `flake.nix`.
-
----
-
-### 🔨 Installing a Package
-
-To use the packages, add the flake as an input in your configuration:
+## Adding a Package
 
 ```nix
-inputs = {
-    curious-r.url = "github:Curious-r/nix-config";
-    curious-r.inputs.nixpkgs.follows = "nixpkgs";
-};
+# pkgs/default.nix
+pkgs:
+{
+  my-tool = pkgs.callPackage ./my-tool { };
+}
 ```
 
-Once added, install the package using:
+## Using Packages from This Flake
 
 ```nix
-inputs.curious-r.packages.<package-name>
+inputs.curious-r.packages.${pkgs.system}.my-tool
 ```
 
----
-
-### ⚡ Quick Run
-
-You can quickly run the package without installing it using:
+Or directly:
 
 ```bash
-nix run "github:Curious-r/nix-config#<pkgname>"
+nix run "github:Curious-r/nix-config#my-tool"
+nix shell "github:Curious-r/nix-config#my-tool"
 ```
-
-Or bring the package into a shell environment with:
-
-```bash
-nix shell "github:Curious-r/nix-config#<pkgname>"
-```
-
----

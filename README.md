@@ -3,30 +3,34 @@
 
 # ❄️ Curious's Nix Config
 
-My personal NixOS and Home Manager configurations, managed with Flakes.
+Personal NixOS, Home Manager and nix-on-droid configurations, managed with Flakes.
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - [Lix](https://git.lix.systems/lix-project/lix) - A delicious Nix fork
-- [flake-parts](https://github.com/hercules-ci/flake-parts) - Simplify flake setup
+- [flake-parts](https://github.com/hercules-ci/flake-parts) - Flake module system
 - [vaultix](https://github.com/milieuim/vaultix) - Secret management
 - [preservation](https://github.com/nix-community/preservation) - Opt-in state preservation
 - [disko](https://github.com/nix-community/disko) - Declarative disk partitioning
+- [lanzaboote](https://github.com/nix-community/lanzaboote) - Secure boot
 - [treefmt-nix](https://github.com/numtide/treefmt-nix) - All-in-one formatter
 - [devenv](https://github.com/cachix/devenv) - Developer environments
+- [Cachix](https://www.cachix.org) - Binary cache for CI and local machines
 - [RS-Key](https://github.com/TheMaxMur/RS-Key) - Security key. FIDO/OpenPGP firmware for RP2350
 
-## 🏗️ Project Structure
+## Project Structure
 
 - `nixos/`: NixOS system configurations
 - `home-manager/`: Standalone Home Manager configurations
-- `nix-on-droid/`: Nix-on-Droid configurations for Android
-- `modules/`: Reusable Nix modules (NixOS, Home Manager, Flake Parts)
-- `pkgs/`: Custom packages
+- `nix-on-droid/`: nix-on-droid configurations for Android
+- `modules/`: Reusable Nix modules (NixOS, Home Manager, flake-parts)
+- `pkgs/`: Custom packages (currently an empty scaffold)
 - `overlays/`: Nixpkgs overlays
-- `secrets/`: Encrypted secrets (managed by vaultix)
+- `secrets/`: Encrypted secrets, managed by vaultix
 
-## 🖥️ Hosts
+## Hosts
+
+Hostnames follow `<category>-<brand>-<model>[-<suffix>]`. The last segment only appears when there are multiple machines of the same model.
 
 ### NixOS
 
@@ -34,18 +38,20 @@ My personal NixOS and Home Manager configurations, managed with Flakes.
 - `Server-IdeaPad-G480`: Home server
 - `Router-RaspberryPi-4B-1`: Raspberry Pi 4B router
 
-### Nix-on-Droid
+### nix-on-droid
 
 - `Phone-Redmi-K50Pro`: Personal phone
 - `Pad-Vivo-3Pro`: Tablet
 
-## 🤖 CI/CD
+## CI/CD
 
-GitHub Actions 覆盖了 PR 和 main 的自动检查：
+The build matrix is generated from the `ci.jobs` flake output. Its machine list comes directly from `nixosConfigurations`, `homeConfigurations` and `nixOnDroidConfigurations`, so adding a machine requires no CI changes.
 
-- `CI`:gitleaks 密钥扫描、flake.lock 健康检查、actionlint、`nix flake check`(含 aarch64-linux 求值)、x86_64 主机的 NixOS toplevel 与 home-manager 构建
-- `Update flake.lock`:每周自动提交 flake.lock 更新 PR
-- Dependabot:每周批量更新 GitHub Actions 版本
+- `CI`: gitleaks secret scan, flake.lock health check, actionlint, `nix flake check` (including aarch64-linux evaluation)
+- Build: covers every NixOS toplevel, Home Manager activation and nix-on-droid activation; runs only when a commit touches build-related paths (`workflow_dispatch` forces a full run); aarch64 machines build on arm64 runners
+- Build outputs are pushed to `curious.cachix.org`, so local `nixos-rebuild` / `home-manager switch` / `nix-on-droid` runs pull them directly
+- `Update flake.lock`: weekly flake.lock update PR
+- Dependabot: weekly updates for GitHub Actions
 
 ---
 
