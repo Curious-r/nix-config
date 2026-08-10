@@ -1,6 +1,6 @@
 { inputs, ... }:
 let
-  # 维持传统 flake 中函数调用的惯用形式
+  # 维持传统 flake 中函数调用的惯用形式。
   inherit (inputs) nix-on-droid;
   inherit (inputs) nixpkgs;
 in
@@ -14,7 +14,7 @@ in
         inherit inputs;
       };
       # 必须显式指定 system：nixpkgs 顶层不认 stdenv.hostPlatform 参数，
-      # 在 x86_64 机器上求值会静默退化成 x86_64，产物无法在手机上使用
+      # 在 x86_64 机器上求值会静默退化成 x86_64，产物无法在手机上使用。
       pkgs = import nixpkgs { system = "aarch64-linux"; };
       modules = [ ./Phone-Redmi-K50Pro ];
     };

@@ -19,11 +19,11 @@
           partitions = {
             ESP = {
               type = "EF00";
-              # 前面不留个1M的空白空间的话，好像nixos-anywhere部署的时候没法正确写入EFI分区
+              # 前面不留个 1M 的空白空间的话，好像 nixos-anywhere 部署的时候没法正确写入 EFI 分区。
               start = "1M";
               end = "1024M";
               priority = 1;
-              # 格式化成FAT32格式
+              # 格式化成 FAT32 格式。
               content = {
                 type = "filesystem";
                 format = "vfat";

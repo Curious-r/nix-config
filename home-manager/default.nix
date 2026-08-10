@@ -5,7 +5,7 @@
   ...
 }:
 let
-  # 维持传统 flake 中函数调用的惯用形式
+  # 维持传统 flake 中函数调用的惯用形式。
   inherit (inputs) home-manager;
 
   # 按主机生成 home-manager 配置：pkgs 取自 flake-parts 对应 system 的 perSystem 配置，

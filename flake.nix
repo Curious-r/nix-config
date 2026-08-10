@@ -26,8 +26,8 @@
     ];
   };
 
-  # 这是 flake.nix 的标准格式，inputs 是 flake 的依赖，outputs 是 flake 的输出
-  # inputs 中的每一项依赖都会在被拉取、构建后，作为参数传递给 outputs 函数
+  # 这是 flake.nix 的标准格式，inputs 是 flake 的依赖，outputs 是 flake 的输出。
+  # inputs 中的每一项依赖都会在被拉取、构建后，作为参数传递给 outputs 函数。
   inputs = {
     # Nixpkgs
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
@@ -43,9 +43,9 @@
     # Home manager
     home-manager = {
       url = "github:nix-community/home-manager";
-      # `follows` 是 inputs 中的继承语法
+      # `follows` 是 inputs 中的继承语法。
       # 这里使 home-manager 的 `inputs.nixpkgs` 与当前 flake 的
-      # `inputs.nixpkgs` 保持一致，避免依赖的 nixpkgs 版本不一致导致问题
+      # `inputs.nixpkgs` 保持一致，避免依赖的 nixpkgs 版本不一致导致问题。
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -60,14 +60,14 @@
     # Hardware collection
     nixos-hardware = {
       url = "github:NixOS/nixos-hardware/master";
-      # 与系统共用同一份 nixpkgs，避免锁文件里残留过期的独立 tarball 节点
+      # 与系统共用同一份 nixpkgs，避免锁文件里残留过期的独立 tarball 节点。
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
     # Vaultix, a secret manage scheme for NixOS
     vaultix = {
       url = "github:Curious-r/vaultix/merged-wip";
-      # 与系统共用同一份 nixpkgs，消除独立的 nixpkgs_2 节点
+      # 与系统共用同一份 nixpkgs，消除独立的 nixpkgs_2 节点。
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -78,7 +78,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # 使 NixOS 不保留预期之外的副作用
+    # 使 NixOS 不保留预期之外的副作用。
     preservation.url = "github:nix-community/preservation";
 
     # Disko
@@ -96,7 +96,7 @@
     # 一些项目官方仓库提供了自建的二进制缓存，这种情况下，为了充分利用缓存，
     # 引入时不应该令它的 inputs.nixpkgs 跟随我们的版本，这会导致
     # 产物与二进制缓存 hash 不一致，从而引起大量编译。
-    # 典型的如 Helix 编辑器
+    # 典型的如 Helix 编辑器。
     # helix.url = "github:helix-editor/helix/25.01.1";
 
     zen-browser = {
@@ -122,8 +122,8 @@
     };
   };
 
-  # outputs 即 flake 的所有输出，其中的 nixosConfigurations 即 NixOS 系统配置
-  # flake 有很多用途，也可以有很多不同的 outputs，nixosConfigurations 只是其中一种
+  # outputs 即 flake 的所有输出，其中的 nixosConfigurations 即 NixOS 系统配置。
+  # flake 有很多用途，也可以有很多不同的 outputs，nixosConfigurations 只是其中一种。
   #
   # outputs 是一个函数，在 flake 评估时被隐式调用，inputs 将作为参数被传入，那么我们可以使用解构的方式
   # 声明参数集，即显式声明一些属性，这些属性会继承 inputs 中同名的属性，这使得 outputs 函数体中可以直接
@@ -156,7 +156,7 @@
           aarch64-linux = "ubuntu-24.04-arm";
         };
 
-        # homeConfigurations 的键形如 "curious@Host"，取出主机名部分
+        # homeConfigurations 的键形如 "curious@Host"，取出主机名部分。
         hmHost =
           key:
           let
@@ -167,7 +167,7 @@
           else
             builtins.elemAt parts 1;
 
-        # 机器清单直接来自各配置输出，加机器时 CI 自动覆盖
+        # 机器清单直接来自各配置输出，加机器时 CI 自动覆盖。
         machines = lib.unique (
           (builtins.attrNames self.nixosConfigurations)
           ++ (map hmHost (builtins.attrNames self.homeConfigurations))
@@ -181,10 +181,10 @@
           system = system;
           attr = attr;
           # nix-on-droid 硬编码的 bootstrap store path，构建前需先从
-          # nix-on-droid.cachix.org 预取进本地 store（Nix 实例化时不查 substituter）
+          # nix-on-droid.cachix.org 预取进本地 store（Nix 实例化时不查 substituter）。
           prefetch = lib.concatStringsSep " " prefetchPaths;
           runsOn = runnerFor.${system} or (throw "ci.jobs: 没有为 ${system} 映射 GitHub runner（机器 ${machine}）");
-          # nix-on-droid 求值依赖 builtins.currentSystem，需要 --impure
+          # nix-on-droid 求值依赖 builtins.currentSystem，需要 --impure。
           impure = target == "nix-on-droid";
         };
 
@@ -250,7 +250,7 @@
           };
 
         flake = {
-          # CI 构建矩阵：由各配置输出自动推导，避免手写清单漂移
+          # CI 构建矩阵：由各配置输出自动推导，避免手写清单漂移。
           ci = {
             jobs = ciJobs;
           };

@@ -36,7 +36,7 @@
     ./networking.nix
     ./nix-ld.nix
 
-    # 仅作样例，暂时不启用
+    # 仅作样例，暂时不启用。
     # ./ollama.nix
 
     # hardware config

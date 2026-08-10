@@ -20,7 +20,7 @@ let
     }
   ];
 
-  # 获取首个启用的 compositor（无启用时返回 {name="none"}）
+  # 获取首个启用的 compositor（无启用时返回 {name="none"}）。
   enabledCompositor = lib.findFirst (opt: opt.condition) { name = "none"; } compositorOptions;
   cpt = enabledCompositor.name;
 

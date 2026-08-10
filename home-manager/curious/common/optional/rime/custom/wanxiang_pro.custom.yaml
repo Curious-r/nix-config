@@ -2,67 +2,67 @@ patch:
   # 开关
   # reset: 默认状态。注释掉后，切换窗口时不会重置到默认状态。
   # states: 方案选单显示的名称。可以注释掉，仍可以通过快捷键切换。
-  # abbrev: 默认的缩写取 states 的第一个字符，abbrev 可自定义一个字符
+  # abbrev: 默认的缩写取 states 的第一个字符，abbrev 可自定义一个字符。
   switches:
     - name: ascii_mode # 中英输入状态
       states: [中文, 英文]
       reset: 1
-    - name: ascii_punct # 中英标点，可以在中文输入状态输入英文符号
+    - name: ascii_punct # 中英标点，可以在中文输入状态输入英文符号。
       states: [中标, 英标]
-    - name: full_shape #全角、半角字符输出
+    - name: full_shape # 全角、半角字符输出。
       states: [半角, 全角]
-    - name: emoji #候选出现emoji滤镜，会显示在相应的候选后面，万象侧重于tips提示，避免候选被占用，因此默认为reset: 0，归属opencc emoji滤镜
+    - name: emoji # 候选出现 emoji 滤镜，会显示在相应的候选后面，万象侧重于 tips 提示，避免候选被占用，因此默认为 reset: 0，归属 opencc emoji 滤镜。
       states: [表情关, 表情开]
-    - name: chinese_english #候选进入翻译模式滤镜，会显示在相应的候选后面，万象侧重于tips提示，避免候选被占用，归属opencc 翻译滤镜
+    - name: chinese_english # 候选进入翻译模式滤镜，会显示在相应的候选后面，万象侧重于 tips 提示，避免候选被占用，归属 opencc 翻译滤镜。
       states: [翻译关, 翻译开]
-    - options: [raw_input, tone_display, full_pinyin] #开启后在输入编码的位置实时转换为带声调全拼或者不带声调全拼，不开启则采用系统配置原始编码，影响的是preedit_format,归属：super_preedit.lua
+    - options: [raw_input, tone_display, full_pinyin] # 开启后在输入编码的位置实时转换为带声调全拼或者不带声调全拼，不开启则采用系统配置原始编码，影响的是 preedit_format，归属：super_preedit.lua。
       states: [原编码, 有声调, 无声调]
-    #    reset: 2     #对于开关组从0开始数，第几个就reset几可设为默认
-    - options: [s2s, s2t, s2hk, s2tw] # 简繁转换开关组，可以在一个空选项和多个实际“- simplifier@s2hk”引入的项目之前切换，这是一个开关组，你可以将其中任意一个s2s等设置为toggle快捷键，多次按下将轮询
+    #    reset: 2     # 对于开关组从 0 开始数，第几个就 reset 几可设为默认。
+    - options: [s2s, s2t, s2hk, s2tw] # 简繁转换开关组，可以在一个空选项和多个实际“- simplifier@s2hk”引入的项目之前切换，这是一个开关组，你可以将其中任意一个 s2s 等设置为 toggle 快捷键，多次按下将轮询。
       states: [简体, 通繁, 港繁, 臺繁]
-    - name: tone_hint #开启后在候选的注释里面实时显示全拼声调，不开启则采用系统配置，影响的是comment_format，归属：super_comment.lua
+    - name: tone_hint # 开启后在候选的注释里面实时显示全拼声调，不开启则采用系统配置，影响的是 comment_format，归属：super_comment.lua。
       states: [读音关, 读音开]
-    - name: super_tips #开启后在输入编码后面的提示区显示实时的提示数据，受tips数据库影响，表情、翻译、车牌、符号等对应关系数据，并可实现句号上屏，不开启则默认，影响的是segment.prompt参数，归属：super_tips.lua
+    - name: super_tips # 开启后在输入编码后面的提示区显示实时的提示数据，受 tips 数据库影响，表情、翻译、车牌、符号等对应关系数据，并可实现句号上屏，不开启则默认，影响的是 segment.prompt 参数，归属：super_tips.lua。
       states: [提示关, 提示开]
       reset: 1
-    - name: corrector #一个基于数据库策略的编码纠错工具,优势是跨词汇直接修正编码,与转写方式形成互补，归属：typo_corrector.lua
+    - name: corrector # 一个基于数据库策略的编码纠错工具，优势是跨词汇直接修正编码，与转写方式形成互补，归属：typo_corrector.lua。
       reset: 1
       states: [纠错关, 纠错开]
-    - name: search_single_char #多体现在编码重合但候选有单字或者多字的情况辅码查词时是否单字优先，全拼常见，类似于特定编码情况下、反查状态下的调序能力。归属：search.lua
+    - name: search_single_char # 多体现在编码重合但候选有单字或者多字的情况辅码查词时是否单字优先，全拼常见，类似于特定编码情况下、反查状态下的调序能力。归属：search.lua。
       states: [正常, 单字]
   speller/algebra:
     __patch:
-      #- 模糊音                                  # 这里启用后，本文件末尾可配置具体条目
-      - wanxiang_pro.schema:/小鹤双拼 # 可选输入方案名称：自然码, 自然龙, 小鹤双拼, 搜狗双拼, 微软双拼, 智能ABC, 紫光双拼, 国标双拼
-      #- wanxiang_pro.schema:/fuzhu_moqi        # release下载的不需要这个，直接下载仓库才需要(用来选七种辅助码)，用来定义不同的辅助码，有需求打开pro主方案自己看吧
-      - wanxiang_pro.schema:/直接辅助 #辅助码升级为：直接辅助和间接辅助两种类型，都是句中任意，不同点在于直接辅助是nire=你  而间接则需要/引导  ni/re=你 ，在这个基础上直接辅助支持拼音后任意位置数字声调参与，间接辅助声调在/引导前参与
+      #- 模糊音                                  # 这里启用后，本文件末尾可配置具体条目。
+      - wanxiang_pro.schema:/小鹤双拼 # 可选输入方案名称：自然码、自然龙、小鹤双拼、搜狗双拼、微软双拼、智能ABC、紫光双拼、国标双拼。
+      #- wanxiang_pro.schema:/fuzhu_moqi        # release 下载的不需要这个，直接下载仓库才需要（用来选七种辅助码），用来定义不同的辅助码，有需求打开 pro 主方案自己看吧。
+      - wanxiang_pro.schema:/直接辅助 # 辅助码升级为：直接辅助和间接辅助两种类型，都是句中任意，不同点在于直接辅助是 nire=你，而间接则需要 /引导  ni/re=你。在这个基础上，直接辅助支持拼音后任意位置数字声调参与，间接辅助声调在 /引导 前参与。
   ##########################以上格式受指令初始化控制，最好保持格式不变，如果发生变更请不要使用指令修改相关数据#####################################
-  #通过下面的设置可以让你自己的文件引入而与仓库custom_phrase.txt不同，防止更新时被仓库文件覆盖
-  #custom_phrase/user_dict: custom_phrasexx    # 这里改成什么就需要手动创建同名的 custom_phrasexx.txt 文件在用户目录，这个文件主要用于置顶，编码为自定义编码的词汇
+  # 通过下面的设置可以让你自己的文件引入而与仓库 custom_phrase.txt 不同，防止更新时被仓库文件覆盖。
+  #custom_phrase/user_dict: custom_phrasexx    # 这里改成什么就需要手动创建同名的 custom_phrasexx.txt 文件在用户目录，这个文件主要用于置顶，编码为自定义编码的词汇。
   #translator/packs/+:
-  #- userxx                                  #导入根目录下名称为userxx.dict.yaml的自定义固定词典，编码要与固定词库一致，编码权重都不要少，形如姓名、专有名词公司名称等等
-  #下面是候选数量，未来7890分别代表1234声，请候选长度不要大于6避免冲突
+  #- userxx                                  # 导入根目录下名称为 userxx.dict.yaml 的自定义固定词典，编码要与固定词库一致，编码权重都不要少，形如姓名、专有名词公司名称等等。
+  # 下面是候选数量，未来 7890 分别代表 1234 声，请候选长度不要大于 6 避免冲突。
   menu/page_size: 6
-  #生日信息：/sr或者osr，在这里定义全局替换构建你的生日查询数据库
-  birthday_reminder: #日期格式：必须是4位数字，格式为MMDD（月份和日期），例如：1月27日 → 0127 ，#备注格式：在日期后添加逗号，然后添加任意文本作为备注，例如："0501,我的好朋友"，也可以无备注
-    solar_birthdays: # 公历生日, 姓名: "日期,备注" or 姓名: "日期"
+  # 生日信息：/sr 或者 osr，在这里定义全局替换构建你的生日查询数据库。
+  birthday_reminder: # 日期格式：必须是 4 位数字，格式为 MMDD（月份和日期），例如：1 月 27 日 → 0127。# 备注格式：在日期后添加逗号，然后添加任意文本作为备注，例如："0501,我的好朋友"，也可以无备注。
+    solar_birthdays: # 公历生日，姓名："日期,备注" 或 姓名："日期"。
       小明: "0501,准备礼物"
       大明: "0405"
-    lunar_birthdays: # 农历生日, 姓名: "日期,备注" or 姓名: "日期"
+    lunar_birthdays: # 农历生日，姓名："日期,备注" 或 姓名："日期"。
       小明: "0114"
       小红: "0815,农历中秋"
-  #下面用来改变你的windows小狼毫右下角软件图标
+  # 下面用来改变你的 windows 小狼毫右下角软件图标。
   #schema/+:
   #  icon: "icons/zhong.ico"
   #  ascii_icon: "icons/ying.ico"
-  #下面这个可以改变tips上屏的按键
-  key_binder/tips_key: "period" #修改时候去default找，默认是句号
-  key_binder/sequence: # Lua 配置：手动排序的快捷键 super_sequence.lua，不要用方向键，各种冲突，一定要避免冲突
+  # 下面这个可以改变 tips 上屏的按键。
+  key_binder/tips_key: "period" # 修改时候去 default 找，默认是句号。
+  key_binder/sequence: # Lua 配置：手动排序的快捷键 super_sequence.lua，不要用方向键，各种冲突，一定要避免冲突。
     up: "Control+j" # 上移
     down: "Control+k" # 下移
     reset: "Control+l" # 重置
     pin: "Control+p" # 置顶
-  #下面这个是修改快符的映射，按自己需求来
+  # 下面这个是修改快符的映射，按自己需求来。
   quick_symbol_text:
     q: "‰"
     w: "？"
@@ -100,19 +100,19 @@ patch:
     "8": "⑧"
     "9": "⑨"
     "0": "⓪"
-  #下面这两个是快符的引导符号，前者用来引导符号、双击重复上屏符号，后者双击重复上屏汉字
+  # 下面这两个是快符的引导符号，前者用来引导符号、双击重复上屏符号，后者双击重复上屏汉字。
   recognizer/patterns/quick_symbol: "^;.*$"
-  #下面这个用来设置开启调频的时候哪些内容不调频
+  # 下面这个用来设置开启调频的时候哪些内容不调频。
   translator/disable_user_dict_for_patterns: "^[a-z]{1,6}"
-#下面的数据有需要的可以patch引用
-#特殊优化：部分音节字极少，几乎不参与构词，则提升对应四码字的优先级，仅对小鹤双拼有效，其他双拼方案需作对应修改）
+# 下面的数据有需要的可以 patch 引用。
+# 特殊优化：部分音节字极少，几乎不参与构词，则提升对应四码字的优先级，仅对小鹤双拼有效，其他双拼方案需作对应修改。
 小鹤双拼提权:
   __append:
     - derive/^(.*?)(\d?);(bl|dx|df|eg|fn|kw|ny|tw|vw|yd|rx|fs|ix)$/$1$3/
     - derive/^(.*?)(\d?);.*?,(bl|dx|df|eg|fn|kw|ny|tw|vw|yd|rx|fs|ix)$/$1$3/
     - derive/^(.*?)(\d?);.*?,.*?,(bl|dx|df|eg|fn|kw|ny|tw|vw|yd|rx|fs|ix)$/$1$3/
     - derive/^(.*?)(\d?);.*?,.*?,.*?,(bl|dx|df|eg|fn|kw|ny|tw|vw|yd|rx|fs|ix)$/$1$3/
-#特殊优化：部分音节字极少，几乎不参与构词，则提升对应四码字的优先级，仅对自然码有效，其他双拼方案需作对应修改）
+# 特殊优化：部分音节字极少，几乎不参与构词，则提升对应四码字的优先级，仅对自然码有效，其他双拼方案需作对应修改。
 自然码提权:
   __append:
     - derive/^(.*?)(\d?);(bd|dw|df|dw|yl|rw|fs|iw)$/$1$3/

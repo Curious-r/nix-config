@@ -1,12 +1,12 @@
 { ... }:
 {
-  #  部署 Git 全局配置
+  # 部署 Git 全局配置。
   vaultix.templates."git-config" = {
     name = ".gitconfig";
     path = "/home/curious/.config/git/config";
     owner = "curious";
     group = "users";
-    mode = "0644"; # Git 配置文件给 644 即可
+    mode = "0644"; # Git 配置文件给 644 即可。
 
     content = ''
       [user]

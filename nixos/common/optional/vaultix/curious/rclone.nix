@@ -3,7 +3,7 @@
 {
   vaultix = {
     secrets = {
-      # 这里的 ID 是 "rclone-user"
+      # 这里的 ID 是 "rclone-user"。
       "rclone-user" = {
         file = ../../../../../secrets/nixos/common/optional/curious/rclone-user.age;
       };
@@ -18,9 +18,9 @@
         path = "/home/curious/.config/rclone/rclone.conf";
         owner = "curious";
         group = "users";
-        mode = "0600"; # 包含密码的文件，严格建议 600
+        mode = "0600"; # 包含密码的文件，严格建议 600。
 
-        # 比较简短，直接在 Nix 里维护配置结构
+        # 比较简短，直接在 Nix 里维护配置结构。
         content = ''
           [curious-drive]
           type = webdav
@@ -30,7 +30,7 @@
           pass = ${config.vaultix.placeholder.rclone-pass}
         '';
 
-        trim = true; # 确保注入密码时不会带上多余的换行符
+        trim = true; # 确保注入密码时不会带上多余的换行符。
       };
     };
   };

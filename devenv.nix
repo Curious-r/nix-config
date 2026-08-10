@@ -56,14 +56,14 @@
   git-hooks.hooks = {
     # 校验 GitHub Actions workflow 语法
     actionlint.enable = true;
-    # 与 flake 里 treefmt 使用的 formatter 保持一致
+    # 与 flake 里 treefmt 使用的 formatter 保持一致。
     nixfmt.enable = true;
     prettier.enable = true;
     prettier.excludes = [
       ".*\\.age$"
       "^secrets/cache/.*"
     ];
-    # 提交前扫描暂存内容里的密钥（gitleaks 未内置，自定义 hook）
+    # 提交前扫描暂存内容里的密钥（gitleaks 未内置，自定义 hook）。
     gitleaks = {
       enable = true;
       name = "gitleaks";

@@ -5,7 +5,7 @@
     settings = {
 
       substituters = [
-        # 默认缓存源，Home Manager 似乎需要显式配置这个
+        # 默认缓存源，Home Manager 似乎需要显式配置这个。
         "https://cache.nixos.org"
         # nix community's cache server
         "https://nix-community.cachix.org"

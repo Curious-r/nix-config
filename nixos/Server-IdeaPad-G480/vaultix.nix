@@ -22,20 +22,20 @@
           "81c4b7f7e0549f1514e9cae97cf40cf133920418d3dc71bedbf60ec9bd6148cb" = {
             order = 1;
             content = ''
-              # 常用开发资源走主力代理
+              # 常用开发资源走主力代理。
               domain(geosite:github) -> proxy
 
-              # AI 工具强制走美国节点
+              # AI 工具强制走美国节点。
               domain(geosite:openai, geosite:anthropic) -> us_group
 
-              # 台区专属流媒体
+              # 台区专属流媒体。
               domain(geosite:bahamut) -> tw_group
 
               # 可以在这里随时添加更多规则，无需重新加密文件！
             '';
           };
         };
-        # 自动清理未匹配的占位符（防止意外残留导致 dae 报错）
+        # 自动清理未匹配的占位符（防止意外残留导致 dae 报错）。
         cleanPlaceholder = true;
       };
       "ddns-go.yaml" = {

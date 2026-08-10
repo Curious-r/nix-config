@@ -109,7 +109,7 @@ jobs:
   matrix:
     name: Generate build matrix
     needs: changes
-    # 与 build 同样的门控：不涉及构建的改动不用生成矩阵
+    # 与 build 同样的门控：不涉及构建的改动不用生成矩阵。
     if: needs.changes.outputs.build == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -129,7 +129,7 @@ jobs:
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g= nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
           enable_kvm: true
-      # 矩阵来自 flake 的 ci.jobs：机器清单与配置保持单一事实来源
+      # 矩阵来自 flake 的 ci.jobs：机器清单与配置保持单一事实来源。
       - name: Generate matrix
         id: gen
         run: |
@@ -175,7 +175,7 @@ jobs:
         with:
           name: curious
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-          # 排除源码包，减少存储消耗（公共缓存没有的独有闭包仍会推送）
+          # 排除源码包，减少存储消耗（公共缓存没有的独有闭包仍会推送）。
           pushFilter: "(-source$|nixpkgs\\.tar\\.gz$)"
       # nix-on-droid 的 proot-static 是上游硬编码的 store path，
       # Nix 实例化 derivation 时只认本地 store，先预取进来才能求值。
@@ -187,8 +187,8 @@ jobs:
               --option extra-trusted-public-keys 'nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=' "$p"
           done
       - name: Build
-        # 单引号包裹以保留 attr 中 homeConfigurations."curious@host" 的引号
-        # nix-on-droid 求值依赖 builtins.currentSystem，需要 --impure
+        # 单引号包裹以保留 attr 中 homeConfigurations."curious@host" 的引号。
+        # nix-on-droid 求值依赖 builtins.currentSystem，需要 --impure。
         run: nix build --no-link ${{ matrix.impure && '--impure' || '' }} '.#${{ matrix.attr }}'
 
   result:
