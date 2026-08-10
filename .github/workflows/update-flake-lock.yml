@@ -18,11 +18,20 @@ jobs:
     name: Update Nix flake inputs
     runs-on: ubuntu-latest
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.BOT_APP_CLIENT_ID }}
+          private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          # 用 PAT 推送分支并创建 PR，使 bot 打开的 PR 能自动触发 CI。
-          token: ${{ secrets.GH_TOKEN_FOR_PR }}
+          # 用 GitHub App token 推送分支并创建 PR，使 bot 打开的 PR 能自动触发 CI。
+          token: ${{ steps.app-token.outputs.token }}
       - name: Install Nix
         uses: cachix/install-nix-action@v31
         with:
@@ -35,11 +44,11 @@ jobs:
       - name: Update flake inputs
         uses: mic92/update-flake-inputs@v1
         with:
-          github-token: ${{ secrets.GH_TOKEN_FOR_PR }}
+          github-token: ${{ steps.app-token.outputs.token }}
           pr-labels: dependencies,automated
           commit-message: "chore(deps): update flake input {{input}}{{in}}\n\n{{updateMessage}}"
           # 仓库尚未开启 Allow auto-merge；Mic92 在开启失败时会尝试直接 merge，
           # 所以先保持关闭。开启后把这里改成 'true'。
           auto-merge: "false"
           auto-merge-method: SQUASH
-          # 通过 PAT 创建 PR，使 bot 打开的 PR 能自动触发 CI。
+          # 通过 GitHub App token 创建 PR，使 bot 打开的 PR 能自动触发 CI。
