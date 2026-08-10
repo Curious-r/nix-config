@@ -60,8 +60,8 @@
     nixfmt.enable = true;
     prettier.enable = true;
     prettier.excludes = [
-      "*.age"
-      "secrets/cache/*"
+      ".*\\.age$"
+      "^secrets/cache/.*"
     ];
     # 提交前扫描暂存内容里的密钥（gitleaks 未内置，自定义 hook）
     gitleaks = {
