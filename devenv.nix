@@ -13,7 +13,7 @@
   # 订阅自己的 Cachix 缓存：CI 构建产物
   cachix.pull = [ "curious" ];
 
-  # From Secret Spec
+  # From SecretSpec.
   env.NIX_CONFIG = config.secretspec.secrets.NIX_CONFIG or "";
 
   # https://devenv.sh/packages/
@@ -72,7 +72,7 @@
     };
   };
 
-  # See full reference at https://devenv.sh/reference/options/
+  # See the full reference at https://devenv.sh/reference/options/.
   languages = {
     nix = {
       enable = true;

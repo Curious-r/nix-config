@@ -18,7 +18,7 @@ let
     runtimeInputs = [ pkgs.yq-go ];
     text =
       utils.genJqSecretsReplacementSnippet cfg.settings "/run/ddns-go/new"
-      # Merge existing config with new settings, overriding existing values with new ones
+      # Merge existing config with new settings, overriding existing values with new ones.
       + lib.optionalString cfg.mutableConfig ''
         if [ -f /etc/ddns-go/config.yaml ]; then
 
@@ -170,7 +170,7 @@ in
           "AF_INET6"
           "AF_NETLINK"
         ];
-        # Must disable PrivateUsers when binding to privileged ports (<1024)
+        # Must disable PrivateUsers when binding to privileged ports (<1024).
         PrivateUsers = !bindPrivileged;
         AmbientCapabilities = lib.optional bindPrivileged "CAP_NET_BIND_SERVICE";
         CapabilityBoundingSet = lib.optional bindPrivileged "CAP_NET_BIND_SERVICE";

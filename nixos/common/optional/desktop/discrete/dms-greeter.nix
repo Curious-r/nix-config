@@ -54,7 +54,7 @@ let
     '';
     sway = ''
       # Sway greeter configuration
-      # The exec command to launch the greeter is automatically appended by dms-greeter
+      # The exec command to launch the greeter is automatically appended by dms-greeter.
     '';
   };
 

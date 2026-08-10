@@ -9,6 +9,6 @@
     ./tools.nix # basic tools
   ];
 
-  # Backup etc files instead of failing to activate generation if a file already exists in /etc
+  # Back up /etc files instead of failing to activate a generation if a file already exists in /etc.
   environment.etcBackupExtension = ".bak";
 }

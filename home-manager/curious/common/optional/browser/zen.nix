@@ -14,16 +14,16 @@ let
   };
 
   prefs = {
-    # Check these out at about:config
+    # Check these out at about:config.
     "extensions.autoDisableScopes" = 0;
     "extensions.pocket.enabled" = false;
     # ...
   };
 
   extensions = [
-    # To add additional extensions, find it on addons.mozilla.org, find
-    # the short ID in the url (like https://addons.mozilla.org/en-US/firefox/addon/!SHORT_ID!/)
-    # Then go to https://addons.mozilla.org/api/v5/addons/addon/!SHORT_ID!/ to get the guid
+    # To add additional extensions, find them on addons.mozilla.org, find
+    # the short ID in the URL (like https://addons.mozilla.org/en-US/firefox/addon/!SHORT_ID!/),
+    # then go to https://addons.mozilla.org/api/v5/addons/addon/!SHORT_ID!/ to get the GUID.
     (extension "violentmonkey" "{aecec67f-0d10-4fa7-b7c7-609a2db280cf}")
     (extension "immersive-translate" "{5efceaa7-f3a2-4e59-a54b-85319448e305}")
     # ...

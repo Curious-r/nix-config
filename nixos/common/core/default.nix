@@ -25,7 +25,7 @@
   ];
 
   nixpkgs = {
-    # you can add global overlays here
+    # You can add global overlays here.
     overlays = builtins.attrValues self.overlays;
     config = {
       allowUnfree = true;

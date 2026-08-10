@@ -6,8 +6,8 @@ let
 in
 
 {
-  # Nix on droid configuration entrypoint
-  # Available through 'nix-on-droid --flake .#FIXME'
+  # Nix on droid configuration entrypoint.
+  # Available through 'nix-on-droid --flake .#FIXME'.
   flake.nixOnDroidConfigurations = {
     Phone-Redmi-K50Pro = nix-on-droid.lib.nixOnDroidConfiguration {
       extraSpecialArgs = {

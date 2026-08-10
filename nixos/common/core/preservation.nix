@@ -6,12 +6,12 @@
 {
   imports = [ inputs.preservation.nixosModules.preservation ];
   preservation = {
-    # the module doesn't do anything unless it is enabled
+    # The module doesn't do anything unless it is enabled.
     enable = lib.mkDefault true;
 
     preserveAt."/persistent" = {
 
-      # preserve system directories
+      # Preserve system directories.
       directories = [
         # "/etc/secureboot"
         "/var/lib/bluetooth"
@@ -27,7 +27,7 @@
         }
       ];
 
-      # preserve system files
+      # Preserve system files.
       files = [
         {
           file = "/etc/machine-id";
@@ -65,9 +65,9 @@
           mode = "0400";
         }
 
-        # creates a symlink on the volatile root
-        # creates an empty directory on the persistent volume, i.e. /persistent/var/lib/systemd
-        # does not create an empty file at the symlink's target (would require `createLinkTarget = true`)
+        # Creates a symlink on the volatile root.
+        # Creates an empty directory on the persistent volume, i.e. /persistent/var/lib/systemd.
+        # Does not create an empty file at the symlink's target (would require `createLinkTarget = true`).
         {
           file = "/var/lib/systemd/random-seed";
           how = "symlink";
@@ -76,7 +76,7 @@
         }
       ];
 
-      # preserve user-specific files, implies ownership
+      # Preserve user-specific files; implies ownership.
       users = {
         curious = {
           commonMountOptions = [
@@ -96,7 +96,7 @@
           ];
         };
         root = {
-          # specify user home when it is not `/home/${user}`
+          # Specify the user home when it is not `/home/${user}`.
           home = "/root";
           directories = [
             {
@@ -147,7 +147,7 @@
 
   # 通过去掉 suppressedSystemUnits 修复了上游文档示例自相矛盾的问题。
   # 参考：https://github.com/nix-community/preservation/issues/29。
-  # adapt the stock service to commit the transient ID to the persistent volume
+  # Adapt the stock service to commit the transient ID to the persistent volume.
   systemd.services.systemd-machine-id-commit = {
     unitConfig.ConditionPathIsMountPoint = [
       ""

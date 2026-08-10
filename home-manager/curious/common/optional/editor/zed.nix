@@ -7,7 +7,7 @@
       pkgs.vscode-json-languageserver
     ];
 
-    ## everything inside of these brackets are Zed options.
+    ## Everything inside these brackets is a Zed option.
     userSettings = {
       status_bar = {
         active_encoding_button = "enabled";
@@ -83,7 +83,7 @@
         working_directory = "current_project_directory";
       };
 
-      # tell zed to use direnv and direnv can use devenv.
+      # Tell Zed to use direnv, and direnv can use devenv.
       load_direnv = "direct";
 
       base_keymap = "VSCode";

@@ -9,11 +9,11 @@
     ../common/core
     ../common/optional/nix/substituters/mainland.nix
   ];
-  # Simply install just the packages
+  # Simply install the packages.
   environment.packages = [
-    # User-facing stuff that you really really want to have
+    # User-facing stuff that you really want to have.
 
-    # Some common stuff that people expect to have
+    # Some common stuff that people expect to have.
     #diffutils
     #findutils
     #utillinux
@@ -31,6 +31,6 @@
     #unzip
   ];
 
-  # Read the changelog before changing this value
+  # Read the changelog before changing this value.
   system.stateVersion = "24.05";
 }

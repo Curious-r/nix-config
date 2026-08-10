@@ -4,7 +4,7 @@
     cosmic-greeter.enable = true;
     autoLogin = {
       # enable = true;
-      # Replace `yourUserName` with the actual username of user who should be automatically logged in
+      # Replace `yourUserName` with the actual username of the user who should be automatically logged in.
       # user = "curious";
     };
   };

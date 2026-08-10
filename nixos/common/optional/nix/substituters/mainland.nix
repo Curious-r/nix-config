@@ -1,12 +1,12 @@
 { ... }:
 {
   nix.settings.substituters = [
-    # cache mirror located in Chinese mainland
-    # status: https://mirrors.tuna.tsinghua.edu.cn/
+    # Cache mirror located in mainland China.
+    # Status: https://mirrors.tuna.tsinghua.edu.cn/
     "https://mirrors.tuna.tsinghua.edu.cn/nix-channels/store"
-    # status: https://mirrors.sjtug.sjtu.edu.cn/
+    # Status: https://mirrors.sjtug.sjtu.edu.cn/
     "https://mirrors.sjtug.sjtu.edu.cn/nix-channels/store"
-    # status: https://mirrors.ustc.edu.cn/status/
+    # Status: https://mirrors.ustc.edu.cn/status/
     # "https://mirrors.ustc.edu.cn/nix-channels/store"
   ];
 }

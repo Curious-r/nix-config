@@ -1,11 +1,11 @@
 { pkgs, lib, ... }:
 {
-  # all fonts are linked to /nix/var/nix/profiles/system/sw/share/X11/fonts
+  # All fonts are linked to /nix/var/nix/profiles/system/sw/share/X11/fonts.
   fonts = {
     fontDir.enable = lib.mkDefault true;
 
     packages = [
-      # icon fonts
+      # Icon fonts.
       # material-design-icons
       # font-awesome
 
@@ -26,19 +26,19 @@
 
       # nerdfonts
       # https://github.com/NixOS/nixpkgs/blob/nixos-unstable-small/pkgs/data/fonts/nerd-fonts/manifests/fonts.json
-      # nerd-fonts.symbols-only # symbols icon only
+      # nerd-fonts.symbols-only # Symbols icon only.
       # nerd-fonts.fira-code
       # nerd-fonts.jetbrains-mono
       # nerd-fonts.iosevka
 
-      # An innovative superfamily of fonts for code
+      # An innovative superfamily of fonts for code.
       # Monaspace Neon, Monaspace Argon, Monaspace Xenon, Monaspace Radon, Monaspace Krypton
       pkgs.monaspace
     ];
 
-    # user defined fonts
-    # the reason there's Noto Color Emoji everywhere is to override DejaVu's
-    # B&W emojis that would sometimes show instead of some Color emojis
+    # User-defined fonts.
+    # The reason there's Noto Color Emoji everywhere is to override DejaVu's
+    # B&W emojis that would sometimes show instead of some color emojis.
     fontconfig = {
       useEmbeddedBitmaps = true;
       defaultFonts = {

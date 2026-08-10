@@ -5,7 +5,7 @@ let
 in
 {
   flake.nixosConfigurations = {
-    # FIXME replace with your hostname
+    # FIXME: Replace with your hostname.
     Server-IdeaPad-G480 = nixpkgs.lib.nixosSystem {
       # Nixpkgs 的模块系统提供了两种方式来传递非默认参数：
       #   1. nixpkgs.lib.nixosSystem 函数的 specialArgs 参数

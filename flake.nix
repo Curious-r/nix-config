@@ -9,17 +9,17 @@
     extra-substituters = [
       "https://mirrors.tuna.tsinghua.edu.cn/nix-channels/store"
       "https://mirrors.sjtug.sjtu.edu.cn/nix-channels/store"
-      # nix community's cache server
+      # Nix community's cache server
       "https://nix-community.cachix.org"
-      # numtide's cache server
+      # Numtide's cache server
       "https://cache.numtide.com"
       # 自己的 Cachix 缓存：CI 构建产物
       "https://curious.cachix.org"
     ];
     extra-trusted-public-keys = [
-      # nix community's cache server public key
+      # Nix community's cache server public key
       "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
-      # numtide's cache server public key
+      # Numtide's cache server public key
       "niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g="
       # curious.cachix.org public key
       "curious.cachix.org-1:5dkD/spZ5UAuL9K84Fy2xCdtfey1TAWj2RKUu2sjy3E="
@@ -55,7 +55,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # TODO: Add any other flake you might need
+    # TODO: Add any other flake you might need.
 
     # Hardware collection
     nixos-hardware = {
@@ -64,7 +64,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Vaultix, a secret manage scheme for NixOS
+    # Vaultix, a secret management scheme for NixOS.
     vaultix = {
       url = "github:Curious-r/vaultix/merged-wip";
       # 与系统共用同一份 nixpkgs，消除独立的 nixpkgs_2 节点。
@@ -72,7 +72,7 @@
     };
 
     # Authenticate PAM (e.g. polkit's run0) on a remote host by touching a FIDO2
-    # authenticator plugged into your local workstation, over an SSH-forwarded Unix socket
+    # authenticator plugged into your local workstation, over an SSH-forwarded Unix socket.
     pam-fido-remote = {
       url = "git+https://codeberg.org/r-vdp/pam-fido-remote";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -101,8 +101,8 @@
 
     zen-browser = {
       url = "github:youwen5/zen-browser-flake";
-      # IMPORTANT: we're using "libgbm" and is only available in unstable so ensure
-      # to have it up-to-date or simply don't specify the nixpkgs input
+      # IMPORTANT: we're using "libgbm", which is only available in unstable, so keep it
+      # up to date or simply don't specify the nixpkgs input.
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -111,8 +111,8 @@
       # 查询参数，而 Determinate Nix 解析时不带参数，导致干净环境（CI）报
       # "mismatch in field 'url'"
       url = "github:Svenum/Solaar-Flake/0.1.8";
-      #url = "https://flakehub.com/f/Svenum/Solaar-Flake/0.1.1.tar.gz"; # uncomment line for solaar version 1.1.13
-      #url = "github:Svenum/Solaar-Flake/main"; # Uncomment line for latest unstable version
+      #url = "https://flakehub.com/f/Svenum/Solaar-Flake/0.1.1.tar.gz"; # Uncomment line for Solaar version 1.1.13.
+      #url = "github:Svenum/Solaar-Flake/main"; # Uncomment line for the latest unstable version.
       inputs.nixpkgs.follows = "nixpkgs";
     };
 

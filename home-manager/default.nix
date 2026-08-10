@@ -24,7 +24,7 @@ let
           ./curious/${host}
           {
             nixpkgs = {
-              # you can add global overlays here
+              # You can add global overlays here.
               overlays = builtins.attrValues self.overlays;
               config = {
                 allowUnfree = true;
@@ -37,10 +37,10 @@ let
 in
 
 {
-  # Standalone home-manager configuration entrypoint
-  # Available through 'home-manager --flake .#your-username@your-hostname'
+  # Standalone home-manager configuration entrypoint.
+  # Available through 'home-manager --flake .#your-username@your-hostname'.
   flake.homeConfigurations = {
-    # FIXME replace with your username@hostname
+    # FIXME: Replace with your username@hostname.
     "curious@Server-IdeaPad-G480" = mkHome "x86_64-linux" "Server-IdeaPad-G480";
     "curious@Laptop-Legion-R7000" = mkHome "x86_64-linux" "Laptop-Legion-R7000";
     "curious@Router-RaspberryPi-4B-1" = mkHome "aarch64-linux" "Router-RaspberryPi-4B-1";

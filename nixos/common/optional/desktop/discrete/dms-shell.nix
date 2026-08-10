@@ -22,7 +22,7 @@
     enableClipboardPaste = true; # Pasting from the clipboard history (wtype)
 
     plugins = {
-      # Simply enable plugins by their ID (from the registry)
+      # Simply enable plugins by their ID (from the registry).
       nixMonitor.enable = true;
       nvidiaGpuMonitor.enable = true;
       powerUsagePlugin.enable = true;

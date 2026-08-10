@@ -16,7 +16,7 @@
       assets = [ pkgs.v2ray-geoip pkgs.v2ray-domain-list-community ];
     */
 
-    # alternative of `assets`, a dir contains geo database.
+    # Alternative to `assets`, a directory containing the geo database.
     # assetsPath = "/etc/dae";
   };
 }
