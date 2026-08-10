@@ -190,3 +190,22 @@ jobs:
         # 单引号包裹以保留 attr 中 homeConfigurations."curious@host" 的引号
         # nix-on-droid 求值依赖 builtins.currentSystem，需要 --impure
         run: nix build --no-link ${{ matrix.impure && '--impure' || '' }} '.#${{ matrix.attr }}'
+
+  result:
+    name: CI result
+    needs:
+      - secrets
+      - check
+      - changes
+      - matrix
+      - build
+    # matrix/build 在不涉及构建的 PR 上会被跳过，这个汇总 job 仍然必须运行，
+    # 给分支规则提供一个稳定不变的必填检查名。
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Fail on failed required jobs
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
