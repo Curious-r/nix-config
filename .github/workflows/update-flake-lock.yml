@@ -47,8 +47,7 @@ jobs:
           github-token: ${{ steps.app-token.outputs.token }}
           pr-labels: dependencies,automated
           commit-message: "chore(deps): update flake input {{input}}{{in}}\n\n{{updateMessage}}"
-          # 仓库尚未开启 Allow auto-merge；Mic92 在开启失败时会尝试直接 merge，
-          # 所以先保持关闭。开启后把这里改成 'true'。
-          auto-merge: "false"
+          # 仓库已开启 Allow auto-merge，PR 通过 ruleset 必填检查后自动合并。
+          auto-merge: "true"
           auto-merge-method: SQUASH
           # 通过 GitHub App token 创建 PR，使 bot 打开的 PR 能自动触发 CI。
