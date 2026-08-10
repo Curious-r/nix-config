@@ -1,4 +1,4 @@
-name: Update flake.lock
+name: Update flake inputs
 
 on:
   workflow_dispatch:
@@ -6,15 +6,12 @@ on:
     - cron: "0 2 * * 1"
 
 concurrency:
-  group: update-flake-lock
+  group: update-flake-inputs
   # 防止 schedule 与手动触发同时运行导致 PR 冲突。
   cancel-in-progress: false
 
 permissions:
-  contents: write
-  id-token: write
-  issues: write
-  pull-requests: write
+  contents: read
 
 jobs:
   update:
@@ -23,6 +20,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # 用 PAT 推送分支并创建 PR，使 bot 打开的 PR 能自动触发 CI。
+          token: ${{ secrets.GH_TOKEN_FOR_PR }}
       - name: Install Nix
         uses: cachix/install-nix-action@v31
         with:
@@ -32,12 +32,14 @@ jobs:
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
           enable_kvm: true
-      - name: Update flake.lock
-        uses: DeterminateSystems/update-flake-lock@v28
+      - name: Update flake inputs
+        uses: mic92/update-flake-inputs@v1
         with:
-          token: ${{ secrets.GH_TOKEN_FOR_PR }}
-          pr-title: "chore(deps): update flake.lock"
-          pr-labels: |
-            dependencies
-            automated
+          github-token: ${{ secrets.GH_TOKEN_FOR_PR }}
+          pr-labels: dependencies,automated
+          commit-message: "chore(deps): update flake input {{input}}{{in}}\n\n{{updateMessage}}"
+          # 仓库尚未开启 Allow auto-merge；Mic92 在开启失败时会尝试直接 merge，
+          # 所以先保持关闭。开启后把这里改成 'true'。
+          auto-merge: "false"
+          auto-merge-method: SQUASH
           # 通过 PAT 创建 PR，使 bot 打开的 PR 能自动触发 CI。
