@@ -32,15 +32,15 @@ patch:
       states: [正常, 单字]
   speller/algebra:
     __patch:
-      #- 模糊音                                  # 这里启用后，本文件末尾可配置具体条目。
+      # - 模糊音                                  # 这里启用后，本文件末尾可配置具体条目。
       - wanxiang_pro.schema:/小鹤双拼 # 可选输入方案名称：自然码、自然龙、小鹤双拼、搜狗双拼、微软双拼、智能ABC、紫光双拼、国标双拼。
-      #- wanxiang_pro.schema:/fuzhu_moqi        # release 下载的不需要这个，直接下载仓库才需要（用来选七种辅助码），用来定义不同的辅助码，有需求打开 pro 主方案自己看吧。
+      # - wanxiang_pro.schema:/fuzhu_moqi        # release 下载的不需要这个，直接下载仓库才需要（用来选七种辅助码），用来定义不同的辅助码，有需求打开 pro 主方案自己看吧。
       - wanxiang_pro.schema:/直接辅助 # 辅助码升级为：直接辅助和间接辅助两种类型，都是句中任意，不同点在于直接辅助是 nire=你，而间接则需要 /引导  ni/re=你。在这个基础上，直接辅助支持拼音后任意位置数字声调参与，间接辅助声调在 /引导 前参与。
   ##########################以上格式受指令初始化控制，最好保持格式不变，如果发生变更请不要使用指令修改相关数据#####################################
   # 通过下面的设置可以让你自己的文件引入而与仓库 custom_phrase.txt 不同，防止更新时被仓库文件覆盖。
-  #custom_phrase/user_dict: custom_phrasexx    # 这里改成什么就需要手动创建同名的 custom_phrasexx.txt 文件在用户目录，这个文件主要用于置顶，编码为自定义编码的词汇。
-  #translator/packs/+:
-  #- userxx                                  # 导入根目录下名称为 userxx.dict.yaml 的自定义固定词典，编码要与固定词库一致，编码权重都不要少，形如姓名、专有名词公司名称等等。
+  # custom_phrase/user_dict: custom_phrasexx    # 这里改成什么就需要手动创建同名的 custom_phrasexx.txt 文件在用户目录，这个文件主要用于置顶，编码为自定义编码的词汇。
+  # translator/packs/+:
+  # - userxx                                  # 导入根目录下名称为 userxx.dict.yaml 的自定义固定词典，编码要与固定词库一致，编码权重都不要少，形如姓名、专有名词公司名称等等。
   # 下面是候选数量，未来 7890 分别代表 1234 声，请候选长度不要大于 6 避免冲突。
   menu/page_size: 6
   # 生日信息：/sr 或者 osr，在这里定义全局替换构建你的生日查询数据库。
@@ -52,9 +52,9 @@ patch:
       小明: "0114"
       小红: "0815,农历中秋"
   # 下面用来改变你的 windows 小狼毫右下角软件图标。
-  #schema/+:
-  #  icon: "icons/zhong.ico"
-  #  ascii_icon: "icons/ying.ico"
+  # schema/+:
+  #   icon: "icons/zhong.ico"
+  #   ascii_icon: "icons/ying.ico"
   # 下面这个可以改变 tips 上屏的按键。
   key_binder/tips_key: "period" # 修改时候去 default 找，默认是句号。
   key_binder/sequence: # Lua 配置：手动排序的快捷键 super_sequence.lua，不要用方向键，各种冲突，一定要避免冲突。
