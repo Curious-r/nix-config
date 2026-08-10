@@ -33,9 +33,9 @@ jobs:
       - name: Update flake.lock
         uses: DeterminateSystems/update-flake-lock@v28
         with:
+          token: ${{ secrets.GH_TOKEN_FOR_PR }}
           pr-title: "chore(deps): update flake.lock"
           pr-labels: |
             dependencies
             automated
-          # 注意：GitHub Actions 不会自动在 bot 打开的 PR 上运行 CI。
-          # 如需自动验证，可配置 PAT（secrets.GH_TOKEN_FOR_UPDATES）并传入 token 输入。
+          # 通过 PAT 创建 PR，使 bot 打开的 PR 能自动触发 CI。
