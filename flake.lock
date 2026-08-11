@@ -128,11 +128,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1786411674,
-        "narHash": "sha256-SRCZlJzE2tuptuFA53mVRO1Kp03AUUjc9lXQu8DXn/I=",
+        "lastModified": 1786412766,
+        "narHash": "sha256-84Iu+F2128l/SZrI2uhdehSogkLC1GOCwo9CZixpj8Q=",
         "owner": "Curious-r",
         "repo": "DankMaterialShell",
-        "rev": "3a0d27959bab6f88218449abc5e81484ab691fc4",
+        "rev": "0e9ffafe2e575547a9c2160b159b136c2c897ea9",
         "type": "github"
       },
       "original": {
