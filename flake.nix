@@ -120,6 +120,13 @@
       url = "github:AvengeMedia/dms-plugin-registry";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # 跨版本覆盖 nixpkgs 中的 dms-shell 需要的修补太多，直接使用我开发分支的
+    # flake 来测试，轻松保证项目和打包同步
+    dms = {
+      url = "github:Curious-r/DankMaterialShell/feat/location-search-echo";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   # outputs 即 flake 的所有输出，其中的 nixosConfigurations 即 NixOS 系统配置。
