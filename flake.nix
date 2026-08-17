@@ -106,16 +106,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    solaar = {
-      # 用 GitHub 源而不是 flakehub tarball：Lix 锁定 tarball 时会追加 rev/revCount
-      # 查询参数，而 Determinate Nix 解析时不带参数，导致干净环境（CI）报
-      # "mismatch in field 'url'"
-      url = "github:Svenum/Solaar-Flake/0.1.8";
-      # url = "https://flakehub.com/f/Svenum/Solaar-Flake/0.1.1.tar.gz"; # Uncomment line for Solaar version 1.1.13.
-      # url = "github:Svenum/Solaar-Flake/main"; # Uncomment line for the latest unstable version.
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     dms-plugin-registry = {
       url = "github:AvengeMedia/dms-plugin-registry";
       inputs.nixpkgs.follows = "nixpkgs";
