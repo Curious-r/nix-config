@@ -47,7 +47,3 @@ jobs:
           github-token: ${{ steps.generate-token.outputs.token }}
           pr-labels: dependencies,automated
           commit-message: "chore(deps): update flake input {{input}}{{in}}\n\n{{updateMessage}}"
-          # 仓库已开启 Allow auto-merge，PR 通过 ruleset 必填检查后自动合并。
-          auto-merge: "true"
-          auto-merge-method: SQUASH
-          # 通过 GitHub App token 创建 PR，使 bot 打开的 PR 能自动触发 CI。
