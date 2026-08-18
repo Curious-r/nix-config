@@ -29,7 +29,6 @@ jobs:
 
       - name: Enable auto-merge for bot PRs
         if: |
-          github.actor == 'github-actions[bot]' ||
           github.actor == 'dependabot[bot]' ||
           github.actor == 'curiosusbot[bot]'
         env:
