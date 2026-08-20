@@ -107,8 +107,8 @@
               dip(224.0.0.0/3, 'ff00::/8', geoip:private, geoip:cn) -> direct
               domain(geosite:cn, geosite:microsoft, geosite:apple) -> direct
               domain(suffix:curious.host) -> direct
-              domain(steamserver.net, geosite:steam@cn) -> direct
-              domain(domain:cache.nixos.org, curious.cachix.org)  -> direct
+              domain(full:steamserver.net, geosite:steam@cn) -> direct
+              domain(full:cache.nixos.org, full:curious.cachix.org) -> direct
 
               # ==========================================
               # 临时用一下的写这，优先级高
@@ -123,21 +123,26 @@
               # ==========================================
               # 实时交互（强制走高质量/高倍率线路，确保不丢包）
               # ==========================================
-              domain(geosite:discord, geosite:zoom, geosite:teams) -> high_rate_group
+              domain(geosite:discord, geosite:zoom) -> high_rate_group
+              domain(suffix:microsoftteams.com, suffix:teams.cdn.office.net) -> high_rate_group
 
               # ==========================================
               # 流媒体视频（优先走标准倍率/地区原生解锁，节省高倍率流量）
               # ==========================================
               # 美区流媒体 -> 美国组
-              domain(geosite:netflix, geosite:hbo, geosite:disney, geosite:hulu, geosite:paramount) -> us_group
+              domain(geosite:netflix, geosite:hbo, geosite:disney, geosite:hulu) -> us_group
+              domain(suffix:paramountplus.com) -> us_group
               # 台区流媒体（如巴哈姆特）-> 台湾组
-              domain(geosite:bahamut, geosite:iplayer) -> tw_group
+              domain(geosite:bahamut) -> tw_group
               # 日区流媒体 -> 日本组
               domain(geosite:abema, geosite:dmm, geosite:niconico) -> jp_group
               # 韩区流媒体 -> 韩国组
-              domain(geosite:naver, geosite:kakao, geosite:tving) -> kr_group
+              domain(geosite:naver, geosite:kakao) -> kr_group
+              domain(suffix:tving.com) -> kr_group
               # 欧区流媒体 -> 欧洲组（如 BBC、德国电视）
-              domain(geosite:bbc, geosite:zdf, geosite:rtl) -> eu_group
+              domain(geosite:bbc) -> eu_group
+              domain(suffix:zdf.de) -> eu_group
+              domain(suffix:rtl.de) -> eu_group
 
               # ==========================================
               # 流量消耗大又没太高要求的走低费率组，未命中的也是
