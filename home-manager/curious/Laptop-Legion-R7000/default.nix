@@ -38,6 +38,8 @@
     ../common/optional/qq.nix
 
     ../common/optional/mangohud.nix
+
+    ../common/optional/cc-switch.nix
   ];
   home.stateVersion = "26.11";
 }
