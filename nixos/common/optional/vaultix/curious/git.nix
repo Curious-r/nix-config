@@ -17,7 +17,7 @@
       	defaultBranch = main
 
       [url "git@github.com:"]
-       	pushInsteadOf = https://github.com/
+       	insteadOf = https://github.com/
     '';
 
     trim = true;
