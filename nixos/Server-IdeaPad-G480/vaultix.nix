@@ -15,7 +15,7 @@
           # 替换插槽 1：局域网接口
           "801bb584bf16bb673597d2f38fd3ea6802c2438e20a8c9746df87e10df70c740" = {
             order = 0;
-            content = "docker0,cs-cloudreve,cs-tts,cs-tuwunel,cs-default,cs-cinny,cs-kanidm";
+            content = "docker*,cs-*";
           };
 
           # 替换插槽 2：节点分组（全地区 + 倍率分层）
