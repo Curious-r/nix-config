@@ -8,7 +8,6 @@
     ./boot.nix
     ./locale.nix # localization settings
     ./nix.nix # nix settings and garbage collection
-    ./git.nix # git 被 nix flakes 强依赖，devenv 也用得到。
     ./vaultix.nix # secrets management
     ./account.nix
     ./security
@@ -17,10 +16,8 @@
     ./editor.nix
     ./ssh.nix
     ./networking.nix
-    ./file-manager.nix
     ./preservation.nix
     ./home-manager.nix
-    ./devenv.nix
     ./udisks2.nix
   ];
 

@@ -3,7 +3,9 @@
   imports = [
     ./nix.nix
     ./vcs
+    ./devenv.nix
     ./zellij.nix
+    ./yazi.nix
   ];
   home = {
     username = "curious";
