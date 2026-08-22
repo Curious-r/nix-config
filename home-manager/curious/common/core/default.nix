@@ -6,6 +6,7 @@
     ./devenv.nix
     ./zellij.nix
     ./yazi.nix
+    ./rg.nix
   ];
   home = {
     username = "curious";
