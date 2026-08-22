@@ -3,6 +3,7 @@
 pkgs:
 let
   # aerion-creds = pkgs.callPackage ./aerion-creds.nix { };
+  cc-switch = pkgs.callPackage ./cc-switch.nix { };
 in
 {
   # example = pkgs.callPackage ./example { };
@@ -18,4 +19,6 @@ in
   # overlays aren't automatically applied.
   # aerion = pkgs.callPackage ./aerion.nix { inherit aerion-creds; };
   # ======================================================================================
+
+  inherit cc-switch;
 }
