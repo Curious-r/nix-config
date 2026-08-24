@@ -58,7 +58,7 @@ let
     builtins.map
       (
         machine:
-        mkDroidJob machine "/nix/store/7qd99m1w65x2vgqg453nd70y60sm3kay-proot-termux-static-aarch64-unknown-linux-android-unstable-2024-05-04"
+        mkDroidJob machine "/nix/store/dvf2ck9bkw7yyrlkjk87xz1anaxsgrd6-proot-termux-static-aarch64-unknown-linux-android-unstable-2026-02-20"
       )
       [
         "Pad-Vivo-3Pro"
