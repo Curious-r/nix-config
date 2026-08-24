@@ -1,3 +1,0 @@
-{
-  example-parts = import ./example;
-}

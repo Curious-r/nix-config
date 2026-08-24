@@ -15,8 +15,7 @@ in
 
   # `aerion-creds` is explicitly passed here (not relying on callPackage to find it in pkgs),
   # because aerion-creds is defined in this same set and may not be available in the pkgs
-  # passed to this function — e.g. when called from perSystem (flake-parts) where custom
-  # overlays aren't automatically applied.
+  # passed to this function — for example, a package set without this repository's overlay.
   # aerion = pkgs.callPackage ./aerion.nix { inherit aerion-creds; };
   # ======================================================================================
 
