@@ -9,6 +9,7 @@
     ./locale.nix # localization settings
     ./nix.nix # nix settings and garbage collection
     ./vaultix.nix # secrets management
+    ./git.nix
     ./account.nix
     ./security
     ./console.nix

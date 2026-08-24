@@ -2,6 +2,5 @@
 {
   imports = [
     ./pijul
-    ./git.nix
   ];
 }
