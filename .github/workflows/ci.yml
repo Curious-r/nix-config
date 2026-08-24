@@ -71,6 +71,8 @@ jobs:
       # darwin/i686 已被 nixpkgs 26.11 淘汰，这里只评估 aarch64-linux。
       - name: Check flake (aarch64-linux eval)
         run: nix flake check --no-build --system aarch64-linux
+      - name: Check traditional evaluator
+        run: nix-instantiate --eval --json --expr 'builtins.attrNames (import ./system.nix)'
 
   changes:
     name: Detect relevant changes
@@ -97,6 +99,11 @@ jobs:
             build:
               - 'flake.nix'
               - 'flake.lock'
+              - 'system.nix'
+              - 'third-party-packages.nix'
+              - 'npins/**'
+              - 'ci/**'
+              - 'machines.nix'
               - 'modules/**'
               - 'overlays/**'
               - 'pkgs/**'
@@ -129,11 +136,11 @@ jobs:
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g= nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
           enable_kvm: true
-      # 矩阵来自 flake 的 ci.jobs：机器清单与配置保持单一事实来源。
+      # 矩阵来自显式清单；NixOS 已切换到 system.nix。
       - name: Generate matrix
         id: gen
         run: |
-          matrix="$(nix eval --impure --json --accept-flake-config .#ci.jobs)"
+          matrix="$(nix eval --json -f ./ci/jobs.nix)"
           echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
 
   build:
@@ -187,9 +194,31 @@ jobs:
               --option extra-trusted-public-keys 'nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=' "$p"
           done
       - name: Build
-        # 单引号包裹以保留 attr 中 homeConfigurations."curious@host" 的引号。
-        # nix-on-droid 求值依赖 builtins.currentSystem，需要 --impure。
-        run: nix build --no-link ${{ matrix.impure && '--impure' || '' }} '.#${{ matrix.attr }}'
+        env:
+          ENTRYPOINT: ${{ matrix.entrypoint }}
+          ATTR: ${{ matrix.attr }}
+          IMPURE: ${{ matrix.impure }}
+        # 矩阵中的 attr 可能包含 homeConfigurations."curious@host" 的引号，
+        # 因此通过环境变量传递，避免 shell 二次展开。
+        run: |
+          set -euo pipefail
+          args=(--no-link)
+          if [[ "$IMPURE" == "true" ]]; then
+            args+=(--impure)
+          fi
+          case "$ENTRYPOINT" in
+            system.nix)
+              args+=(--file "$ENTRYPOINT" "$ATTR")
+              ;;
+            flake)
+              args+=(".#${ATTR}")
+              ;;
+            *)
+              echo "Unknown entrypoint: $ENTRYPOINT" >&2
+              exit 1
+              ;;
+          esac
+          nix build "${args[@]}"
 
   result:
     name: CI result
