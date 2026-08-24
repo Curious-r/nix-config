@@ -1,10 +1,7 @@
 let
   sources = import ./npins;
 
-  overlays = {
-    additions = final: _prev: import ./pkgs final;
-    modifications = _final: _prev: { };
-  };
+  overlays = import ./overlays;
 
   project = {
     _type = "flake";
@@ -12,7 +9,9 @@ let
     overlays = overlays;
     homeManagerModules = import ./modules/home-manager;
     nixosModules = import ./modules/nixos;
-    vaultix = import ./vaultix.nix;
+    vaultix = import ./vaultix.nix // {
+      defaultSecretDirectory = "./secrets";
+    };
   };
 
   mkInputs =

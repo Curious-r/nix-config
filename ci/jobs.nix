@@ -44,7 +44,9 @@ let
     attr = ''"${machine}".activationPackage'';
     prefetch = prefetch;
     runsOn = runnerFor.aarch64-linux;
-    impure = false;
+    # Upstream embeds an absolute bootstrap store path with
+    # builtins.storePath, so evaluation still requires --impure.
+    impure = true;
   };
 
   legacyJobs = [
