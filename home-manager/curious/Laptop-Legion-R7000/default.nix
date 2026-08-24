@@ -36,6 +36,7 @@
 
     ../common/optional/wechat.nix
     ../common/optional/qq.nix
+    ../common/optional/piliplus.nix
 
     ../common/optional/mangohud.nix
 
