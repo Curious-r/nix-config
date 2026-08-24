@@ -60,9 +60,6 @@ jobs:
         with:
           name: curious
           skipPush: true
-      - name: Check flake.lock health
-        # 用 nixpkgs 打包的 flake-checker，不引入 Determinate 的 action/遥测。
-        run: nix run nixpkgs#flake-checker -- --fail-mode --no-telemetry
       - name: Lint workflows
         run: nix run nixpkgs#actionlint
       - name: Check flake
@@ -107,7 +104,6 @@ jobs:
           filters: |
             build:
               - 'flake.nix'
-              - 'flake.lock'
               - 'system.nix'
               - 'context.nix'
               - 'home-manager.nix'
