@@ -23,7 +23,7 @@ let
       impure = false;
     };
 
-  # These targets stay on the existing Flake during the experiment. Their
+  # nix-on-droid stays on the existing Flake during the experiment. Its
   # entries are explicit so that the build matrix has no self-output introspection.
   mkFlakeJob =
     {
@@ -46,14 +46,17 @@ let
       impure = impure;
     };
 
-  mkHomeJob =
-    machine: system:
-    mkFlakeJob {
-      target = "home-manager";
-      machine = machine;
-      system = system;
-      attr = ''homeConfigurations."${machine}".activationPackage'';
-    };
+  mkHomeJob = machine: system: {
+    name = "home-manager ${machine} (${system})";
+    target = "home-manager";
+    machine = machine;
+    system = system;
+    entrypoint = "home-manager.nix";
+    attr = ''"${machine}".activationPackage'';
+    prefetch = "";
+    runsOn = runnerFor.${system};
+    impure = false;
+  };
 
   mkDroidJob =
     machine: prefetch:

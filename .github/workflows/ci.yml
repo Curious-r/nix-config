@@ -71,8 +71,10 @@ jobs:
       # darwin/i686 已被 nixpkgs 26.11 淘汰，这里只评估 aarch64-linux。
       - name: Check flake (aarch64-linux eval)
         run: nix flake check --no-build --system aarch64-linux
-      - name: Check traditional evaluator
-        run: nix-instantiate --eval --json --expr 'builtins.attrNames (import ./system.nix)'
+      - name: Check traditional evaluators
+        run: |
+          nix-instantiate --eval --json --expr 'builtins.attrNames (import ./system.nix)'
+          nix-instantiate --eval --json --expr 'builtins.attrNames (import ./home-manager.nix)'
 
   changes:
     name: Detect relevant changes
@@ -100,6 +102,8 @@ jobs:
               - 'flake.nix'
               - 'flake.lock'
               - 'system.nix'
+              - 'context.nix'
+              - 'home-manager.nix'
               - 'third-party-packages.nix'
               - 'npins/**'
               - 'ci/**'
@@ -136,7 +140,7 @@ jobs:
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g= nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
           enable_kvm: true
-      # 矩阵来自显式清单；NixOS 已切换到 system.nix。
+      # 矩阵来自显式清单；NixOS 和独立 HM 已切换到传统求值入口。
       - name: Generate matrix
         id: gen
         run: |
@@ -212,6 +216,9 @@ jobs:
               ;;
             flake)
               args+=(".#${ATTR}")
+              ;;
+            home-manager.nix)
+              args+=(--file "$ENTRYPOINT" "$ATTR")
               ;;
             *)
               echo "Unknown entrypoint: $ENTRYPOINT" >&2
