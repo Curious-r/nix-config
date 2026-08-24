@@ -15,13 +15,14 @@ Inside the nix-on-droid app on the device:
 nix-on-droid switch --flake .#<device-name>
 ```
 
-Evaluate or build an activation package from the traditional entrypoint:
+Build an activation package from the traditional entrypoint:
 
 ```bash
 nix build --impure -f droid.nix '"<device-name>".activationPackage'
 ```
 
 Evaluation uses `--impure` because upstream embeds an absolute bootstrap store path
-with `builtins.storePath`.
+with `builtins.storePath`. The device app's `switch` command uses the Flake
+compatibility boundary.
 
 CI builds both device activations on arm64 runners and pushes them to `curious.cachix.org`. The device config already subscribes to `nix-on-droid.cachix.org` and `curious.cachix.org`.

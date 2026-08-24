@@ -12,7 +12,7 @@ Standalone Home Manager configurations for user environments.
 
 ## Deployment
 
-Build a standalone activation package without Flakes:
+Build a standalone activation package from the traditional entrypoint:
 
 ```bash
 nix build -f home-manager.nix '"curious@<hostname>".activationPackage'

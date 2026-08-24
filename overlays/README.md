@@ -1,7 +1,6 @@
 # Overlays
 
-Overlays applied to the repository's main nixpkgs instance and exported through
-the Flake compatibility boundary.
+Overlays applied to the repository's main nixpkgs instance.
 
 ## Available Overlays
 
@@ -16,7 +15,7 @@ Apply every overlay from a traditional Nix evaluation:
 nixpkgs.overlays = builtins.attrValues (import ./overlays);
 ```
 
-Or select one through the Flake compatibility boundary:
+The optional Flake boundary also exports each overlay by name:
 
 ```nix
 { self, ... }:

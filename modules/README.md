@@ -1,15 +1,18 @@
 # Custom Modules
 
-Reusable modules exported by this repository's Flake compatibility layer.
+Reusable modules imported directly by this repository.
 
 ## Using Modules
 
-The Flake compatibility layer exposes these sets directly:
+Import these sets from their source paths:
 
 ```nix
-nixosModules = import ./nixos;
-homeManagerModules = import ./home-manager;
+nixosModules = import ./modules/nixos;
+homeManagerModules = import ./modules/home-manager;
 ```
+
+The optional Flake boundary exports the same sets as `nixosModules` and
+`homeManagerModules`.
 
 ## Available Modules
 

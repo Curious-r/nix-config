@@ -7,8 +7,8 @@
 }:
 {
   nix = {
-    # This will add each flake input as a registry.
-    # To make nix3 commands consistent with your flake.
+    # This registers each pinned source under its npins name.
+    # To make nix3 commands consistent across hosts.
     registry = lib.mapAttrs (_: value: { flake = value; }) inputs;
 
     # This will add your inputs to the system's legacy channels.
@@ -36,7 +36,7 @@
       warn-dirty = false;
 
       # Give the users in this list the right to specify additional substituters via:
-      #    1. `nixConfig.substituters` in `flake.nix`.
+      #    1. `nixConfig.substituters` in the Flake compatibility layer.
       #    2. Command-line args `--options substituters http://xxx`.
       trusted-users = [ "curious" ];
       substituters = [

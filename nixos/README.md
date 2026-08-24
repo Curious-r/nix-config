@@ -13,22 +13,22 @@ NixOS system configurations for each host.
 
 ## Deployment
 
-Apply to the local system through the Flake compatibility boundary:
-
-```bash
-sudo nixos-rebuild switch --flake .#<hostname>
-```
-
 Build without applying from the traditional entrypoint:
 
 ```bash
 nix build -f system.nix '<hostname>.config.system.build.toplevel'
 ```
 
-Or through the Flake compatibility boundary:
+Apply the built toplevel:
 
 ```bash
-nix build .#nixosConfigurations.<hostname>.config.system.build.toplevel
+sudo ./result/bin/switch-to-configuration switch
+```
+
+Or use the Flake compatibility boundary:
+
+```bash
+sudo nixos-rebuild switch --flake .#<hostname>
 ```
 
 CI builds the toplevel for each host and pushes it to `curious.cachix.org`, so local rebuilds pull it directly.
