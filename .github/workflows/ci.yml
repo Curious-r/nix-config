@@ -75,6 +75,12 @@ jobs:
         run: |
           nix-instantiate --eval --json --expr 'builtins.attrNames (import ./system.nix)'
           nix-instantiate --eval --json --expr 'builtins.attrNames (import ./home-manager.nix)'
+      # Build the wrappers without invoking them: re-encryption requires the
+      # local Yubikey and must not run inside CI.
+      - name: Check Vaultix CLI wrappers
+        run: |
+          nix build --no-link -f ./vaultix-cli.nix x86_64-linux.edit
+          nix build --no-link -f ./vaultix-cli.nix x86_64-linux.renc
 
   changes:
     name: Detect relevant changes
@@ -104,6 +110,8 @@ jobs:
               - 'system.nix'
               - 'context.nix'
               - 'home-manager.nix'
+              - 'vaultix.nix'
+              - 'vaultix-cli.nix'
               - 'third-party-packages.nix'
               - 'npins/**'
               - 'ci/**'

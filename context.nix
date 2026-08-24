@@ -12,7 +12,7 @@ let
     overlays = overlays;
     homeManagerModules = import ./modules/home-manager;
     nixosModules = import ./modules/nixos;
-    vaultix.cache = "./secrets/cache";
+    vaultix = import ./vaultix.nix;
   };
 
   mkInputs =
