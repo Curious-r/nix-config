@@ -21,43 +21,56 @@ let
           pkgs.prettier
         ];
         text = ''
-          find . \
-            -path './.git' -prune -o \
-            -path './.devenv' -prune -o \
-            -path './.direnv' -prune -o \
-            -name '.devenv.flake.nix' -prune -o \
-            -path './secrets/cache' -prune -o \
-            -type f -name '*.nix' -print0 \
-            | xargs -0 --no-run-if-empty nixfmt
+          check=false
+          targets=()
 
-          prettier --write --ignore-unknown .
+          for arg in "$@"; do
+            case "$arg" in
+              --check) check=true ;;
+              --write) check=false ;;
+              --)
+                ;;
+              -*)
+                echo "Unsupported option: $arg" >&2
+                exit 2
+                ;;
+              *) targets+=("$arg") ;;
+            esac
+          done
+
+          if (( ''${#targets[@]} == 0 )); then
+            targets=(.)
+          fi
+
+          nixfmtArgs=()
+          prettierArgs=(--ignore-unknown)
+          if [[ "$check" == true ]]; then
+            nixfmtArgs+=(--check)
+            prettierArgs+=(--check)
+          else
+            prettierArgs+=(--write)
+          fi
+
+          for target in "''${targets[@]}"; do
+            find "$target" \
+              -path '*/.git' -prune -o \
+              -path '*/.devenv*' -prune -o \
+              -path '*/.direnv' -prune -o \
+              -name '.devenv.flake.nix' -prune -o \
+              -path '*/secrets/cache' -prune -o \
+              -type f -name '*.nix' -print0
+          done \
+            | xargs -0 --no-run-if-empty nixfmt "''${nixfmtArgs[@]}"
+
+          prettier "''${prettierArgs[@]}" "''${targets[@]}"
         '';
       };
 
-      check =
-        pkgs.runCommand "format-check"
-          {
-            nativeBuildInputs = [
-              pkgs.findutils
-              pkgs.nixfmt
-              pkgs.prettier
-            ];
-            src = ./.;
-          }
-          ''
-            cd "$src"
-            find . \
-              -path './.git' -prune -o \
-              -path './.devenv' -prune -o \
-              -path './.direnv' -prune -o \
-              -name '.devenv.flake.nix' -prune -o \
-              -path './secrets/cache' -prune -o \
-              -type f -name '*.nix' -print0 \
-              | xargs -0 --no-run-if-empty nixfmt --check
-
-            prettier --check --ignore-unknown .
-            touch "$out"
-          '';
+      check = pkgs.runCommand "format-check" { src = ./.; } ''
+        cd "$src"
+        "${format}/bin/format" --check .
+        touch "$out"
+      '';
     in
     {
       inherit check format;
