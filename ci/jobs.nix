@@ -23,29 +23,6 @@ let
       impure = false;
     };
 
-  # nix-on-droid stays on the existing Flake during the experiment. Its
-  # entries are explicit so that the build matrix has no self-output introspection.
-  mkFlakeJob =
-    {
-      target,
-      machine,
-      system,
-      attr,
-      prefetch ? "",
-      impure ? false,
-    }:
-    {
-      name = "${target} ${machine} (${system})";
-      target = target;
-      machine = machine;
-      system = system;
-      entrypoint = "flake";
-      attr = attr;
-      prefetch = prefetch;
-      runsOn = runnerFor.${system};
-      impure = impure;
-    };
-
   mkHomeJob = machine: system: {
     name = "home-manager ${machine} (${system})";
     target = "home-manager";
@@ -58,16 +35,17 @@ let
     impure = false;
   };
 
-  mkDroidJob =
-    machine: prefetch:
-    mkFlakeJob {
-      target = "nix-on-droid";
-      machine = machine;
-      system = "aarch64-linux";
-      attr = "nixOnDroidConfigurations.${machine}.config.build.activationPackage";
-      prefetch = prefetch;
-      impure = true;
-    };
+  mkDroidJob = machine: prefetch: {
+    name = "nix-on-droid ${machine} (aarch64-linux)";
+    target = "nix-on-droid";
+    machine = machine;
+    system = "aarch64-linux";
+    entrypoint = "droid.nix";
+    attr = ''"${machine}".activationPackage'';
+    prefetch = prefetch;
+    runsOn = runnerFor.aarch64-linux;
+    impure = false;
+  };
 
   legacyJobs = [
     (mkHomeJob "curious@Laptop-Legion-R7000" "x86_64-linux")

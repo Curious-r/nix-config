@@ -75,6 +75,7 @@ jobs:
         run: |
           nix-instantiate --eval --json --expr 'builtins.attrNames (import ./system.nix)'
           nix-instantiate --eval --json --expr 'builtins.attrNames (import ./home-manager.nix)'
+          nix-instantiate --eval --json --expr 'builtins.attrNames (import ./droid.nix)'
       # Build the wrappers without invoking them: re-encryption requires the
       # local Yubikey and must not run inside CI.
       - name: Check Vaultix CLI wrappers
@@ -110,6 +111,7 @@ jobs:
               - 'system.nix'
               - 'context.nix'
               - 'home-manager.nix'
+              - 'droid.nix'
               - 'vaultix.nix'
               - 'vaultix-cli.nix'
               - 'third-party-packages.nix'
@@ -148,7 +150,7 @@ jobs:
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g= nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
           enable_kvm: true
-      # 矩阵来自显式清单；NixOS 和独立 HM 已切换到传统求值入口。
+      # 矩阵来自显式清单；所有系统目标都已切换到传统求值入口。
       - name: Generate matrix
         id: gen
         run: |
@@ -226,6 +228,9 @@ jobs:
               args+=(".#${ATTR}")
               ;;
             home-manager.nix)
+              args+=(--file "$ENTRYPOINT" "$ATTR")
+              ;;
+            droid.nix)
               args+=(--file "$ENTRYPOINT" "$ATTR")
               ;;
             *)

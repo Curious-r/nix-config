@@ -3,7 +3,9 @@
 
 # ❄️ Curious's Nix Config
 
-Personal NixOS, Home Manager and nix-on-droid configurations, managed with Flakes.
+Personal NixOS, Home Manager and nix-on-droid configurations. The experimental
+branch evaluates these targets directly with npins-pinned sources while keeping
+the legacy Flake available during migration.
 
 ## Tech Stack
 
@@ -45,9 +47,11 @@ Hostnames follow `<category>-<brand>-<model>[-<suffix>]`. The last segment only 
 
 ## CI/CD
 
-The build matrix is generated from the `ci.jobs` flake output. Its machine list comes directly from `nixosConfigurations`, `homeConfigurations` and `nixOnDroidConfigurations`, so adding a machine requires no CI changes.
+The build matrix is generated from the explicit list in `ci/jobs.nix`. NixOS hosts
+come from `machines.nix`; Home Manager configurations are generated for those same
+hosts; Android devices are listed by `droid.nix`.
 
-- `CI`: gitleaks secret scan, flake.lock health check, actionlint, `nix flake check` (including aarch64-linux evaluation)
+- `CI`: gitleaks secret scan, legacy Flake health checks, actionlint, traditional evaluator checks, and Vaultix CLI wrapper builds
 - Build: covers every NixOS toplevel, Home Manager activation and nix-on-droid activation; runs only when a commit touches build-related paths (`workflow_dispatch` forces a full run); aarch64 machines build on arm64 runners
 - Build outputs are pushed to `curious.cachix.org`, so local `nixos-rebuild` / `home-manager switch` / `nix-on-droid` runs pull them directly
 - `Update flake.lock`: weekly flake.lock update PR

@@ -1,8 +1,4 @@
 {
-  inputs,
-  ...
-}:
-{
   imports = [
     ./locale.nix # localization settings
     ./nix.nix # nix settings and substituters
