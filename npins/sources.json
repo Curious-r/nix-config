@@ -1,0 +1,139 @@
+{
+  "pins": {
+    "disko": {
+      "type": "Git",
+      "repository": {
+        "type": "GitHub",
+        "owner": "nix-community",
+        "repo": "disko"
+      },
+      "branch": "master",
+      "submodules": false,
+      "revision": "ff8702b4de27f72b4c78573dfb89ec74e36abdf1",
+      "url": "https://github.com/nix-community/disko/archive/ff8702b4de27f72b4c78573dfb89ec74e36abdf1.tar.gz",
+      "hash": "sha256-RxWs5ND31KzTG7wvMM+PMfUjyNpmIEr999lqNARaM5o="
+    },
+    "dms-plugin-registry": {
+      "type": "Git",
+      "repository": {
+        "type": "GitHub",
+        "owner": "AvengeMedia",
+        "repo": "dms-plugin-registry"
+      },
+      "branch": "master",
+      "submodules": false,
+      "revision": "422e564cf9a3e1b03f69e4ad5d8743fb70de76fd",
+      "url": "https://github.com/AvengeMedia/dms-plugin-registry/archive/422e564cf9a3e1b03f69e4ad5d8743fb70de76fd.tar.gz",
+      "hash": "sha256-VB8+TqSS5HwN85oowbBncSlwOJOAM6+GWSvmAK0RVMc="
+    },
+    "home-manager": {
+      "type": "Git",
+      "repository": {
+        "type": "GitHub",
+        "owner": "nix-community",
+        "repo": "home-manager"
+      },
+      "branch": "master",
+      "submodules": false,
+      "revision": "c53d643b3737e2fcd04e6cb3b3580ef50b2087a0",
+      "url": "https://github.com/nix-community/home-manager/archive/c53d643b3737e2fcd04e6cb3b3580ef50b2087a0.tar.gz",
+      "hash": "sha256-djoRr6jBpe35q/0JwAvXpFXg1Ktf+X54NU2RLR7wnHw="
+    },
+    "lanzaboote": {
+      "type": "GitRelease",
+      "repository": {
+        "type": "GitHub",
+        "owner": "nix-community",
+        "repo": "lanzaboote"
+      },
+      "pre_releases": false,
+      "version_upper_bound": null,
+      "release_prefix": null,
+      "submodules": false,
+      "version": "v1.1.0",
+      "revision": "7c9a54a7f87b4539ddbd8bda09a8a5f5f9361aa9",
+      "url": "https://api.github.com/repos/nix-community/lanzaboote/tarball/refs/tags/v1.1.0",
+      "hash": "sha256-hqijVSEETttmo8Okql9/LG0Ua34hdciKW1a5zzlj8mU="
+    },
+    "nixos-hardware": {
+      "type": "Git",
+      "repository": {
+        "type": "GitHub",
+        "owner": "NixOS",
+        "repo": "nixos-hardware"
+      },
+      "branch": "master",
+      "submodules": false,
+      "revision": "0471accf8d0a8210b31d947497d179ecc99e0021",
+      "url": "https://github.com/NixOS/nixos-hardware/archive/0471accf8d0a8210b31d947497d179ecc99e0021.tar.gz",
+      "hash": "sha256-HHfv2/HkNSKbbSyU9iD/g8lbP6r4tl33sSw1W4rXCk0="
+    },
+    "nixpkgs": {
+      "type": "Git",
+      "repository": {
+        "type": "GitHub",
+        "owner": "nixos",
+        "repo": "nixpkgs"
+      },
+      "branch": "nixos-unstable",
+      "submodules": false,
+      "revision": "ffb3c9b700e759be2ef13237c9d8f953b32a1e46",
+      "url": "https://github.com/nixos/nixpkgs/archive/ffb3c9b700e759be2ef13237c9d8f953b32a1e46.tar.gz",
+      "hash": "sha256-RD2kNWCG+Bjo6h+JVjWVNntZs2GtRoeY2xHjts/FNkA="
+    },
+    "pam-fido-remote": {
+      "type": "Git",
+      "repository": {
+        "type": "Forgejo",
+        "server": "https://codeberg.org/",
+        "owner": "r-vdp",
+        "repo": "pam-fido-remote"
+      },
+      "branch": "main",
+      "submodules": false,
+      "revision": "a6608d927e8d1cc207469b2159f6b85a942236b7",
+      "url": "https://codeberg.org/r-vdp/pam-fido-remote/archive/a6608d927e8d1cc207469b2159f6b85a942236b7.tar.gz",
+      "hash": "sha256-Cn2GAxRw2JrMkLU5aBCIEsxO2M0hKzTjTvygfFbzqZ8="
+    },
+    "preservation": {
+      "type": "Git",
+      "repository": {
+        "type": "GitHub",
+        "owner": "nix-community",
+        "repo": "preservation"
+      },
+      "branch": "master",
+      "submodules": false,
+      "revision": "93416f4614ad2dfed5b0dcf12f27e57d27a5ab11",
+      "url": "https://github.com/nix-community/preservation/archive/93416f4614ad2dfed5b0dcf12f27e57d27a5ab11.tar.gz",
+      "hash": "sha256-mMI9IanU+Xw+pVogD2oT0I2kTmvz2Un/Apc5+CwUpEY="
+    },
+    "vaultix": {
+      "type": "Git",
+      "repository": {
+        "type": "GitHub",
+        "owner": "Curious-r",
+        "repo": "vaultix"
+      },
+      "branch": "merged-wip",
+      "submodules": false,
+      "revision": "d242ad0dc9aa5bf9ba02a05f4e974f00a314e52d",
+      "url": "https://github.com/Curious-r/vaultix/archive/d242ad0dc9aa5bf9ba02a05f4e974f00a314e52d.tar.gz",
+      "hash": "sha256-9zqfEeeOX0mIXxWKuYdEmcdfF3riMSLutWyRsOm9FGo="
+    },
+    "zen-browser": {
+      "type": "Git",
+      "repository": {
+        "type": "GitHub",
+        "owner": "youwen5",
+        "repo": "zen-browser-flake"
+      },
+      "branch": "master",
+      "submodules": false,
+      "revision": "20195bc99e82b02abe82bb81ac366ae81c67dc5a",
+      "url": "https://github.com/youwen5/zen-browser-flake/archive/20195bc99e82b02abe82bb81ac366ae81c67dc5a.tar.gz",
+      "hash": "sha256-4d24Wa/CO8WsSEjKwzFwJXn+oxbI4Bm8xuMR77xJgYI="
+    }
+  },
+  "version": 8
+}

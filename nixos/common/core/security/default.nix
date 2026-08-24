@@ -15,7 +15,9 @@
           # 中使用的 polkit-stdin-agent 不兼容，查看：https://codeberg.org/r-vdp/polkit-stdin-agent/issues/23。
           cue = true;
 
-          authfile = ./u2f_keys_local;
+          # Non-flake evaluation starts from a working-tree path; force the
+          # keyfile into the store for the module's pathInStore type.
+          authfile = "${./u2f_keys_local}";
         };
       };
 
