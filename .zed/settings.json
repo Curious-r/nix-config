@@ -15,6 +15,9 @@
       "initialization_options": {
         "formatting": {
           "command": ["nixfmt"]
+        },
+        "diagnostic": {
+          "suppress": ["sema-primop-removable-prefix"]
         }
       }
     }
