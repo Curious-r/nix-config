@@ -12,6 +12,15 @@ Standalone Home Manager configurations for user environments.
 
 ## Deployment
 
+Build a standalone activation package without Flakes:
+
+```bash
+nix build -f home-manager.nix '"curious@<hostname>".activationPackage'
+./result/activate
+```
+
+Or use the Flake compatibility boundary:
+
 ```bash
 home-manager switch --flake .#curious@<hostname>
 ```

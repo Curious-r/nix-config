@@ -4,8 +4,8 @@
 # ❄️ Curious's Nix Config
 
 Personal NixOS, Home Manager and nix-on-droid configurations. The experimental
-branch evaluates these targets directly with npins-pinned sources while keeping
-the legacy Flake available during migration.
+branch evaluates these targets directly with npins-pinned sources; a minimal
+Flake remains available as a compatibility boundary.
 
 ## Tech Stack
 
@@ -22,9 +22,15 @@ the legacy Flake available during migration.
 ## Project Structure
 
 - `nixos/`: NixOS system configurations
-- `home-manager/`: Standalone Home Manager configurations
+- `home-manager/`: Home Manager configurations used standalone and through NixOS
 - `nix-on-droid/`: nix-on-droid configurations for Android
 - `modules/`: Reusable Nix modules (NixOS, Home Manager)
+- `machines.nix`: Host inventory shared by the NixOS evaluator and CI
+- `system.nix`: Traditional NixOS evaluation entrypoint
+- `home-manager.nix`: Standalone Home Manager evaluation entrypoint
+- `droid.nix`: nix-on-droid evaluation entrypoint
+- `ci/jobs.nix`: Explicit build matrix
+- `npins/`: Pinned upstream sources
 - `pkgs/`: Custom packages
 - `overlays/`: Nixpkgs overlays
 - `secrets/`: Encrypted secrets, managed by vaultix
@@ -52,7 +58,7 @@ hosts; Android devices are listed by `droid.nix`.
 
 Run `nix fmt` to format tracked Nix and Prettier-supported files.
 
-- `CI`: gitleaks secret scan, legacy Flake health checks, actionlint, traditional evaluator checks, and Vaultix CLI wrapper builds
+- `CI`: gitleaks secret scan, Flake compatibility checks, actionlint, traditional evaluator checks, and Vaultix CLI wrapper builds
 - Build: covers every NixOS toplevel, Home Manager activation and nix-on-droid activation; runs only when a commit touches build-related paths (`workflow_dispatch` forces a full run); aarch64 machines build on arm64 runners
 - Build outputs are pushed to `curious.cachix.org`, so local `nixos-rebuild` / `home-manager switch` / `nix-on-droid` runs pull them directly
 - `Update npins sources`: weekly npins update PR

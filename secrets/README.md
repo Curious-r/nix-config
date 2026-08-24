@@ -39,4 +39,5 @@ Since Vaultix integrates with Nix, you can manage your secrets using the tools p
 
 - **Never** commit unencrypted secrets.
 - **Always** ensure `.age` files are tracked by Git.
-- The `secrets/cache/` directory is excluded from formatting in `treefmt-nix` to avoid corruption.
+- The `secrets/cache/` directory is excluded from formatting by the repository's
+  Prettier ignore rules and formatter script to avoid corruption.

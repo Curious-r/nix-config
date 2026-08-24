@@ -1,8 +1,8 @@
 # 📦 Custom Packages
 
-`pkgs/` is a scaffold for packaging tools that are not in nixpkgs yet.
-
-It is currently empty: `aerion` has been merged into nixpkgs upstream, and its packages are kept here as commented-out examples.
+Custom packages are added to the repository's nixpkgs instance through the
+`additions` overlay and are also exported through the Flake compatibility
+boundary.
 
 ## Adding a Package
 
@@ -14,15 +14,8 @@ pkgs:
 }
 ```
 
-## Using Packages from This Flake
+## Building or Running
 
-```nix
-inputs.curious-r.packages.${pkgs.system}.my-tool
-```
-
-Or directly:
-
-```bash
-nix run "github:Curious-r/nix-config#my-tool"
-nix shell "github:Curious-r/nix-config#my-tool"
+```console
+nix run .#cc-switch
 ```

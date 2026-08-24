@@ -1,10 +1,10 @@
 # Custom Modules
 
-Reusable modules from this flake, usable from other configurations as well.
+Reusable modules exported by this repository's Flake compatibility layer.
 
 ## Using Modules
 
-The legacy Flake compatibility layer exposes these sets directly:
+The Flake compatibility layer exposes these sets directly:
 
 ```nix
 nixosModules = import ./nixos;

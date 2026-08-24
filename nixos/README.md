@@ -13,13 +13,19 @@ NixOS system configurations for each host.
 
 ## Deployment
 
-Apply to the local system:
+Apply to the local system through the Flake compatibility boundary:
 
 ```bash
 sudo nixos-rebuild switch --flake .#<hostname>
 ```
 
-Build without applying:
+Build without applying from the traditional entrypoint:
+
+```bash
+nix build -f system.nix '<hostname>.config.system.build.toplevel'
+```
+
+Or through the Flake compatibility boundary:
 
 ```bash
 nix build .#nixosConfigurations.<hostname>.config.system.build.toplevel
