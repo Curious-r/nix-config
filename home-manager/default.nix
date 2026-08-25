@@ -6,14 +6,13 @@ let
     sources
     ;
 
-  homeManager = import sources.home-manager.outPath { };
-
   mkHome =
     host: machine:
     let
       pkgs = import sources.nixpkgs {
         localSystem.system = machine.system;
       };
+      homeManager = import sources.home-manager.outPath { inherit pkgs; };
       inputs = mkInputs pkgs;
     in
     homeManager.lib.homeManagerConfiguration {
