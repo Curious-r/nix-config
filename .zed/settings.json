@@ -17,7 +17,7 @@
           "command": ["nixfmt"]
         },
         "diagnostic": {
-          "suppress": ["sema-primop-removable-prefix"]
+          "suppress": ["sema-primop-removable-prefix", "sema-primop-overridden"]
         }
       }
     }
