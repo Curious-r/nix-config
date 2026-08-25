@@ -15,7 +15,7 @@ Standalone Home Manager configurations for user environments.
 Build a standalone activation package from the traditional entrypoint:
 
 ```bash
-nix build -f home-manager.nix '"curious@<hostname>".activationPackage'
+nix build -f home-manager '"curious@<hostname>".activationPackage'
 ./result/activate
 ```
 

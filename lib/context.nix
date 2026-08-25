@@ -1,15 +1,15 @@
 let
-  sources = import ./npins;
+  sources = import ../npins;
 
-  overlays = import ./overlays;
+  overlays = import ../overlays;
 
   project = {
     _type = "flake";
-    outPath = ./.;
+    outPath = ./..;
     overlays = overlays;
-    homeManagerModules = import ./modules/home-manager;
-    nixosModules = import ./modules/nixos;
-    vaultix = import ./vaultix.nix // {
+    homeManagerModules = import ../modules/home-manager;
+    nixosModules = import ../modules/nixos;
+    vaultix = import ../secrets/vaultix.nix // {
       defaultSecretDirectory = "./secrets";
     };
   };
@@ -19,7 +19,7 @@ let
     let
       lanzaboote = import sources.lanzaboote { inherit pkgs; };
       zenBrowser = import sources.zen-browser { inherit pkgs; };
-      thirdPartyPackages = import ./third-party-packages.nix { inherit sources; };
+      thirdPartyPackages = import ../pkgs/third-party.nix { inherit sources; };
     in
     {
       inherit (sources) nixpkgs;

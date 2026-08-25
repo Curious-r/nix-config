@@ -16,7 +16,7 @@ NixOS system configurations for each host.
 Build without applying from the traditional entrypoint:
 
 ```bash
-nix build -f system.nix '<hostname>.config.system.build.toplevel'
+nix build -f nixos '<hostname>.config.system.build.toplevel'
 ```
 
 Apply the built toplevel:

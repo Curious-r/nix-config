@@ -4,7 +4,7 @@ let
     aarch64-linux = "ubuntu-24.04-arm";
   };
 
-  machines = import ../machines.nix;
+  machines = import ../lib/machines.nix;
 
   mkSystemJob =
     name: machine:
@@ -16,7 +16,7 @@ let
       target = "nixos";
       machine = name;
       system = system;
-      entrypoint = "system.nix";
+      entrypoint = "nixos/default.nix";
       attr = "${name}.config.system.build.toplevel";
       prefetch = "";
       runsOn = runnerFor.${system};
@@ -28,7 +28,7 @@ let
     target = "home-manager";
     machine = machine;
     system = system;
-    entrypoint = "home-manager.nix";
+    entrypoint = "home-manager/default.nix";
     attr = ''"${machine}".activationPackage'';
     prefetch = "";
     runsOn = runnerFor.${system};
@@ -40,7 +40,7 @@ let
     target = "nix-on-droid";
     machine = machine;
     system = "aarch64-linux";
-    entrypoint = "droid.nix";
+    entrypoint = "nix-on-droid/default.nix";
     attr = ''"${machine}".activationPackage'';
     prefetch = prefetch;
     runsOn = runnerFor.aarch64-linux;

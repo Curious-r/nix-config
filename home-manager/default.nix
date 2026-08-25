@@ -1,5 +1,5 @@
 let
-  inherit (import ./context.nix)
+  inherit (import ../lib/context.nix)
     machines
     mkInputs
     project
@@ -23,7 +23,7 @@ let
         self = project;
       };
       modules = [
-        ./home-manager/curious/${host}
+        ./curious/${host}
         {
           nixpkgs = {
             overlays = builtins.attrValues project.overlays;

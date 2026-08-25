@@ -1,5 +1,5 @@
 let
-  inherit (import ./context.nix) sources;
+  inherit (import ../lib/context.nix) sources;
 
   mkDroid =
     device:
@@ -11,7 +11,7 @@ let
       pkgs = import sources.nixpkgs {
         localSystem.system = "aarch64-linux";
       };
-      config.imports = [ ./nix-on-droid/${device} ];
+      config.imports = [ ./${device} ];
       isFlake = true;
     };
 in

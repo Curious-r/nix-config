@@ -1,5 +1,5 @@
 let
-  inherit (import ./context.nix)
+  inherit (import ../lib/context.nix)
     machines
     mkInputs
     overlays
@@ -33,8 +33,8 @@ let
           # legacy nixpkgs.config must not be merged into such an instance.
           nixpkgs.config = pkgs.lib.mkForce { };
         }
-        ./nixos/common/core
-        machine.module or (./nixos + "/${name}")
+        ./common/core
+        machine.module or (./. + "/${name}")
       ];
     };
 in

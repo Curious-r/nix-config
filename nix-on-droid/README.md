@@ -18,7 +18,7 @@ nix-on-droid switch --flake .#<device-name>
 Build an activation package from the traditional entrypoint:
 
 ```bash
-nix build --impure -f droid.nix '"<device-name>".activationPackage'
+nix build --impure -f nix-on-droid '"<device-name>".activationPackage'
 ```
 
 Evaluation uses `--impure` because upstream embeds an absolute bootstrap store path

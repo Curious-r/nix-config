@@ -1,9 +1,9 @@
 let
-  inherit (import ./context.nix) machines sources;
+  inherit (import ../lib/context.nix) machines sources;
 
-  # Keep the CLI separate from context.nix: re-encryption needs every evaluated
+  # Keep the CLI separate from lib/context.nix: re-encryption needs every evaluated
   # host, while host evaluation only needs Vaultix's static project metadata.
-  nodes = import ./system.nix;
+  nodes = import ../nixos;
 
   systems = [
     "i686-linux"
@@ -17,7 +17,7 @@ let
       pkgs = import sources.nixpkgs {
         localSystem.system = system;
       };
-      package = (import ./third-party-packages.nix { inherit sources; }).vaultix pkgs;
+      package = (import ../pkgs/third-party.nix { inherit sources; }).vaultix pkgs;
       vaultix = import ./vaultix.nix;
       common = {
         inherit nodes package;

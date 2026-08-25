@@ -21,22 +21,19 @@ compatibility boundary.
 
 ## Project Structure
 
-- `nixos/`: NixOS system configurations
-- `home-manager/`: Home Manager configurations used standalone and through NixOS
-- `nix-on-droid/`: nix-on-droid configurations for Android
+- `lib/`: Shared evaluation context and host inventory
+- `nixos/`: NixOS system configurations and their evaluation entrypoint
+- `home-manager/`: Home Manager configurations used standalone and through NixOS,
+  with the standalone evaluation entrypoint in `default.nix`
+- `nix-on-droid/`: nix-on-droid configurations, with the evaluation entrypoint in
+  `default.nix`
 - `modules/`: Reusable Nix modules (NixOS, Home Manager)
-- `machines.nix`: Host inventory shared by the NixOS evaluator and CI
-- `system.nix`: Traditional NixOS evaluation entrypoint
-- `home-manager.nix`: Standalone Home Manager evaluation entrypoint
-- `droid.nix`: nix-on-droid evaluation entrypoint
 - `ci/jobs.nix`: Explicit build matrix
-- `context.nix`: Shared source, input and project metadata
-- `formatter.nix`: Repository formatter and check
-- `vaultix.nix` / `vaultix-cli.nix`: Secret metadata and local editing wrappers
 - `npins/`: Pinned upstream sources
 - `pkgs/`: Custom packages
 - `overlays/`: Nixpkgs overlays
-- `secrets/`: Encrypted secrets, managed by vaultix
+- `secrets/`: Encrypted secrets, Vaultix metadata and local editing wrappers
+- `tools/`: Repository maintenance tools
 
 ## Hosts
 
@@ -56,15 +53,15 @@ Hostnames follow `<category>-<brand>-<model>[-<suffix>]`. The last segment only 
 ## CI/CD
 
 The build matrix is generated from the explicit list in `ci/jobs.nix`. NixOS hosts
-come from `machines.nix`; Home Manager configurations are generated for those same
-hosts; Android devices are listed by `droid.nix`.
+come from `lib/machines.nix`; Home Manager configurations are generated for those
+same hosts; Android devices are listed by `nix-on-droid/default.nix`.
 
 ### Formatting
 
 Format tracked Nix and Prettier-supported files:
 
 ```console
-nix run -f ./formatter.nix x86_64-linux.format
+nix run -f ./tools/formatter.nix x86_64-linux.format
 ```
 
 The optional Flake boundary also exposes this as `nix fmt`.

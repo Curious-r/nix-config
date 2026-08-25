@@ -104,16 +104,9 @@ jobs:
           filters: |
             build:
               - 'flake.nix'
-              - 'system.nix'
-              - 'context.nix'
-              - 'home-manager.nix'
-              - 'droid.nix'
-              - 'vaultix.nix'
-              - 'vaultix-cli.nix'
-              - 'third-party-packages.nix'
+              - 'lib/**'
               - 'npins/**'
               - 'ci/**'
-              - 'machines.nix'
               - 'modules/**'
               - 'overlays/**'
               - 'pkgs/**'
@@ -217,16 +210,16 @@ jobs:
             args+=(--impure)
           fi
           case "$ENTRYPOINT" in
-            system.nix)
+            nixos/default.nix)
               args+=(--file "$ENTRYPOINT" "$ATTR")
               ;;
             flake)
               args+=(".#${ATTR}")
               ;;
-            home-manager.nix)
+            home-manager/default.nix)
               args+=(--file "$ENTRYPOINT" "$ATTR")
               ;;
-            droid.nix)
+            nix-on-droid/default.nix)
               args+=(--file "$ENTRYPOINT" "$ATTR")
               ;;
             *)

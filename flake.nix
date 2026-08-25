@@ -25,7 +25,7 @@
       ];
 
       sources = import ./npins;
-      formatterTools = import ./formatter.nix { inherit sources systems; };
+      formatterTools = import ./tools/formatter.nix { inherit sources systems; };
 
       pkgsFor =
         system:
@@ -40,10 +40,10 @@
         }) systems
       );
 
-      vaultixMetadata = import ./vaultix.nix // {
+      vaultixMetadata = import ./secrets/vaultix.nix // {
         defaultSecretDirectory = "./secrets";
-        nodes = import ./system.nix;
-        app = import ./vaultix-cli.nix;
+        nodes = import ./nixos;
+        app = import ./secrets/vaultix-cli.nix;
       };
     in
     {
@@ -55,12 +55,12 @@
 
       formatter = builtins.mapAttrs (_: tools: tools.format) formatterTools;
 
-      homeConfigurations = import ./home-manager.nix;
+      homeConfigurations = import ./home-manager;
       homeManagerModules = import ./modules/home-manager;
 
-      nixOnDroidConfigurations = import ./droid.nix;
+      nixOnDroidConfigurations = import ./nix-on-droid;
 
-      nixosConfigurations = import ./system.nix;
+      nixosConfigurations = import ./nixos;
       nixosModules = import ./modules/nixos;
 
       overlays = import ./overlays;

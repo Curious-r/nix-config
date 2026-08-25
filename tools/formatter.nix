@@ -1,5 +1,6 @@
 {
   sources ? import ./npins,
+  root ? ./..,
   systems ? [
     "aarch64-linux"
     "x86_64-linux"
@@ -66,7 +67,7 @@ let
         '';
       };
 
-      check = pkgs.runCommand "format-check" { src = ./.; } ''
+      check = pkgs.runCommand "format-check" { src = root; } ''
         cd "$src"
         "${format}/bin/format" --check .
         touch "$out"

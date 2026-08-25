@@ -8,6 +8,8 @@ This directory contains encrypted secrets managed by [Vaultix](https://github.co
   - `common/`: Shared secrets (e.g., user passwords, database keys).
   - `<hostname>/`: Host-specific secrets (e.g., network credentials, private configs).
 - `cache/`: Vaultix's internal cache for encrypted secrets. **Do not modify manually.**
+- `vaultix.nix`: Vaultix project metadata.
+- `vaultix-cli.nix`: Local edit and re-encryption wrappers.
 
 ## 🛠️ Usage
 
@@ -24,13 +26,14 @@ Since Vaultix integrates with Nix, you can manage your secrets using the tools p
 - **Update secrets**: Edit an `.age` file with the local editor wrapper:
 
   ```console
-  nix run -f ./vaultix-cli.nix x86_64-linux.edit -- ./secrets/nixos/example.age
+  nix run -f ./secrets/vaultix-cli.nix x86_64-linux.edit -- \
+    ./secrets/nixos/example.age
   ```
 
   Re-encrypt all hosts after changing host keys or secret metadata:
 
   ```console
-  nix run -f ./vaultix-cli.nix x86_64-linux.renc
+  nix run -f ./secrets/vaultix-cli.nix x86_64-linux.renc
   ```
 
 - **Cache**: If you encounter issues with secrets not being picked up, check the `cache/` directory or the `vaultix` configuration in `vaultix.nix`.
