@@ -1,5 +1,5 @@
 {
-  sources ? import ./npins,
+  sources ? import ../npins,
   root ? ./..,
   systems ? [
     "aarch64-linux"
