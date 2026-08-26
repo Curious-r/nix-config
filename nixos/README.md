@@ -1,51 +1,79 @@
 # 🖥️ NixOS Configurations
 
-NixOS system configurations for each host.
+This directory contains the NixOS hosts managed by this repository.
 
-## Structure
+## Layout
 
-- `common/`: Shared across all hosts
-  - `core/`: Included by every host
-  - `optional/`: Optional feature modules
-- `Laptop-Legion-R7000`: Main laptop
-- `Server-IdeaPad-G480`: Home server
-- `Router-RaspberryPi-4B-1`: Raspberry Pi 4B router
+- `common/core/`: settings imported by every host
+- `common/optional/`: shared modules that individual hosts opt into
+- `Laptop-Legion-R7000/`: main laptop
+- `Server-IdeaPad-G480/`: home server
+- `Router-RaspberryPi-4B-1/`: Raspberry Pi 4B router
 
-## Deployment
+## Rebuild a host
 
-Rebuild and switch from the traditional entrypoint:
-
-```bash
-nixos-rebuild switch --file nixos/default.nix --attr '<hostname>' --elevate run0
-```
-
-To build without applying, use the same entrypoint with the `build` action:
+From the repository root, run:
 
 ```bash
-nixos-rebuild build --file nixos/default.nix --attr '<hostname>'
+nixos-rebuild switch \
+  --file nixos/default.nix \
+  --attr '<hostname>' \
+  --elevate run0
 ```
 
-Since `nixos/default.nix` returns an attribute set of hosts, `--attr '<hostname>'`
-selects one machine. `nixos-rebuild` then appends
-`config.system.build.toplevel` internally.
+Replace `<hostname>` with a key from `nixos/default.nix`, such as
+`Laptop-Legion-R7000`.
 
-`--file` also accepts the containing directory:
+That entrypoint returns an attribute set whose keys are hostnames. The
+`--attr` option selects one host, and `nixos-rebuild` then builds:
+
+```text
+<hostname>.config.system.build.toplevel
+```
+
+To inspect what a rebuild would do without activating it, use:
+
+```bash
+nixos-rebuild dry-build \
+  --file nixos/default.nix \
+  --attr '<hostname>'
+```
+
+To build a new toplevel and create the usual `result` symlink without
+activating it, use:
+
+```bash
+nixos-rebuild build \
+  --file nixos/default.nix \
+  --attr '<hostname>'
+```
+
+## Shorter `--file` form
+
+`nixos-rebuild` also accepts the containing directory:
 
 ```bash
 nixos-rebuild switch -f nixos --attr '<hostname>' --elevate run0
 ```
 
 For a directory, it looks for `system.nix` first and then falls back to
-`default.nix`. The directory fallback is an implementation detail of
-`nixos-rebuild`, so prefer the explicit file in scripts.
+`default.nix`. The fallback behavior is an implementation detail, so prefer the
+explicit filename in scripts and documentation.
 
-This traditional entrypoint disables Flake auto-detection and does not require
-channels or `NIX_PATH`: all sources are pinned in `npins/`.
+## Flake compatibility
 
-Or use the Flake compatibility boundary:
+The repository still exposes the same hosts through a small Flake boundary:
 
 ```bash
-nixos-rebuild switch --flake .#<hostname> --elevate run0
+nixos-rebuild switch --flake ".#<hostname>" --elevate run0
 ```
 
-CI builds the toplevel for each host and pushes it to `curious.cachix.org`, so local rebuilds pull it directly.
+`--file` and `--flake` are alternatives; do not combine them.
+
+Use this when a tool expects a Flake URI. Day-to-day rebuilds can use the
+traditional entrypoint above.
+
+## Binary cache
+
+CI builds every host toplevel and pushes it to `curious.cachix.org`. Local
+rebuilds therefore download most unchanged paths instead of rebuilding them.
