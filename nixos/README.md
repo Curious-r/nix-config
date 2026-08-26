@@ -25,6 +25,23 @@ To build without applying, use the same entrypoint with the `build` action:
 nixos-rebuild build --file nixos/default.nix --attr '<hostname>'
 ```
 
+Since `nixos/default.nix` returns an attribute set of hosts, `--attr '<hostname>'`
+selects one machine. `nixos-rebuild` then appends
+`config.system.build.toplevel` internally.
+
+`--file` also accepts the containing directory:
+
+```bash
+nixos-rebuild switch -f nixos --attr '<hostname>' --elevate run0
+```
+
+For a directory, it looks for `system.nix` first and then falls back to
+`default.nix`. The directory fallback is an implementation detail of
+`nixos-rebuild`, so prefer the explicit file in scripts.
+
+This traditional entrypoint disables Flake auto-detection and does not require
+channels or `NIX_PATH`: all sources are pinned in `npins/`.
+
 Or use the Flake compatibility boundary:
 
 ```bash
