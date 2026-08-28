@@ -56,9 +56,21 @@ nixos-rebuild build \
 nixos-rebuild switch -f nixos --attr '<hostname>' --elevate run0
 ```
 
-For a directory, it looks for `system.nix` first and then falls back to
-`default.nix`. The fallback behavior is an implementation detail, so prefer the
-explicit filename in scripts and documentation.
+When a directory is supplied to `--file`, `nixos-rebuild` resolves it
+itself before invoking Nix: it uses `<dir>/system.nix` if present and
+otherwise falls back to `<dir>/default.nix` for backward compatibility.
+This is distinct from Nix's normal directory import, which only looks
+for `default.nix`, and from the search performed when `--file` is
+omitted entirely.
+
+For documentation and scripts, prefer the explicit entrypoint:
+
+```bash
+nixos-rebuild switch \
+  --file nixos/default.nix \
+  --attr '<hostname>' \
+  --elevate run0
+```
 
 ## Flake compatibility
 
@@ -68,7 +80,7 @@ The repository still exposes the same hosts through a small Flake boundary:
 nixos-rebuild switch --flake ".#<hostname>" --elevate run0
 ```
 
-`--file` and `--flake` are alternatives; do not combine them.
+`--file` and `--flake` are mutually exclusive; do not combine them.
 
 Use this when a tool expects a Flake URI. Day-to-day rebuilds can use the
 traditional entrypoint above.
