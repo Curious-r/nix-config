@@ -47,7 +47,7 @@ in
       cargoDeps = pkgs.rustPlatform.fetchCargoVendor {
         inherit (pamSource) outPath;
         src = pamSource.outPath;
-        hash = "sha256-Eka6jdFFI2G2T9rXsibWp830KTMIhTo6rUYdLSOGvtM=";
+        hash = "sha256-uCt/VIcwRLVfR7A5O0mS5SV2KPpbAg/0oxUJIGJBgdE=";
       };
 
       nativeBuildInputs = [
