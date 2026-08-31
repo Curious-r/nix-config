@@ -46,6 +46,17 @@ jobs:
       - name: Update npins
         run: nix run nixpkgs#npins -- update
 
+      - name: Update Rust vendor hashes
+        run: ./tools/update-cargo-vendor-hashes.sh
+
+      - name: Validate changes
+        run: |
+          echo "Checking for whitespace errors..."
+          git diff --check || true
+          echo "Checking Nix evaluation of third-party packages..."
+          nix eval --impure --expr 'builtins.attrNames (import ./pkgs/third-party.nix { sources = import ./npins; })' --json > /dev/null
+          echo "Validation complete"
+
       - name: Create pull request
         uses: peter-evans/create-pull-request@v7
         with:
@@ -53,7 +64,9 @@ jobs:
           branch: dependencies/npins-update
           delete-branch: true
           labels: dependencies,automated
-          commit-message: "chore(deps): update npins sources"
-          title: "chore(deps): update npins sources"
+          commit-message: "chore(deps): update npins sources and Rust vendor hashes"
+          title: "chore(deps): update npins sources and Rust vendor hashes"
           body: |
             Automated weekly update of npins-pinned sources.
+
+            Refreshes Cargo vendor hashes in `pkgs/third-party.nix` when `Cargo.lock` changes.
