@@ -16,7 +16,7 @@ let
   mkNixosJob = configName: host: {
     name = "nixos ${configName} (${host.system})";
     target = "nixos";
-    machine = configName;
+    configName = configName;
     system = host.system;
     entrypoint = "nixos/default.nix";
     attr = "${configName}.config.system.build.toplevel";
@@ -28,13 +28,15 @@ let
   mkHomeManagerJob =
     configName:
     let
+      # configName is "<user>@<host>" (e.g. "curious@Laptop-Legion-R7000");
+      # extract host part to look up system from machines.
       hostName = builtins.elemAt (builtins.split "@" configName) 2;
       system = machines.${hostName}.system;
     in
     {
       name = "home-manager ${configName} (${system})";
       target = "home-manager";
-      machine = configName;
+      configName = configName;
       system = system;
       entrypoint = "home-manager/default.nix";
       attr = ''"${configName}".activationPackage'';
@@ -46,7 +48,7 @@ let
   mkNixOnDroidJob = configName: {
     name = "nix-on-droid ${configName} (aarch64-linux)";
     target = "nix-on-droid";
-    machine = configName;
+    configName = configName;
     system = "aarch64-linux";
     entrypoint = "nix-on-droid/default.nix";
     attr = ''"${configName}".activationPackage'';
