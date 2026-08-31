@@ -158,7 +158,7 @@ if not re.fullmatch(r'sha256-[A-Za-z0-9+/=]+', cand):
 if len(cand) < 44 or len(cand) > 120:
     print(f"error: suspicious hash length: {cand}", file=sys.stderr)
     sys.exit(1)
-# 额外验证必须是 base64 有效（长度 44 常见，但允许不同 padding）
+# 基础 SRI 格式与长度检查（仅校验字符集与长度范围）
 print(cand)
 PY
 )

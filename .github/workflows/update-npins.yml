@@ -52,7 +52,7 @@ jobs:
       - name: Validate changes
         run: |
           echo "Checking for whitespace errors..."
-          git diff --check || true
+          git diff --check
           echo "Checking Nix evaluation of third-party packages..."
           nix eval --impure --expr 'builtins.attrNames (import ./pkgs/third-party.nix { sources = import ./npins; })' --json > /dev/null
           echo "Validation complete"
