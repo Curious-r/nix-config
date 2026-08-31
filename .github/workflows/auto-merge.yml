@@ -1,17 +1,20 @@
 name: Auto-merge Bot PRs
 
 on:
-  pull_request:
+  pull_request_target:
     types:
       - opened
       - synchronize
       - ready_for_review
 
-# 仓库已开启 Allow auto-merge，PR 通过 ruleset 必填检查后自动合并。
-# 本仓库中 Bot 通过 GitHub App token 创建 PR，因此其打开的 PR 能自
-# 动触发 CI，从而能满足保护主分支的 ruleset 的要求。
+# 使用 pull_request_target 以便在可信的 base 分支上下文中访问仓库 secrets。
+# Dependabot 的 pull_request 事件无法访问 vars/secrets，导致 GitHub App token 生成失败。
+# 本 workflow 仅执行 GitHub API 操作（gh pr merge --auto），不检出或执行 PR 分支代码。
 jobs:
   auto-merge:
+    if: |
+      github.actor == 'dependabot[bot]' ||
+      github.actor == 'curiosusbot[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Generate GitHub App token
@@ -21,16 +24,7 @@ jobs:
           client-id: ${{ vars.BOT_APP_CLIENT_ID }}
           private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
 
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          token: ${{ steps.generate-token.outputs.token }}
-          fetch-depth: 1
-
       - name: Enable auto-merge for bot PRs
-        if: |
-          github.actor == 'dependabot[bot]' ||
-          github.actor == 'curiosusbot[bot]'
         env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |
