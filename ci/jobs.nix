@@ -8,10 +8,7 @@ let
   homeConfigurations = import ../home-manager;
   nixOnDroidConfigurations = import ../nix-on-droid;
 
-  # Fallback for Nix versions without builtins.mapAttrsToList (e.g. Lix 2.95)
-  mapAttrsToList =
-    builtins.mapAttrsToList
-      or (f: attrs: builtins.map (name: f name attrs.${name}) (builtins.attrNames attrs));
+  mapAttrsToList = f: attrs: builtins.map (name: f name attrs.${name}) (builtins.attrNames attrs);
 
   mkNixosJob = configName: host: {
     name = "nixos ${configName} (${host.system})";
