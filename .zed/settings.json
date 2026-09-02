@@ -12,12 +12,12 @@
   },
   "lsp": {
     "nixd": {
-      "initialization_options": {
+      "settings": {
         "formatting": {
           "command": ["nixfmt"]
         },
         "diagnostic": {
-          "suppress": ["sema-primop-removable-prefix", "sema-primop-overridden"]
+          "suppress": ["sema-primop-removed-prefix", "sema-primop-overridden"]
         }
       }
     }
