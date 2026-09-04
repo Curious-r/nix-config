@@ -55,6 +55,19 @@
       "url": "https://api.github.com/repos/nix-community/lanzaboote/tarball/refs/tags/v1.1.0",
       "hash": "sha256-hqijVSEETttmo8Okql9/LG0Ua34hdciKW1a5zzlj8mU="
     },
+    "llm-agents.nix": {
+      "type": "Git",
+      "repository": {
+        "type": "GitHub",
+        "owner": "numtide",
+        "repo": "llm-agents.nix"
+      },
+      "branch": "main",
+      "submodules": false,
+      "revision": "f9a83fd4942a37f2e2c7a07a4d508dbaaee968f8",
+      "url": "https://github.com/numtide/llm-agents.nix/archive/f9a83fd4942a37f2e2c7a07a4d508dbaaee968f8.tar.gz",
+      "hash": "sha256-EcfAKzcETRKOhUKjmoLp4gk0bKtkKNaz2y5Kba2cUQk="
+    },
     "nix-on-droid": {
       "type": "Git",
       "repository": {
