@@ -1,9 +1,9 @@
 let
   inherit (import ../lib/context.nix)
     machines
-    mkInputs
     project
     sources
+    thirdPartyPackages
     ;
 
   mkHome =
@@ -13,12 +13,11 @@ let
         localSystem.system = machine.system;
       };
       homeManager = import sources.home-manager.outPath { inherit pkgs; };
-      inputs = mkInputs pkgs;
     in
     homeManager.lib.homeManagerConfiguration {
       inherit pkgs;
       extraSpecialArgs = {
-        inherit inputs project;
+        inherit sources thirdPartyPackages project;
         self = project;
       };
       modules = [

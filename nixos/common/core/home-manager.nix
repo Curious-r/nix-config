@@ -1,16 +1,16 @@
 {
-  inputs,
+  sources,
   config,
   self,
   ...
 }:
 {
-  imports = [ inputs.home-manager.nixosModules.home-manager ];
+  imports = [ (import "${sources.home-manager}/nixos") ];
   home-manager = {
     useGlobalPkgs = true;
     useUserPackages = true;
     backupFileExtension = "backup";
-    extraSpecialArgs = { inherit inputs self; };
+    extraSpecialArgs = { inherit sources self; };
 
     users.curious.imports = [
       ../../../home-manager/curious/${config.networking.hostName}

@@ -1,11 +1,11 @@
 {
-  inputs,
+  sources,
   primaryDiskWwid,
   swapSize,
   ...
 }:
 {
-  imports = [ inputs.disko.nixosModules.disko ];
+  imports = [ (import "${sources.disko}/module.nix") ];
   disko = {
     devices = {
       # 定义一个磁盘

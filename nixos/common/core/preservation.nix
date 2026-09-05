@@ -1,10 +1,10 @@
 {
-  inputs,
+  sources,
   lib,
   ...
 }:
 {
-  imports = [ inputs.preservation.nixosModules.preservation ];
+  imports = [ (import "${sources.preservation}/module.nix") ];
   preservation = {
     # The module doesn't do anything unless it is enabled.
     enable = lib.mkDefault true;

@@ -1,10 +1,10 @@
 let
   inherit (import ../lib/context.nix)
     machines
-    mkInputs
     overlays
     project
     sources
+    thirdPartyPackages
     ;
   evalNixos = import "${sources.nixpkgs}/nixos/lib/eval-config.nix";
 
@@ -16,13 +16,12 @@ let
         overlays = builtins.attrValues overlays;
         config.allowUnfree = true;
       };
-      inputs = mkInputs pkgs;
     in
     evalNixos {
       inherit pkgs;
       system = machine.system;
       specialArgs = {
-        inherit inputs project;
+        inherit sources thirdPartyPackages project;
         self = project;
       }
       // machine.specialArgs;

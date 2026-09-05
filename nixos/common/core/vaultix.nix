@@ -1,6 +1,11 @@
-{ inputs, ... }:
 {
-  imports = [ inputs.vaultix.nixosModules.default ];
+  pkgs,
+  sources,
+  thirdPartyPackages,
+  ...
+}:
+{
+  imports = [ "${sources.vaultix}/module" ];
   services.userborn.enable = true;
   services.openssh.hostKeys = [
     {
@@ -9,6 +14,7 @@
     }
   ];
   vaultix = {
+    package = thirdPartyPackages.vaultix pkgs;
     secrets = {
       root-password = {
         file = ../../../secrets/nixos/common/core/root-password.age;

@@ -1,9 +1,9 @@
 {
-  inputs,
+  sources,
   ...
 }:
 {
-  imports = [ inputs.dms-plugin-registry.nixosModules.default ];
+  imports = [ (import "${sources.dms-plugin-registry}/nix/module.nix") ];
 
   programs.dms-shell = {
     enable = true;
