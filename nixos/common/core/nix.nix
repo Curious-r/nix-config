@@ -9,9 +9,11 @@
   nix = {
     # This registers each pinned source under its npins name.
     # To make nix3 commands consistent across hosts.
-    registry = lib.mapAttrs (_: value: { flake = value; }) sources;
+    registry = lib.mapAttrs (_: value: { flake = value; }) (
+      lib.filterAttrs (name: _: name != "__functor") sources
+    );
 
-    # This will add your inputs to the system's legacy channels.
+    # This will add your sources to the system's legacy channels.
     # Making legacy nix commands consistent as well.
     nixPath = lib.mapAttrsToList (key: value: "${key}=${value.to.path}") config.nix.registry;
 
