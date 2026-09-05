@@ -1,11 +1,11 @@
 {
-  self,
+  nixosModules,
   config,
   pkgs,
   ...
 }:
 {
-  imports = [ self.nixosModules.ddns-go ];
+  imports = [ nixosModules.ddns-go ];
 
   services.ddns-go = {
     enable = true;

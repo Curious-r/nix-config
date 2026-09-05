@@ -1,11 +1,12 @@
 let
   inherit (import ../lib/context.nix)
     machines
-    overlays
-    project
     sources
+    overlays
     thirdPartyPackages
     ;
+
+  nixosModules = import ../modules/nixos;
   evalNixos = import "${sources.nixpkgs}/nixos/lib/eval-config.nix";
 
   mkSystem =
@@ -21,8 +22,12 @@ let
       inherit pkgs;
       system = machine.system;
       specialArgs = {
-        inherit sources thirdPartyPackages project;
-        self = project;
+        inherit
+          sources
+          overlays
+          nixosModules
+          thirdPartyPackages
+          ;
       }
       // machine.specialArgs;
       modules = [

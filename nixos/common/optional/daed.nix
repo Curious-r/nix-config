@@ -1,6 +1,6 @@
-{ self, ... }:
+{ nixosModules, ... }:
 {
-  imports = [ self.nixosModules.daed ];
+  imports = [ nixosModules.daed ];
   services.daed = {
     enable = true;
     openFirewall = {

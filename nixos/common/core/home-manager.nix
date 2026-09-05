@@ -1,7 +1,7 @@
 {
   sources,
+  homeManagerModules,
   config,
-  self,
   ...
 }:
 {
@@ -10,7 +10,7 @@
     useGlobalPkgs = true;
     useUserPackages = true;
     backupFileExtension = "backup";
-    extraSpecialArgs = { inherit sources self; };
+    extraSpecialArgs = { inherit sources homeManagerModules; };
 
     users.curious.imports = [
       ../../../home-manager/curious/${config.networking.hostName}

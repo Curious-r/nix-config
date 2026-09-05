@@ -1,10 +1,12 @@
 let
   inherit (import ../lib/context.nix)
     machines
-    project
     sources
+    overlays
     thirdPartyPackages
     ;
+
+  homeManagerModules = import ../modules/home-manager;
 
   mkHome =
     host: machine:
@@ -17,14 +19,18 @@ let
     homeManager.lib.homeManagerConfiguration {
       inherit pkgs;
       extraSpecialArgs = {
-        inherit sources thirdPartyPackages project;
-        self = project;
+        inherit
+          sources
+          overlays
+          homeManagerModules
+          thirdPartyPackages
+          ;
       };
       modules = [
         ./curious/${host}
         {
           nixpkgs = {
-            overlays = builtins.attrValues project.overlays;
+            overlays = builtins.attrValues overlays;
             config.allowUnfree = true;
           };
         }
