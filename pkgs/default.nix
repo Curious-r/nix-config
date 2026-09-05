@@ -19,5 +19,4 @@ in
   # aerion = pkgs.callPackage ./aerion.nix { inherit aerion-creds; };
   # ======================================================================================
 
-  inherit cc-switch;
 }

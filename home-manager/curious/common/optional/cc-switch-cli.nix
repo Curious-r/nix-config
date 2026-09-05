@@ -1,6 +1,6 @@
 { pkgs, ... }:
 {
   home.packages = [
-    pkgs.cc-switch
+    pkgs.llm-agents.cc-switch-cli
   ];
 }

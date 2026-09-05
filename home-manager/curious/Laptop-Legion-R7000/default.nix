@@ -41,7 +41,7 @@
 
     ../common/optional/mangohud.nix
 
-    ../common/optional/cc-switch.nix
+    ../common/optional/cc-switch-cli.nix
     ../common/optional/zcode.nix
   ];
   home.stateVersion = "26.11";
