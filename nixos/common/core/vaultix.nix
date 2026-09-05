@@ -4,6 +4,13 @@
   thirdPartyPackages,
   ...
 }:
+let
+  vaultixFlake = {
+    _type = "flake";
+    outPath = ../../..;
+    vaultix = import ../../../secrets/vaultix.nix;
+  };
+in
 {
   imports = [ "${sources.vaultix}/module" ];
   services.userborn.enable = true;
@@ -15,6 +22,7 @@
   ];
   vaultix = {
     package = thirdPartyPackages.vaultix pkgs;
+    settings.flake = vaultixFlake;
     secrets = {
       root-password = {
         file = ../../../secrets/nixos/common/core/root-password.age;
