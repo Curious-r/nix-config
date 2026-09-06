@@ -38,6 +38,7 @@ jobs:
       - name: Install Nix
         uses: cachix/install-nix-action@v31
         with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
           extra_nix_config: |
             connect-timeout = 3
             extra-substituters = https://cache.nixos.org https://nix-community.cachix.org https://cache.numtide.com https://nix-on-droid.cachix.org
