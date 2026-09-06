@@ -3,7 +3,6 @@ let
     machines
     sources
     overlays
-    thirdPartyPackages
     ;
 
   homeManagerModules = import ../modules/home-manager;
@@ -15,6 +14,10 @@ let
         localSystem.system = machine.system;
       };
       homeManager = import sources.home-manager.outPath { inherit pkgs; };
+      nixPackagesSources = import "${sources.nix-packages}/npins";
+      nixPackages = import "${sources.nix-packages}/lib" {
+        inherit pkgs;
+      };
     in
     homeManager.lib.homeManagerConfiguration {
       inherit pkgs;
@@ -23,7 +26,8 @@ let
           sources
           overlays
           homeManagerModules
-          thirdPartyPackages
+          nixPackagesSources
+          nixPackages
           ;
       };
       modules = [

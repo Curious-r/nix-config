@@ -1,7 +1,7 @@
 {
   pkgs,
-  sources,
-  thirdPartyPackages,
+  nixPackagesSources,
+  nixPackages,
   ...
 }:
 let
@@ -12,7 +12,7 @@ let
   };
 in
 {
-  imports = [ "${sources.vaultix}/module" ];
+  imports = [ "${nixPackagesSources.vaultix}/module" ];
   services.userborn.enable = true;
   services.openssh.hostKeys = [
     {
@@ -21,7 +21,7 @@ in
     }
   ];
   vaultix = {
-    package = thirdPartyPackages.vaultix pkgs;
+    package = nixPackages.vaultix pkgs;
     settings.flake = vaultixFlake;
     secrets = {
       root-password = {

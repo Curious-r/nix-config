@@ -1,5 +1,5 @@
 let
-  inherit (import ../lib/context.nix) machines sources;
+  inherit (import ../lib/context.nix) sources;
 
   # Keep the CLI separate from lib/context.nix: re-encryption needs every evaluated
   # host, while host evaluation only needs Vaultix's static project metadata.
@@ -17,7 +17,11 @@ let
       pkgs = import sources.nixpkgs {
         localSystem.system = system;
       };
-      package = (import ../pkgs/third-party.nix { inherit sources; }).vaultix pkgs;
+      nixPackagesSources = import "${sources.nix-packages}/npins";
+      nixPackages = import "${sources.nix-packages}/lib" {
+        inherit pkgs;
+      };
+      package = nixPackages.vaultix;
       vaultix = import ./vaultix.nix;
       common = {
         inherit nodes package;
@@ -29,8 +33,8 @@ let
       };
     in
     {
-      renc = pkgs.callPackage "${sources.vaultix}/apps/renc.nix" common;
-      edit = pkgs.callPackage "${sources.vaultix}/apps/edit.nix" common;
+      renc = pkgs.callPackage "${nixPackagesSources.vaultix}/apps/renc.nix" common;
+      edit = pkgs.callPackage "${nixPackagesSources.vaultix}/apps/edit.nix" common;
     };
 in
 builtins.listToAttrs (

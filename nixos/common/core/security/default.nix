@@ -1,14 +1,14 @@
 {
   pkgs,
-  sources,
-  thirdPartyPackages,
+  nixPackagesSources,
+  nixPackages,
   ...
 }:
 {
   imports = [
-    (import "${sources.pam-fido-remote}/nix/modules/nixos/fido-remote.nix" {
+    (import "${nixPackagesSources.pam-fido-remote}/nix/modules/nixos/fido-remote.nix" {
       flake.mkPackagesFor = hostPkgs: {
-        pam-fido-remote = thirdPartyPackages.pam-fido-remote hostPkgs;
+        pam-fido-remote = nixPackages.pam-fido-remote hostPkgs;
       };
     })
   ];

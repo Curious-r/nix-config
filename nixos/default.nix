@@ -3,7 +3,6 @@ let
     machines
     sources
     overlays
-    thirdPartyPackages
     ;
 
   nixosModules = import ../modules/nixos;
@@ -17,6 +16,10 @@ let
         overlays = builtins.attrValues overlays;
         config.allowUnfree = true;
       };
+      nixPackagesSources = import "${sources.nix-packages}/npins";
+      nixPackages = import "${sources.nix-packages}/lib" {
+        inherit pkgs;
+      };
     in
     evalNixos {
       inherit pkgs;
@@ -26,7 +29,8 @@ let
           sources
           overlays
           nixosModules
-          thirdPartyPackages
+          nixPackagesSources
+          nixPackages
           ;
       }
       // machine.specialArgs;
