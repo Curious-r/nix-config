@@ -1,5 +1,5 @@
 {
-  nixPackagesSources,
+  sources,
   nixPackages,
   ...
 }:
@@ -11,7 +11,7 @@ let
   };
 in
 {
-  imports = [ "${nixPackagesSources.vaultix}/module" ];
+  imports = [ "${sources.vaultix}/module" ];
   services.userborn.enable = true;
   services.openssh.hostKeys = [
     {

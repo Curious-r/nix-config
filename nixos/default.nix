@@ -16,7 +16,6 @@ let
         overlays = builtins.attrValues overlays;
         config.allowUnfree = true;
       };
-      nixPackagesSources = import "${sources.nix-packages}/npins";
       nixPackages = import "${sources.nix-packages}/lib" {
         inherit pkgs;
       };
@@ -29,7 +28,6 @@ let
           sources
           overlays
           nixosModules
-          nixPackagesSources
           nixPackages
           ;
       }

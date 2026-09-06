@@ -14,7 +14,6 @@ let
         localSystem.system = machine.system;
       };
       homeManager = import sources.home-manager.outPath { inherit pkgs; };
-      nixPackagesSources = import "${sources.nix-packages}/npins";
       nixPackages = import "${sources.nix-packages}/lib" {
         inherit pkgs;
       };
@@ -26,7 +25,6 @@ let
           sources
           overlays
           homeManagerModules
-          nixPackagesSources
           nixPackages
           ;
       };

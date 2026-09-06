@@ -17,7 +17,6 @@ let
       pkgs = import sources.nixpkgs {
         localSystem.system = system;
       };
-      nixPackagesSources = import "${sources.nix-packages}/npins";
       nixPackages = import "${sources.nix-packages}/lib" {
         inherit pkgs;
       };
@@ -33,8 +32,8 @@ let
       };
     in
     {
-      renc = pkgs.callPackage "${nixPackagesSources.vaultix}/apps/renc.nix" common;
-      edit = pkgs.callPackage "${nixPackagesSources.vaultix}/apps/edit.nix" common;
+      renc = pkgs.callPackage "${sources.vaultix}/apps/renc.nix" common;
+      edit = pkgs.callPackage "${sources.vaultix}/apps/edit.nix" common;
     };
 in
 builtins.listToAttrs (
