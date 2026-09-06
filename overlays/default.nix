@@ -1,5 +1,5 @@
 {
-  nix-packages = import "${(import ../npins).nix-packages}/overlay.nix";
+  curious = import "${(import ../npins).curious}/overlay.nix";
 
   # This one brings our custom packages from the 'pkgs' directory.
   # Note: use `final` directly, NOT `final.pkgs`. nixpkgs has a

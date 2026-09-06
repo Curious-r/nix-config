@@ -1,5 +1,18 @@
 {
   "pins": {
+    "curious": {
+      "type": "Git",
+      "repository": {
+        "type": "GitHub",
+        "owner": "Curious-r",
+        "repo": "nix-packages"
+      },
+      "branch": "main",
+      "submodules": false,
+      "revision": "d401012e42884962d513dd5cad320c32519ca7ed",
+      "url": "https://github.com/Curious-r/nix-packages/archive/d401012e42884962d513dd5cad320c32519ca7ed.tar.gz",
+      "hash": "sha256-bJeVdocZZbc5+R/VHD4VlZRYYZI9C4fE4Y/zKK9u5pg="
+    },
     "disko": {
       "type": "Git",
       "repository": {
@@ -80,19 +93,6 @@
       "revision": "df611d5358360092b1d2e7e756f94b23843bd9d6",
       "url": "https://github.com/nix-community/nix-on-droid/archive/df611d5358360092b1d2e7e756f94b23843bd9d6.tar.gz",
       "hash": "sha256-2MKUKRNV+5qs3nbQDmz7L6KRHSEHDy/lZjfIAYMZSOE="
-    },
-    "nix-packages": {
-      "type": "Git",
-      "repository": {
-        "type": "GitHub",
-        "owner": "Curious-r",
-        "repo": "nix-packages"
-      },
-      "branch": "main",
-      "submodules": false,
-      "revision": "1121a1973fc8ae7377ba06ea397253ecbc435ce4",
-      "url": "https://github.com/Curious-r/nix-packages/archive/1121a1973fc8ae7377ba06ea397253ecbc435ce4.tar.gz",
-      "hash": "sha256-77pDolQKv7b25RhNKOfrHr3hAFbvUwCDkXdP33yu76s="
     },
     "nixos-hardware": {
       "type": "Git",

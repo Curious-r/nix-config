@@ -20,7 +20,7 @@ in
     }
   ];
   vaultix = {
-    package = pkgs.vaultix;
+    package = pkgs.curious.vaultix;
     settings.flake = vaultixFlake;
     secrets = {
       root-password = {

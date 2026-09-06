@@ -7,7 +7,7 @@
   imports = [
     (import "${sources.pam-fido-remote}/nix/modules/nixos/fido-remote.nix" {
       flake.mkPackagesFor = _: {
-        pam-fido-remote = pkgs.pam-fido-remote;
+        pam-fido-remote = pkgs.curious.pam-fido-remote;
       };
     })
   ];
