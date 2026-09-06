@@ -1,5 +1,4 @@
 {
-  pkgs,
   nixPackagesSources,
   nixPackages,
   ...
@@ -21,7 +20,7 @@ in
     }
   ];
   vaultix = {
-    package = nixPackages.vaultix pkgs;
+    package = nixPackages.vaultix;
     settings.flake = vaultixFlake;
     secrets = {
       root-password = {
