@@ -1,9 +1,13 @@
 {
   pkgs,
   sources,
-  nixPackages,
   ...
 }:
+let
+  nixPackages = import "${sources.nix-packages}/lib" {
+    inherit pkgs;
+  };
+in
 {
   imports = [
     (import "${sources.pam-fido-remote}/nix/modules/nixos/fido-remote.nix" {

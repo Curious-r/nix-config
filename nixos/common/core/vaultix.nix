@@ -1,9 +1,12 @@
 {
+  pkgs,
   sources,
-  nixPackages,
   ...
 }:
 let
+  nixPackages = import "${sources.nix-packages}/lib" {
+    inherit pkgs;
+  };
   vaultixFlake = {
     _type = "flake";
     outPath = ../../..;

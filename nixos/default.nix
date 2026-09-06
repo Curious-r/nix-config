@@ -16,9 +16,6 @@ let
         overlays = builtins.attrValues overlays;
         config.allowUnfree = true;
       };
-      nixPackages = import "${sources.nix-packages}/lib" {
-        inherit pkgs;
-      };
     in
     evalNixos {
       inherit pkgs;
@@ -28,7 +25,6 @@ let
           sources
           overlays
           nixosModules
-          nixPackages
           ;
       }
       // machine.specialArgs;
