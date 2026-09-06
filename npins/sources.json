@@ -81,6 +81,19 @@
       "url": "https://github.com/nix-community/nix-on-droid/archive/df611d5358360092b1d2e7e756f94b23843bd9d6.tar.gz",
       "hash": "sha256-2MKUKRNV+5qs3nbQDmz7L6KRHSEHDy/lZjfIAYMZSOE="
     },
+    "nix-packages": {
+      "type": "Git",
+      "repository": {
+        "type": "GitHub",
+        "owner": "Curious-r",
+        "repo": "nix-packages"
+      },
+      "branch": "main",
+      "submodules": false,
+      "revision": "1fa29bff2761c1993090af648d2b5a6f822e3aae",
+      "url": "https://github.com/Curious-r/nix-packages/archive/1fa29bff2761c1993090af648d2b5a6f822e3aae.tar.gz",
+      "hash": "sha256-dCUZg9kNjmvnaCXw3Sg3UqeQYd4syOZenMsBItnkHcQ="
+    },
     "nixos-hardware": {
       "type": "Git",
       "repository": {
