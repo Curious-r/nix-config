@@ -4,9 +4,6 @@
   ...
 }:
 let
-  nixPackages = import "${sources.nix-packages}/lib" {
-    inherit pkgs;
-  };
   vaultixFlake = {
     _type = "flake";
     outPath = ../../..;
@@ -23,7 +20,7 @@ in
     }
   ];
   vaultix = {
-    package = nixPackages.vaultix;
+    package = pkgs.vaultix;
     settings.flake = vaultixFlake;
     secrets = {
       root-password = {

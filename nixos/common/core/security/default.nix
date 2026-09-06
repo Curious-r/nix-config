@@ -3,16 +3,11 @@
   sources,
   ...
 }:
-let
-  nixPackages = import "${sources.nix-packages}/lib" {
-    inherit pkgs;
-  };
-in
 {
   imports = [
     (import "${sources.pam-fido-remote}/nix/modules/nixos/fido-remote.nix" {
       flake.mkPackagesFor = _: {
-        pam-fido-remote = nixPackages.pam-fido-remote;
+        pam-fido-remote = pkgs.pam-fido-remote;
       };
     })
   ];
