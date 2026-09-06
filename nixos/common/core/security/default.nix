@@ -7,8 +7,8 @@
 {
   imports = [
     (import "${nixPackagesSources.pam-fido-remote}/nix/modules/nixos/fido-remote.nix" {
-      flake.mkPackagesFor = hostPkgs: {
-        pam-fido-remote = nixPackages.pam-fido-remote hostPkgs;
+      flake.mkPackagesFor = _: {
+        pam-fido-remote = nixPackages.pam-fido-remote;
       };
     })
   ];
