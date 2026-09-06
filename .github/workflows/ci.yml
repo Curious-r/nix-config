@@ -60,7 +60,7 @@ jobs:
           name: curious
           skipPush: true
       - name: Lint workflows
-        run: nix run nixpkgs#actionlint
+        run: nix-shell -p actionlint --run actionlint
       - name: Check flake
         run: nix flake check
       # aarch64-linux 纯求值，覆盖树莓派与 nix-on-droid 的配置正确性。
@@ -76,8 +76,8 @@ jobs:
       # local Yubikey and must not run inside CI.
       - name: Check Vaultix CLI wrappers
         run: |
-          nix build --no-link -f ./secrets/vaultix-cli.nix x86_64-linux.edit
-          nix build --no-link -f ./secrets/vaultix-cli.nix x86_64-linux.renc
+          nix-build --no-out-link -f ./secrets/vaultix-cli.nix x86_64-linux.edit
+          nix-build --no-out-link -f ./secrets/vaultix-cli.nix x86_64-linux.renc
 
   changes:
     name: Detect relevant changes
@@ -141,7 +141,7 @@ jobs:
       - name: Generate matrix
         id: gen
         run: |
-          matrix="$(nix eval --json -f ./ci/jobs.nix)"
+          matrix="$(nix-instantiate --eval --json -f ./ci/jobs.nix)"
           echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
 
   build:
@@ -190,8 +190,9 @@ jobs:
         if: matrix.prefetch != ''
         run: |
           for p in ${{ matrix.prefetch }}; do
-            nix copy --from https://nix-on-droid.cachix.org \
-              --option extra-trusted-public-keys 'nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=' "$p"
+            nix-store -r "$p" \
+              --option extra-substituters "https://nix-on-droid.cachix.org" \
+              --option extra-trusted-public-keys "nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU="
           done
       - name: Build
         env:
@@ -202,29 +203,26 @@ jobs:
         # 因此通过环境变量传递，避免 shell 二次展开。
         run: |
           set -euo pipefail
-          args=(--no-link)
+          args=(--no-out-link)
           if [[ "$IMPURE" == "true" ]]; then
             args+=(--impure)
           fi
           case "$ENTRYPOINT" in
             nixos/default.nix)
-              args+=(--file "$ENTRYPOINT" "$ATTR")
-              ;;
-            flake)
-              args+=(".#${ATTR}")
+              args+=(-f "$ENTRYPOINT" "$ATTR")
               ;;
             home-manager/default.nix)
-              args+=(--file "$ENTRYPOINT" "$ATTR")
+              args+=(-f "$ENTRYPOINT" "$ATTR")
               ;;
             nix-on-droid/default.nix)
-              args+=(--file "$ENTRYPOINT" "$ATTR")
+              args+=(-f "$ENTRYPOINT" "$ATTR")
               ;;
             *)
               echo "Unknown entrypoint: $ENTRYPOINT" >&2
               exit 1
               ;;
           esac
-          nix build "${args[@]}"
+          nix-build "${args[@]}"
 
   result:
     name: CI result
