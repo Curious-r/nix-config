@@ -5,17 +5,35 @@
   lib,
   ...
 }:
+
+let
+
+  # Keep npins source names independent from user-facing flake registry names.
+  # Most sources use the same name, while sources whose upstream name is not a
+  # valid flake ID can be given an explicit alias here.
+
+  registryAliases = {
+    "llm-agents.nix" = "llm-agents";
+  };
+
+  registryName = name: registryAliases.${name} or name;
+
+  registry = lib.mapAttrs' (
+    name: value:
+    lib.nameValuePair (registryName name) {
+      flake = value;
+    }
+  ) (lib.filterAttrs (name: _: name != "__functor") sources);
+in
 {
   nix = {
-    # This registers each pinned source under its npins name.
-    # To make nix3 commands consistent across hosts.
-    registry = lib.mapAttrs (_: value: { flake = value; }) (
-      lib.filterAttrs (name: _: name != "__functor") sources
-    );
+    # Register each pinned source under its registry name.
+    # Most sources keep their npins name; exceptional names are mapped through
+    # registryAliases above so that all generated registry IDs are valid flake IDs.
+    registry = registry;
 
-    # This will add your sources to the system's legacy channels.
-    # Making legacy nix commands consistent as well.
-    nixPath = lib.mapAttrsToList (key: value: "${key}=${value.to.path}") config.nix.registry;
+    # Keep legacy nix commands consistent with the generated flake registry.
+    nixPath = lib.mapAttrsToList (key: value: "${key}=${value.flake.to.path}") config.nix.registry;
 
     package = pkgs.lixPackageSets.stable.lix;
 
