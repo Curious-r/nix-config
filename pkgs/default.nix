@@ -3,7 +3,6 @@
 pkgs:
 let
   # aerion-creds = pkgs.callPackage ./aerion-creds.nix { };
-  cc-switch = pkgs.callPackage ./cc-switch.nix { };
 in
 {
   # example = pkgs.callPackage ./example { };
