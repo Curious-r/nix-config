@@ -16,11 +16,11 @@ let
     let
       pkgs = import sources.nixpkgs {
         localSystem.system = system;
+        overlays = [
+          (import "${sources.curious}/overlay.nix")
+        ];
       };
-      nixPackages = import "${sources.nix-packages}/lib" {
-        inherit pkgs;
-      };
-      package = nixPackages.vaultix;
+      package = pkgs.curious.vaultix;
       vaultix = import ./vaultix.nix;
       common = {
         inherit nodes package;
