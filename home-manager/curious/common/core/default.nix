@@ -7,7 +7,6 @@
     ./zellij.nix
     ./yazi.nix
     ./rg.nix
-    ./npins.nix
   ];
   home = {
     username = "curious";

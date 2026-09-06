@@ -11,6 +11,7 @@
     pkgs.nixfmt
     pkgs.package-version-server
     pkgs.yaml-language-server
+    pkgs.npins
   ];
 
   languages.nix = {
