@@ -64,6 +64,37 @@ jobs:
             extra-substituters = https://cache.nixos.org https://nix-community.cachix.org https://cache.numtide.com https://nix-on-droid.cachix.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g= nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=
 
+      # 只拉不推：check 构建的都是 nixpkgs 已有路径，不需要占用自家缓存。
+      - name: Configure Cachix
+        uses: cachix/cachix-action@v17
+        with:
+          name: curious
+          skipPush: true
+
+      - name: Lint workflows
+        run: nix-shell -p actionlint --run actionlint
+
+      - name: Check flake
+        run: nix flake check
+
+      # Check the flake API on the other supported system without building outputs.
+      # The normal check runs on x86_64-linux; this covers aarch64-linux as well.
+      - name: Check flake (aarch64-linux eval)
+        run: nix flake check --no-build --system aarch64-linux
+
+      - name: Check traditional evaluators
+        run: |
+          nix-instantiate --eval --json --expr 'builtins.attrNames (import ./nixos/default.nix)'
+          nix-instantiate --eval --json --expr 'builtins.attrNames (import ./home-manager/default.nix)'
+          nix-instantiate --eval --json --expr 'builtins.attrNames (import ./nix-on-droid/default.nix)'
+
+      # Build the wrappers without invoking them: re-encryption requires the
+      # local Yubikey and must not run inside CI.
+      - name: Check Vaultix CLI wrappers
+        run: |
+          nix-build --no-out-link ./secrets/vaultix-cli.nix -A x86_64-linux.edit
+          nix-build --no-out-link ./secrets/vaultix-cli.nix -A x86_64-linux.renc
+
   changes:
     name: Detect relevant changes
     runs-on: ubuntu-latest
@@ -78,6 +109,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+
       - name: Filter changed paths
         id: filter
         uses: dorny/paths-filter@v4
@@ -114,6 +146,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
       - name: Install Nix
         uses: cachix/install-nix-action@v31
         with:
@@ -122,6 +155,7 @@ jobs:
             connect-timeout = 3
             extra-substituters = https://cache.nixos.org https://nix-community.cachix.org https://cache.numtide.com https://nix-on-droid.cachix.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g= nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=
+
       # 矩阵来自显式清单；所有系统目标都已切换到传统求值入口。
       - name: Generate matrix
         id: gen
@@ -147,9 +181,11 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.matrix.outputs.matrix) }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
       - name: Install Nix
         uses: cachix/install-nix-action@v31
         with:
@@ -158,6 +194,7 @@ jobs:
             connect-timeout = 3
             extra-substituters = https://cache.nixos.org https://nix-community.cachix.org https://cache.numtide.com https://nix-on-droid.cachix.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g= nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=
+
       # 构建前先订阅自家缓存加速 CI 之间复用；
       # 构建后通过 post-build hook 推送新产物，本地机器也能直接拉取。
       # Cachix 侧记得在 Settings > Upstream caches 里把 nix-community 等公共缓存
@@ -169,6 +206,7 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
           # 排除源码包，减少存储消耗（公共缓存没有的独有闭包仍会推送）。
           pushFilter: "(-source$|nixpkgs\\.tar\\.gz$)"
+
       # nix-on-droid 的 proot-static 是上游硬编码的 store path，
       # Nix 实例化 derivation 时只认本地 store，先预取进来才能求值。
       - name: Prefetch nix-on-droid bootstrap paths
@@ -179,6 +217,7 @@ jobs:
               --option extra-substituters "https://nix-on-droid.cachix.org" \
               --option extra-trusted-public-keys "nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU="
           done
+
       - name: Build
         env:
           ENTRYPOINT: ${{ matrix.entrypoint }}
