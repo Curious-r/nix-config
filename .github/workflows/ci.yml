@@ -48,6 +48,7 @@ jobs:
       - name: Install Nix
         uses: cachix/install-nix-action@v31
         with:
+          nix_path: nixpkgs=channel:nixos-unstable
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
           extra_nix_config: |
             connect-timeout = 3
@@ -76,8 +77,8 @@ jobs:
       # local Yubikey and must not run inside CI.
       - name: Check Vaultix CLI wrappers
         run: |
-          nix-build --no-out-link -f ./secrets/vaultix-cli.nix x86_64-linux.edit
-          nix-build --no-out-link -f ./secrets/vaultix-cli.nix x86_64-linux.renc
+          nix-build --no-out-link ./secrets/vaultix-cli.nix -A x86_64-linux.edit
+          nix-build --no-out-link ./secrets/vaultix-cli.nix -A x86_64-linux.renc
 
   changes:
     name: Detect relevant changes
@@ -141,7 +142,7 @@ jobs:
       - name: Generate matrix
         id: gen
         run: |
-          matrix="$(nix-instantiate --eval --json -f ./ci/jobs.nix)"
+          matrix="$(nix-instantiate --eval --strict --json ./ci/jobs.nix)"
           echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
 
   build:
@@ -205,17 +206,17 @@ jobs:
           set -euo pipefail
           args=(--no-out-link)
           if [[ "$IMPURE" == "true" ]]; then
-            args+=(--impure)
+            args+=(--option pure-eval false)
           fi
           case "$ENTRYPOINT" in
             nixos/default.nix)
-              args+=(-f "$ENTRYPOINT" "$ATTR")
+              args+=("$ENTRYPOINT" -A "$ATTR")
               ;;
             home-manager/default.nix)
-              args+=(-f "$ENTRYPOINT" "$ATTR")
+              args+=("$ENTRYPOINT" -A "$ATTR")
               ;;
             nix-on-droid/default.nix)
-              args+=(-f "$ENTRYPOINT" "$ATTR")
+              args+=("$ENTRYPOINT" -A "$ATTR")
               ;;
             *)
               echo "Unknown entrypoint: $ENTRYPOINT" >&2
