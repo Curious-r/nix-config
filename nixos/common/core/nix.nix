@@ -7,11 +7,9 @@
 }:
 
 let
-
   # Keep npins source names independent from user-facing flake registry names.
   # Most sources use the same name, while sources whose upstream name is not a
   # valid flake ID can be given an explicit alias here.
-
   registryAliases = {
     "llm-agents.nix" = "llm-agents";
   };
@@ -33,7 +31,7 @@ in
     registry = registry;
 
     # Keep legacy nix commands consistent with the generated flake registry.
-    nixPath = lib.mapAttrsToList (key: value: "${key}=${value.flake.to.path}") config.nix.registry;
+    nixPath = lib.mapAttrsToList (key: value: "${key}=${value.to.path}") config.nix.registry;
 
     package = pkgs.lixPackageSets.stable.lix;
 
