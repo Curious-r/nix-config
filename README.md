@@ -11,6 +11,7 @@ compatibility boundary.
 
 - [Lix](https://git.lix.systems/lix-project/lix) - A delicious Nix fork
 - [npins](https://github.com/andir/npins) - Source pinning for traditional Nix evaluation
+- [nix-packages](https://github.com/Curious-r/nix-packages) - My personal collection of reusable Nix packages
 - [vaultix](https://github.com/milieuim/vaultix) - Secret management
 - [preservation](https://github.com/nix-community/preservation) - Opt-in state preservation
 - [disko](https://github.com/nix-community/disko) - Declarative disk partitioning
