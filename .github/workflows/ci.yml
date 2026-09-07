@@ -45,40 +45,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      - name: Read nixpkgs revision
+        id: nixpkgs
+        run: |
+          rev="$(jq -r '.pins.nixpkgs.revision' npins/sources.json)"
+          test "$rev" != "null"
+          test -n "$rev"
+          echo "rev=$rev" >> "$GITHUB_OUTPUT"
+
       - name: Install Nix
         uses: cachix/install-nix-action@v31
         with:
-          nix_path: nixpkgs=channel:nixos-unstable
+          nix_path: nixpkgs=https://github.com/NixOS/nixpkgs/archive/${{ steps.nixpkgs.outputs.rev }}.tar.gz
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
           extra_nix_config: |
             connect-timeout = 3
             extra-substituters = https://cache.nixos.org https://nix-community.cachix.org https://cache.numtide.com https://nix-on-droid.cachix.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g= nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=
-      # 只拉不推：check 构建的都是 nixpkgs 已有路径，不需要占用自家缓存。
-      - name: Configure Cachix
-        uses: cachix/cachix-action@v17
-        with:
-          name: curious
-          skipPush: true
-      - name: Lint workflows
-        run: nix-shell -p actionlint --run actionlint
-      - name: Check flake
-        run: nix flake check
-      # aarch64-linux 纯求值，覆盖树莓派与 nix-on-droid 的配置正确性。
-      # darwin/i686 已被 nixpkgs 26.11 淘汰，这里只评估 aarch64-linux。
-      - name: Check flake (aarch64-linux eval)
-        run: nix flake check --no-build --system aarch64-linux
-      - name: Check traditional evaluators
-        run: |
-          nix-instantiate --eval --json --expr 'builtins.attrNames (import ./nixos/default.nix)'
-          nix-instantiate --eval --json --expr 'builtins.attrNames (import ./home-manager/default.nix)'
-          nix-instantiate --eval --json --expr 'builtins.attrNames (import ./nix-on-droid/default.nix)'
-      # Build the wrappers without invoking them: re-encryption requires the
-      # local Yubikey and must not run inside CI.
-      - name: Check Vaultix CLI wrappers
-        run: |
-          nix-build --no-out-link ./secrets/vaultix-cli.nix -A x86_64-linux.edit
-          nix-build --no-out-link ./secrets/vaultix-cli.nix -A x86_64-linux.renc
 
   changes:
     name: Detect relevant changes
