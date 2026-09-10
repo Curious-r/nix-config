@@ -43,6 +43,7 @@
 
     ../common/optional/cc-switch-cli.nix
     ../common/optional/command-code.nix
+    ../common/optional/antigravity-cli.nix
   ];
   home.stateVersion = "26.11";
 }
