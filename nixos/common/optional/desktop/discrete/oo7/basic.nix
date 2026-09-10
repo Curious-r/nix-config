@@ -15,8 +15,8 @@
   # LimitMEMLOCK 均无效。
 
   # 用于认证弹窗
-  environment.systemPackages = [ pkgs.gcr ];
-  services.dbus.packages = [ pkgs.gcr ];
+  environment.systemPackages = [ pkgs.gcr_3 ];
+  services.dbus.packages = [ pkgs.gcr_3 ];
 
   # 开启一些基础的规则钩子，等 #544377 合并之后估计会重复，到时候删除。
   security.pam.services = {
