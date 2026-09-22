@@ -50,9 +50,9 @@ jobs:
         id: nixpkgs
         run: |
           rev="$(jq -r '.pins.nixpkgs.revision' npins/sources.json)"
-          test "$rev" != "null"
-          test -n "$rev"
-          echo "rev=$rev" >> "$GITHUB_OUTPUT"
+          test "${rev}" != "null"
+          test -n "${rev}"
+          echo "rev=${rev}" >> "${GITHUB_OUTPUT}"
 
       - name: Install Nix
         uses: cachix/install-nix-action@v31
@@ -161,7 +161,7 @@ jobs:
         id: gen
         run: |
           matrix="$(nix-instantiate --eval --strict --json ./ci/jobs.nix)"
-          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
+          echo "matrix=${matrix}" >> "${GITHUB_OUTPUT}"
 
   build:
     name: ${{ matrix.name }}
@@ -213,7 +213,7 @@ jobs:
         if: matrix.prefetch != ''
         run: |
           for p in ${{ matrix.prefetch }}; do
-            nix-store -r "$p" \
+            nix-store -r "${p}" \
               --option extra-substituters "https://nix-on-droid.cachix.org" \
               --option extra-trusted-public-keys "nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU="
           done
@@ -228,21 +228,21 @@ jobs:
         run: |
           set -euo pipefail
           args=(--no-out-link)
-          if [[ "$IMPURE" == "true" ]]; then
+          if [[ "${IMPURE}" == "true" ]]; then
             args+=(--option pure-eval false)
           fi
-          case "$ENTRYPOINT" in
+          case "${ENTRYPOINT}" in
             nixos/default.nix)
-              args+=("$ENTRYPOINT" -A "$ATTR")
+              args+=("${ENTRYPOINT}" -A "${ATTR}")
               ;;
             home-manager/default.nix)
-              args+=("$ENTRYPOINT" -A "$ATTR")
+              args+=("${ENTRYPOINT}" -A "${ATTR}")
               ;;
             nix-on-droid/default.nix)
-              args+=("$ENTRYPOINT" -A "$ATTR")
+              args+=("${ENTRYPOINT}" -A "${ATTR}")
               ;;
             *)
-              echo "Unknown entrypoint: $ENTRYPOINT" >&2
+              echo "Unknown entrypoint: ${ENTRYPOINT}" >&2
               exit 1
               ;;
           esac
