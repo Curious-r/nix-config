@@ -21,6 +21,7 @@
 
     plugins = {
       # Simply enable plugins by their ID (from the registry).
+      emojiLauncher.enable = true;
       nixMonitor.enable = true;
       nvidiaGpuMonitor.enable = true;
       powerUsagePlugin.enable = true;
