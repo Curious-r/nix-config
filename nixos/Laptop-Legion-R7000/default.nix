@@ -14,6 +14,7 @@
     ../common/optional/desktop/discrete/dms-shell.nix
     ../common/optional/desktop/discrete/dms-greeter.nix
     ../common/optional/desktop/discrete/upower.nix
+    ../common/optional/desktop/discrete/power-profiles-daemon.nix
     ../common/optional/desktop/discrete/niri.nix
     ../common/optional/desktop/discrete/nautilus.nix
     ../common/optional/desktop/discrete/oo7/basic.nix
