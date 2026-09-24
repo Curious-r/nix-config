@@ -13,6 +13,15 @@
   ];
 
   security = {
+    # 用 run0 了，sudo 系彻底掰掰。
+    sudo.enable = false;
+
+    run0 = {
+      enable = true;
+      # 好吧，我收回上面装的 x，还是得加个垫片，复制别人命令的时候一直要改好痛苦。
+      sudo-shim.enable = true;
+    };
+
     pam = {
       sshAgentAuth.enable = true;
 
@@ -63,9 +72,6 @@
         users = [ "curious" ];
       };
     };
-
-    # 用 run0 了，sudo 系彻底掰掰。
-    sudo.enable = false;
   };
 
   services = {
@@ -85,7 +91,7 @@
   };
 
   # 在 nixos-rebuild 中允许目标主机支持来自远程的 run0 提权激活。
-  # 这会自动启用 run0。
+  # 即使上面没有显式声明 run0，这里也会默认启用。
   system.tools.nixos-rebuild.enableRun0Elevation = true;
 
   environment.systemPackages = [
