@@ -18,6 +18,7 @@
 
     run0 = {
       enable = true;
+      persistentAuth.enable = true;
       # 好吧，我收回上面装的 x，还是得加个垫片，复制别人命令的时候一直要改好痛苦。
       sudo-shim.enable = true;
     };
