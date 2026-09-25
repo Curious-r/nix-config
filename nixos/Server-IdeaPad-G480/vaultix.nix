@@ -18,12 +18,12 @@
             content = "docker*,cs-*";
           };
 
-          # 替换插槽 2：节点分组（全地区 + 倍率分层）
+          # 替换插槽 2：节点分组（全地区 + 倍率分层 + 协议分层）
           "64d82e992a388a11ee7d04a2d6efe9d540283c3815d04ac30ed9657dcb12c218" = {
             order = 1;
             content = ''
               # ==========================================
-              # 0. 默认智能组（所有节点里选最快，排除过期）
+              # 0. 默认智能组（排除过期节点）
               # ==========================================
               proxy {
                   filter: !name(keyword: 'Expire', '剩余', '到期', '官网', 'Traffic', 'Reset')
@@ -31,66 +31,80 @@
               }
 
               # ==========================================
-              # 一、地区分流组
+              # 一、地区分流组（\b 单词边界通配 + / 空格两类分隔符）
               # ==========================================
               hk_group {
-                  filter: name(keyword: 'HK', 'Hong Kong', '香港', '🇭🇰', 'HKG') && !name(keyword: 'Expire', '剩余', '到期', '官网', 'Traffic', 'Reset')
+                  filter: name(regex: '(?i)(🇭🇰|\bHK\b|\bHKG\b|香港|hong\s*kong)') && !name(keyword: 'Expire', '剩余', '到期')
                   policy: min_moving_avg
               }
               tw_group {
-                  filter: name(keyword: 'TW', 'Taiwan', '台湾', '🇹🇼', '台北', '新北', 'TPE') && !name(keyword: 'Expire', '剩余', '到期', '官网', 'Traffic', 'Reset')
+                  filter: name(regex: '(?i)(🇹🇼|\bTW\b|\bTPE\b|台湾|台北|新北)') && !name(keyword: 'Expire', '剩余', '到期')
                   policy: min_moving_avg
               }
               jp_group {
-                  filter: name(keyword: 'JP', 'Japan', '日本', '🇯🇵', '东京', '大阪', 'TYO', 'NRT', 'KIX') && !name(keyword: 'Expire', '剩余', '到期', '官网', 'Traffic', 'Reset')
+                  filter: name(regex: '(?i)(🇯🇵|\bJP\b|\bTYO\b|\bNRT\b|\bKIX\b|日本|东京|大阪)') && !name(keyword: 'Expire', '剩余', '到期')
                   policy: min_moving_avg
               }
               sg_group {
-                  filter: name(keyword: 'SG', 'Singapore', '新加坡', '🇸🇬', '狮城', 'SGP') && !name(keyword: 'Expire', '剩余', '到期', '官网', 'Traffic', 'Reset')
+                  filter: name(regex: '(?i)(🇸🇬|\bSG\b|\bSGP\b|新加坡|狮城)') && !name(keyword: 'Expire', '剩余', '到期')
                   policy: min_moving_avg
               }
               us_group {
-                  filter: name(keyword: 'US', 'America', '美国', '🇺🇸', '洛杉矶', '圣何塞', '纽约', 'LAX', 'NYC', 'SJC', 'SEA') && !name(keyword: 'Expire', '剩余', '到期', '官网', 'Traffic', 'Reset')
+                  filter: name(regex: '(?i)(🇺🇸|\bUS\b|\bUSA\b|美国|洛杉矶|圣何塞|西雅图|纽约)') && !name(keyword: 'Expire', '剩余', '到期')
+                  policy: min_moving_avg
+              }
+              ca_group {
+                  filter: name(regex: '(?i)(🇨🇦|\bCA\b|加拿大|多伦多|温哥华|蒙特利尔)') && !name(keyword: 'Expire', '剩余', '到期')
                   policy: min_moving_avg
               }
               kr_group {
-                  filter: name(keyword: 'KR', 'Korea', '韩国', '🇰🇷', '首尔', 'Seoul') && !name(keyword: 'Expire', '剩余', '到期', '官网', 'Traffic', 'Reset')
+                  filter: name(regex: '(?i)(🇰🇷|\bKR\b|\bSEO\b|韩国|首尔)') && !name(keyword: 'Expire', '剩余', '到期')
                   policy: min_moving_avg
               }
               eu_group {
-                  filter: name(keyword: 'UK', 'GB', 'Germany', 'DE', 'France', 'FR', 'Netherlands', 'NL', '欧洲', 'EU', 'London', 'Frankfurt', 'Paris', '🇬🇧', '🇩🇪') && !name(keyword: 'Expire', '剩余', '到期', '官网', 'Traffic', 'Reset')
+                  # 覆盖：卢森堡(LU)、英国(UK/GB)、德国(DE)、法国(FR)、荷兰(NL) 等
+                  filter: name(regex: '(?i)(🇱🇺|🇬🇧|🇩🇪|🇫🇷|🇳🇱|\bLU\b|\bUK\b|\bGB\b|\bDE\b|\bFR\b|\bNL\b|\bEU\b|卢森堡|英国|德国|法国|荷兰|欧洲|伦敦|法兰克福)') && !name(keyword: 'Expire', '剩余', '到期')
                   policy: min_moving_avg
               }
               au_group {
-                  filter: name(keyword: 'AU', 'Australia', '澳洲', '澳大利亚', 'Sydney', '悉尼', '🇦🇺') && !name(keyword: 'Expire', '剩余', '到期', '官网', 'Traffic', 'Reset')
+                  filter: name(regex: '(?i)(🇦🇺|\bAU\b|\bSYD\b|澳大利亚|澳洲|悉尼)') && !name(keyword: 'Expire', '剩余', '到期')
                   policy: min_moving_avg
               }
 
               # ==========================================
-              # 二、倍率/线路质量分层
+              # 二、倍率分层组（基于 / 定界的精确匹配）
               # ==========================================
-              high_rate_group {
-                  filter: name(keyword: '[2x]', '[3x]', '[5x]', 'VIP', 'Premium', 'Pro', '⚡', '倍率2', '倍率3') && !name(keyword: 'Expire', '剩余', '到期', '官网', 'Traffic', 'Reset')
-                  policy: min_moving_avg
-              }
-              standard_rate_group {
-                  filter: name(keyword: '[1x]', '标准', 'Normal', 'Basic', '倍率1') && !name(keyword: 'Expire', '剩余', '到期', '官网', 'Traffic', 'Reset', '[2x]', '[3x]', 'VIP')
-                  policy: min_moving_avg
-              }
+              # 低倍率：抓取 /0.1x ~ /0.9x 及备用节点
               low_rate_group {
-                  filter: name(keyword: '[0.1x]', '[0.2x]', '[0.3x]', '[0.4x]', '[0.5x]', '备用', 'Backup', '倍率0.1', '倍率0.2', '倍率0.3', '倍率0.4', '倍率0.5') && !name(keyword: 'Expire', '剩余', '到期', '官网', 'Traffic', 'Reset')
+                  filter: name(regex: '(?i)(/0\.[0-9]+x|0\.[0-9]+x|备用|backup)') && !name(keyword: 'Expire', '剩余', '到期')
+                  policy: min_moving_avg
+              }
+
+              # 标准倍率：显式 /1x 或隐式纯协议标签 [A] / [H6] / [CDN]
+              standard_rate_group {
+                  filter: name(regex: '(?i)(\[[A-Za-z0-9]+\]|/1(\.0)?x\]?|标准|normal)') && !name(regex: '(?i)/0\.[0-9]+x') && !name(keyword: 'Expire', '剩余', '到期')
+                  policy: min_moving_avg
+              }
+
+              # 高倍率：2x 及以上
+              high_rate_group {
+                  filter: name(regex: '(?i)(/[2-9](\.[0-9]+)?x|倍率[2-9]|vip|premium|⚡)') && !name(regex: '(?i)/0\.[0-9]+x') && !name(keyword: 'Expire', '剩余', '到期')
                   policy: min_moving_avg
               }
 
               # ==========================================
-              # 三、协议分组
+              # 三、协议分组（前缀边界匹配）
               # ==========================================
-              reality_group {
-                  filter: name(keyword: 'reality', 'REALITY', 'vision', 'Vision') && !name(keyword: 'Expire', '剩余', '到期', '官网', 'Traffic', 'Reset')
+              hysteria_group {
+                  filter: name(regex: '(?i)\[H6?(/|\])') && !name(keyword: 'Expire', '剩余', '到期')
                   policy: min_moving_avg
               }
-              trojan_group {
-                  filter: name(keyword: 'trojan', 'Trojan', 'TROJAN') && !name(keyword: 'Expire', '剩余', '到期', '官网', 'Traffic', 'Reset')
+              anytls_group {
+                  filter: name(regex: '(?i)\[A(/|\])') && !name(keyword: 'Expire', '剩余', '到期')
+                  policy: min_moving_avg
+              }
+              cdn_group {
+                  filter: name(regex: '(?i)\[CDN(/|\])') && !name(keyword: 'Expire', '剩余', '到期')
                   policy: min_moving_avg
               }
             '';
