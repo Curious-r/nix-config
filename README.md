@@ -67,7 +67,7 @@ nix run -f ./tools/formatter.nix x86_64-linux.format
 
 The optional Flake boundary also exposes this as `nix fmt`.
 
-- `CI`: gitleaks secret scan, actionlint, Flake compatibility and formatter checks, traditional evaluator checks, and Vaultix CLI wrapper builds
+- `CI`: gitleaks secret scan, dedicated formatting check (nix fmt), workflow linting (actionlint), Flake compatibility checks, traditional evaluator checks, and Vaultix CLI wrapper builds
 - Build: covers every NixOS toplevel, Home Manager activation and nix-on-droid activation; runs only when a commit touches build-related paths (`workflow_dispatch` forces a full run); aarch64 machines build on arm64 runners
 - Build outputs are pushed to `curious.cachix.org`, so local builds and activations pull reusable paths directly
 - `Update npins sources`: weekly npins update PR

@@ -25,7 +25,6 @@
       ];
 
       sources = import ./npins;
-      formatterTools = import ./tools/formatter.nix { inherit sources systems; };
 
       pkgsFor =
         system:
@@ -47,13 +46,8 @@
       };
     in
     {
-      checks = builtins.mapAttrs (_: tools: {
-        format-check = tools.check;
-      }) formatterTools;
-
       ci.jobs = import ./ci/jobs.nix;
-
-      formatter = builtins.mapAttrs (_: tools: tools.format) formatterTools;
+      formatter = import ./tools/formatter.nix { inherit sources systems; };
 
       homeConfigurations = import ./home-manager;
       homeManagerModules = import ./modules/home-manager;

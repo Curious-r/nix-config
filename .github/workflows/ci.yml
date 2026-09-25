@@ -36,6 +36,28 @@ jobs:
           # push 事件没有 PR 上下文，也不开评论。
           GITLEAKS_ENABLE_COMMENTS: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
 
+  format:
+    name: Formatting
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          extra_nix_config: |
+            connect-timeout = 3
+            extra-substituters = https://cache.nixos.org https://nix-community.cachix.org https://cache.numtide.com https://nix-on-droid.cachix.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g= nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU=
+
+      - name: Check code formatting
+        run: nix run -f ./tools/formatter.nix x86_64-linux.format -- --check
+
   check:
     name: Flake check
     runs-on: ubuntu-latest
@@ -167,6 +189,7 @@ jobs:
     name: ${{ matrix.name }}
     needs:
       - secrets
+      - format
       - check
       - changes
       - matrix
@@ -252,6 +275,7 @@ jobs:
     name: CI result
     needs:
       - secrets
+      - format
       - check
       - changes
       - matrix

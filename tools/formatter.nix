@@ -1,13 +1,12 @@
 {
   sources ? import ../npins,
-  root ? ./..,
   systems ? [
     "aarch64-linux"
     "x86_64-linux"
   ],
 }:
 let
-  mkTools =
+  mkFormatter =
     system:
     let
       pkgs = import sources.nixpkgs {
@@ -67,19 +66,15 @@ let
         '';
       };
 
-      check = pkgs.runCommand "format-check" { src = root; } ''
-        cd "$src"
-        "${format}/bin/format" --check .
-        touch "$out"
-      '';
     in
-    {
-      inherit check format;
+    format
+    // {
+      inherit format;
     };
 in
 builtins.listToAttrs (
   map (system: {
     name = system;
-    value = mkTools system;
+    value = mkFormatter system;
   }) systems
 )
