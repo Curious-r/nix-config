@@ -5,7 +5,6 @@
     type = "fcitx5";
 
     fcitx5.addons = [
-      pkgs.fcitx5-material-color # a color theme
       (pkgs.fcitx5-rime.override {
         rimeDataPkgs = [ pkgs.rime-wanxiang ];
       })
