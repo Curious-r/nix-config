@@ -117,8 +117,9 @@
               # ==========================================
               # 必须直连的先写
               # ==========================================
-              pname(NetworkManager, systemd-resolved, dnsmasq, aria2c) -> must_direct
+              pname(NetworkManager, systemd-resolve, dnsmasq, aria2c) -> must_direct
               dip(224.0.0.0/3, 'ff00::/8', geoip:private, geoip:cn) -> direct
+              domain(suffix:lan, suffix:local, suffix:home.arpa) -> direct
               domain(geosite:cn, geosite:microsoft, geosite:apple) -> direct
               domain(suffix:curious.host) -> direct
               domain(full:steamserver.net, geosite:steam@cn) -> direct
