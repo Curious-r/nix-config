@@ -1,11 +1,9 @@
 {
-  sources,
   pkgs,
   lib,
   ...
 }:
 let
-  zenBrowser = import sources.zen-browser { inherit pkgs; };
   extension = shortId: guid: {
     name = guid;
     value = {
@@ -33,7 +31,7 @@ let
 in
 {
   home.packages = [
-    (pkgs.wrapFirefox zenBrowser.zen-browser-unwrapped {
+    (pkgs.wrapFirefox pkgs.curious.zen-browser-unwrapped {
       extraPrefs = lib.concatLines (
         lib.mapAttrsToList (
           name: value: "lockPref(${lib.strings.toJSON name}, ${lib.strings.toJSON value});"
