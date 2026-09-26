@@ -27,6 +27,7 @@
     ../common/optional/browser/zen.nix
     ../common/optional/browser/servo.nix
     ../common/optional/mail-client/aerion.nix
+    ../common/optional/media-player/vlc.nix
 
     ../common/optional/gh.nix
 
