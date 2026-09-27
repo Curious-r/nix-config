@@ -256,8 +256,11 @@ jobs:
           set -euo pipefail
           case "${ENTRYPOINT}" in
             nixos/default.nix|home-manager/default.nix|nix-on-droid/default.nix)
-              nix-shell -p nix-fast-build --run \
-                "nix-fast-build --skip-cached --file \"${ENTRYPOINT}\" -A \"${ATTR}\""
+              printf -v build_cmd \
+                'nix-fast-build --skip-cached --file %q -A %q' \
+                "${ENTRYPOINT}" \
+                "${ATTR}"
+              nix-shell -p nix-fast-build --run "${build_cmd}"
               ;;
             *)
               echo "Unknown entrypoint: ${ENTRYPOINT}" >&2
