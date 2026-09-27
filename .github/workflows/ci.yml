@@ -205,9 +205,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Read nixpkgs revision
+        id: nixpkgs
+        run: |
+          rev="$(jq -r '.pins.nixpkgs.revision' npins/sources.json)"
+          test "${rev}" != "null"
+          test -n "${rev}"
+          echo "rev=${rev}" >> "${GITHUB_OUTPUT}"
+
       - name: Install Nix
         uses: cachix/install-nix-action@v31
         with:
+          nix_path: nixpkgs=https://github.com/NixOS/nixpkgs/archive/${{ steps.nixpkgs.outputs.rev }}.tar.gz
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
           extra_nix_config: |
             connect-timeout = 3
@@ -240,32 +249,21 @@ jobs:
       - name: Build
         env:
           ENTRYPOINT: ${{ matrix.entrypoint }}
+          # 矩阵中的 attr 可能包含 homeConfigurations."curious@host" 的引号，
+          # 因此通过环境变量传递，避免 GitHub Actions 表达式直接进入 shell。
           ATTR: ${{ matrix.attr }}
-          IMPURE: ${{ matrix.impure }}
-        # 矩阵中的 attr 可能包含 homeConfigurations."curious@host" 的引号，
-        # 因此通过环境变量传递，避免 shell 二次展开。
         run: |
           set -euo pipefail
-          args=(--no-out-link)
-          if [[ "${IMPURE}" == "true" ]]; then
-            args+=(--option pure-eval false)
-          fi
           case "${ENTRYPOINT}" in
-            nixos/default.nix)
-              args+=("${ENTRYPOINT}" -A "${ATTR}")
-              ;;
-            home-manager/default.nix)
-              args+=("${ENTRYPOINT}" -A "${ATTR}")
-              ;;
-            nix-on-droid/default.nix)
-              args+=("${ENTRYPOINT}" -A "${ATTR}")
+            nixos/default.nix|home-manager/default.nix|nix-on-droid/default.nix)
+              nix-shell -p nix-fast-build --run \
+                "nix-fast-build --skip-cached --file \"${ENTRYPOINT}\" -A \"${ATTR}\""
               ;;
             *)
               echo "Unknown entrypoint: ${ENTRYPOINT}" >&2
               exit 1
               ;;
           esac
-          nix-build "${args[@]}"
 
   result:
     name: CI result

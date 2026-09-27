@@ -19,7 +19,6 @@ let
     attr = "${configName}.config.system.build.toplevel";
     prefetch = "";
     runsOn = runnerFor.${host.system};
-    impure = false;
   };
 
   mkHomeManagerJob =
@@ -39,7 +38,6 @@ let
       attr = ''"${configName}".activationPackage'';
       prefetch = "";
       runsOn = runnerFor.${system};
-      impure = false;
     };
 
   mkNixOnDroidJob = configName: {
@@ -51,9 +49,6 @@ let
     attr = ''"${configName}".activationPackage'';
     prefetch = "/nix/store/dvf2ck9bkw7yyrlkjk87xz1anaxsgrd6-proot-termux-static-aarch64-unknown-linux-android-unstable-2026-02-20";
     runsOn = runnerFor.aarch64-linux;
-    # Upstream embeds an absolute bootstrap store path with
-    # builtins.storePath, so evaluation still requires --impure.
-    impure = true;
   };
 
   nixosJobs = mapAttrsToList (configName: host: mkNixosJob configName host) machines;
