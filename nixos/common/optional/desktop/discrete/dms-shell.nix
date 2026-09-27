@@ -1,6 +1,5 @@
 {
   sources,
-  pkgs,
   ...
 }:
 {
@@ -25,7 +24,4 @@
   };
 
   programs.dsearch.enable = true;
-  environment.systemPackages = [
-    pkgs.khal
-  ];
 }

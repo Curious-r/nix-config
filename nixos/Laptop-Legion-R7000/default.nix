@@ -21,6 +21,7 @@
     ../common/optional/desktop/discrete/oo7/greetd.nix
     ../common/optional/desktop/discrete/cursors.nix
     ../common/optional/desktop/discrete/icon.nix
+    ../common/optional/desktop/discrete/dankcalendar.nix
     ../common/optional/input-method.nix
     ../common/optional/daed.nix
     ../common/optional/preservation/daed.nix
