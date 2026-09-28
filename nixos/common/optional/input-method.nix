@@ -10,6 +10,11 @@
       })
     ];
 
+    # 注意：此处配置均写入 `/etc/xdg/fcitx5/`（系统级），且不同区块对应独立的物理文件。
+    # Fcitx5 采用【文件遮蔽】而非【键值合并】的方式处理配置回退：一旦在 GUI
+    # (fcitx5-configtool) 中点击 Apply/OK，就会在 `xdg.configFile."fcitx5/"` 下生成对应文件
+    # （哪怕全为注释占位符），导致此处系统级配置区块被完全忽略。
+    # 维护建议：日常避免在 GUI 点保存；若发现配置失效，直接清理用户目录下的对应文件即可。
     fcitx5.settings = {
       globalOptions = {
         "Hotkey/AltTriggerKeys" = {
