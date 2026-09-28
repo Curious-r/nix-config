@@ -238,9 +238,12 @@ jobs:
       # nix-on-droid 的 proot-static 是上游硬编码的 store path，
       # Nix 实例化 derivation 时只认本地 store，先预取进来才能求值。
       - name: Prefetch nix-on-droid bootstrap paths
-        if: matrix.prefetch != ''
+        env:
+          PREFETCH_JSON: ${{ toJSON(matrix.prefetch) }}
         run: |
-          for p in ${{ matrix.prefetch }}; do
+          set -euo pipefail
+          jq -r '.[]' <<< "${PREFETCH_JSON}" | while IFS= read -r p; do
+            [[ -z "${p}" ]] && continue
             nix-store -r "${p}" \
               --option extra-substituters "https://nix-on-droid.cachix.org" \
               --option extra-trusted-public-keys "nix-on-droid.cachix.org-1:56snoMJTXmDRC1Ei24CmKoUqvHJ9XCp+nidK7qkMQrU="

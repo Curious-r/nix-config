@@ -17,7 +17,7 @@ let
     system = host.system;
     entrypoint = "nixos/default.nix";
     attr = "${configName}.config.system.build.toplevel";
-    prefetch = "";
+    prefetch = [ ];
     runsOn = runnerFor.${host.system};
   };
 
@@ -36,7 +36,7 @@ let
       system = system;
       entrypoint = "home-manager/default.nix";
       attr = ''"${configName}".activationPackage'';
-      prefetch = "";
+      prefetch = [ ];
       runsOn = runnerFor.${system};
     };
 
@@ -47,7 +47,9 @@ let
     system = "aarch64-linux";
     entrypoint = "nix-on-droid/default.nix";
     attr = ''"${configName}".activationPackage'';
-    prefetch = "/nix/store/dvf2ck9bkw7yyrlkjk87xz1anaxsgrd6-proot-termux-static-aarch64-unknown-linux-android-unstable-2026-02-20";
+    prefetch = [
+      "/nix/store/dvf2ck9bkw7yyrlkjk87xz1anaxsgrd6-proot-termux-static-aarch64-unknown-linux-android-unstable-2026-02-20"
+    ];
     runsOn = runnerFor.aarch64-linux;
   };
 
