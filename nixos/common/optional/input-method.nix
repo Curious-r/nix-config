@@ -34,6 +34,15 @@
           Layout = "";
         };
       };
+
+      # 禁用 Rime 预编辑光标固定在开头的行为，避免 PiliPlus、Steam 等软件光标乱飞
+      addons = {
+        rime = {
+          globalSection = {
+            PreeditCursorPositionAtBeginning = "False";
+          };
+        };
+      };
     };
   };
 }
