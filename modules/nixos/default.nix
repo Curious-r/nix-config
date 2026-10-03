@@ -6,4 +6,5 @@
 
   daed = import ./daed.nix;
   ddns-go = import ./ddns-go.nix;
+  sprout = import ./sprout.nix;
 }
