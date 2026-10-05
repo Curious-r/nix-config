@@ -9,9 +9,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "941aa8b1f93ce35ea297218aa915dee64b118f9b",
-      "url": "https://github.com/Curious-r/nix-packages/archive/941aa8b1f93ce35ea297218aa915dee64b118f9b.tar.gz",
-      "hash": "sha256-fgmpd1z/HWGmci1rkNKfNShFI0q4pvEOsiFbkvvg/Tw="
+      "revision": "69ab4d6492f22ff43bcc39d794b0cbb75b52915d",
+      "url": "https://github.com/Curious-r/nix-packages/archive/69ab4d6492f22ff43bcc39d794b0cbb75b52915d.tar.gz",
+      "hash": "sha256-ZrBMBFuYnAT6TEtP7A0RwwzVaTKBlBKhRcvTq5PfpEY="
     },
     "disko": {
       "type": "Git",
@@ -35,9 +35,9 @@
       },
       "branch": "master",
       "submodules": false,
-      "revision": "a86853dd194146c0ceca7c5b6045cf1b5744c43a",
-      "url": "https://github.com/AvengeMedia/dms-plugin-registry/archive/a86853dd194146c0ceca7c5b6045cf1b5744c43a.tar.gz",
-      "hash": "sha256-gzyE5Cai2DEG9EnIrZnByS6ogBLzo4x43IXBMVZnLIY="
+      "revision": "32a6170c68c7488540acae4ea7608b0275c946ef",
+      "url": "https://github.com/AvengeMedia/dms-plugin-registry/archive/32a6170c68c7488540acae4ea7608b0275c946ef.tar.gz",
+      "hash": "sha256-pVPQXqdswA93w371AEEbC0qeXCdJLElewOSmxR3DmUU="
     },
     "home-manager": {
       "type": "Git",
@@ -48,9 +48,9 @@
       },
       "branch": "master",
       "submodules": false,
-      "revision": "b75a0703c9ef757386ec3807a55106c2ca64f770",
-      "url": "https://github.com/nix-community/home-manager/archive/b75a0703c9ef757386ec3807a55106c2ca64f770.tar.gz",
-      "hash": "sha256-wswYlVaovcex/IMSqGrN/GLlvHN29bgoIXMBoMyLmTI="
+      "revision": "f53f3267f5d009dd8f99443505e609389d7ff267",
+      "url": "https://github.com/nix-community/home-manager/archive/f53f3267f5d009dd8f99443505e609389d7ff267.tar.gz",
+      "hash": "sha256-DiuwfdoZtEqVRsWuAhXcHa+cfvkr0t/xWW8ugkcxNyI="
     },
     "lanzaboote": {
       "type": "GitRelease",
@@ -77,9 +77,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "af40d966859ec4075ecc172dbb39e53f474dc5d9",
-      "url": "https://github.com/numtide/llm-agents.nix/archive/af40d966859ec4075ecc172dbb39e53f474dc5d9.tar.gz",
-      "hash": "sha256-I4O5GSbZgmvzV7dj8fZN8furV2UdEpahh4rvsZOfs/Q="
+      "revision": "ba24820b562c0e1ff95d283a2e2e1debcbcbad83",
+      "url": "https://github.com/numtide/llm-agents.nix/archive/ba24820b562c0e1ff95d283a2e2e1debcbcbad83.tar.gz",
+      "hash": "sha256-1szYaEAFYPApOgy2HGLbqtVys8SIqk5mlvz9agPFLr0="
     },
     "nix-on-droid": {
       "type": "Git",
@@ -103,9 +103,9 @@
       },
       "branch": "master",
       "submodules": false,
-      "revision": "06f9ecaea5f64b6ff61cf42cb32f21621c4fa14a",
-      "url": "https://github.com/NixOS/nixos-hardware/archive/06f9ecaea5f64b6ff61cf42cb32f21621c4fa14a.tar.gz",
-      "hash": "sha256-XwFt1uLyaBCQU1/nUeGqeBnqNXPVgGRnz20YVYdmF6Y="
+      "revision": "31cc5f4d9b9ba601071e8b8504601b9b176e2756",
+      "url": "https://github.com/NixOS/nixos-hardware/archive/31cc5f4d9b9ba601071e8b8504601b9b176e2756.tar.gz",
+      "hash": "sha256-rlsYY/Dg/LhbIj51Aa6TLvRpZeb3KZgUTd7llQ5XcJE="
     },
     "nixpkgs": {
       "type": "Git",
@@ -116,9 +116,9 @@
       },
       "branch": "nixos-unstable",
       "submodules": false,
-      "revision": "b4fd65b198c599cbe814fcb9f42d25d021595ec9",
-      "url": "https://github.com/nixos/nixpkgs/archive/b4fd65b198c599cbe814fcb9f42d25d021595ec9.tar.gz",
-      "hash": "sha256-ilerN1WLSvF+HMjziC/Wv99J5y02maDH+6hZPwsORKg="
+      "revision": "a7868a727837f3c09cee2ce0ca671c76b1589fed",
+      "url": "https://github.com/nixos/nixpkgs/archive/a7868a727837f3c09cee2ce0ca671c76b1589fed.tar.gz",
+      "hash": "sha256-KgItSKML8Xvte0B7/uGnBDsYzSnnKHcOaiUbgWBXLXw="
     },
     "pam-fido-remote": {
       "type": "GitRelease",
@@ -159,9 +159,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "f882a39f249eeac27f884e6ea9618ba106ef0ebe",
-      "url": "https://github.com/milieuim/vaultix/archive/f882a39f249eeac27f884e6ea9618ba106ef0ebe.tar.gz",
-      "hash": "sha256-XijESLY+NC+KEzcIs+/06Pc6dAW8dJJHgWoFQ8LjomE="
+      "revision": "8e6331194139366a0398d936b68ff9926ecf3221",
+      "url": "https://github.com/milieuim/vaultix/archive/8e6331194139366a0398d936b68ff9926ecf3221.tar.gz",
+      "hash": "sha256-nrha+qCXqJBV7kmvUQB1acc/YzO9YLicR6rdiCaUWYs="
     }
   },
   "version": 8
