@@ -9,9 +9,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "69ab4d6492f22ff43bcc39d794b0cbb75b52915d",
-      "url": "https://github.com/Curious-r/nix-packages/archive/69ab4d6492f22ff43bcc39d794b0cbb75b52915d.tar.gz",
-      "hash": "sha256-ZrBMBFuYnAT6TEtP7A0RwwzVaTKBlBKhRcvTq5PfpEY="
+      "revision": "0ecf2977b1a700907e7574d5e187de7dd51ef524",
+      "url": "https://github.com/Curious-r/nix-packages/archive/0ecf2977b1a700907e7574d5e187de7dd51ef524.tar.gz",
+      "hash": "sha256-nayk6D2Gxa5+Q//WwrtDp3L/rua5V2YpJgtLXYAzUfc="
     },
     "disko": {
       "type": "Git",
@@ -35,9 +35,9 @@
       },
       "branch": "master",
       "submodules": false,
-      "revision": "32a6170c68c7488540acae4ea7608b0275c946ef",
-      "url": "https://github.com/AvengeMedia/dms-plugin-registry/archive/32a6170c68c7488540acae4ea7608b0275c946ef.tar.gz",
-      "hash": "sha256-pVPQXqdswA93w371AEEbC0qeXCdJLElewOSmxR3DmUU="
+      "revision": "99b5ac5f61ee2fb122ff0efcc18cdeca7b6e8cda",
+      "url": "https://github.com/AvengeMedia/dms-plugin-registry/archive/99b5ac5f61ee2fb122ff0efcc18cdeca7b6e8cda.tar.gz",
+      "hash": "sha256-+D5rbRYYZJwfNTGmtUy5aaB6seBqvP1L4+PdT033SA4="
     },
     "home-manager": {
       "type": "Git",
@@ -48,9 +48,9 @@
       },
       "branch": "master",
       "submodules": false,
-      "revision": "f53f3267f5d009dd8f99443505e609389d7ff267",
-      "url": "https://github.com/nix-community/home-manager/archive/f53f3267f5d009dd8f99443505e609389d7ff267.tar.gz",
-      "hash": "sha256-DiuwfdoZtEqVRsWuAhXcHa+cfvkr0t/xWW8ugkcxNyI="
+      "revision": "c58f54c733a7894d84fa2fdff26cc12088c4b78c",
+      "url": "https://github.com/nix-community/home-manager/archive/c58f54c733a7894d84fa2fdff26cc12088c4b78c.tar.gz",
+      "hash": "sha256-0bK0A59rVUn1SRZzo4cNi4VSqAe7vR1gL2/MZl53Frw="
     },
     "lanzaboote": {
       "type": "GitRelease",
@@ -77,9 +77,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "ba24820b562c0e1ff95d283a2e2e1debcbcbad83",
-      "url": "https://github.com/numtide/llm-agents.nix/archive/ba24820b562c0e1ff95d283a2e2e1debcbcbad83.tar.gz",
-      "hash": "sha256-1szYaEAFYPApOgy2HGLbqtVys8SIqk5mlvz9agPFLr0="
+      "revision": "493c34b1bed086861b0e968a40d00bd06522f003",
+      "url": "https://github.com/numtide/llm-agents.nix/archive/493c34b1bed086861b0e968a40d00bd06522f003.tar.gz",
+      "hash": "sha256-lvEyxEmXv/8gwiWE2+rxTuL59EFq5wwXxX+rtbxjwLo="
     },
     "nix-on-droid": {
       "type": "Git",
@@ -103,9 +103,9 @@
       },
       "branch": "master",
       "submodules": false,
-      "revision": "31cc5f4d9b9ba601071e8b8504601b9b176e2756",
-      "url": "https://github.com/NixOS/nixos-hardware/archive/31cc5f4d9b9ba601071e8b8504601b9b176e2756.tar.gz",
-      "hash": "sha256-rlsYY/Dg/LhbIj51Aa6TLvRpZeb3KZgUTd7llQ5XcJE="
+      "revision": "60a624466c08787ee8303393b7d4752d1826f14f",
+      "url": "https://github.com/NixOS/nixos-hardware/archive/60a624466c08787ee8303393b7d4752d1826f14f.tar.gz",
+      "hash": "sha256-BYhx89XJltnRyQeuDKHVL5eSqbbfAcOKuDts7QRsrxQ="
     },
     "nixpkgs": {
       "type": "Git",
@@ -116,9 +116,9 @@
       },
       "branch": "nixos-unstable",
       "submodules": false,
-      "revision": "a7868a727837f3c09cee2ce0ca671c76b1589fed",
-      "url": "https://github.com/nixos/nixpkgs/archive/a7868a727837f3c09cee2ce0ca671c76b1589fed.tar.gz",
-      "hash": "sha256-KgItSKML8Xvte0B7/uGnBDsYzSnnKHcOaiUbgWBXLXw="
+      "revision": "6510408d147d8c5e6d76043e899e9251756f6a75",
+      "url": "https://github.com/nixos/nixpkgs/archive/6510408d147d8c5e6d76043e899e9251756f6a75.tar.gz",
+      "hash": "sha256-XK4KceonkwD8LuMAt/vNrz982mXJM5jeHAxMwsUXXAQ="
     },
     "pam-fido-remote": {
       "type": "GitRelease",
