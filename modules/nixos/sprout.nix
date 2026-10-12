@@ -16,26 +16,18 @@ let
   cfg = config.boot.loader.sprout;
   efi = config.boot.loader.efi;
 
-  checkedSource =
-    pkgs.runCommand "sprout-install"
-      {
-        preferLocalBuild = true;
-      }
-      ''
-        install -m755 -D ${./sprout-install.py} $out
-
-        ${lib.getExe pkgs.buildPackages.mypy} \
-          --no-implicit-optional \
-          --disallow-untyped-calls \
-          --disallow-untyped-defs \
-          $out
-      '';
-
   sproutInstaller = pkgs.replaceVarsWith {
     name = "sprout-install";
-    dir = "bin";
-    src = checkedSource;
+    src = ./sprout-install.py;
     isExecutable = true;
+
+    postCheck = ''
+      ${lib.getExe pkgs.buildPackages.mypy} \
+        --no-implicit-optional \
+        --disallow-untyped-calls \
+        --disallow-untyped-defs \
+        "$target"
+    '';
 
     replacements = {
       inherit (pkgs) python3;
@@ -45,7 +37,7 @@ let
       util-linux = pkgs.util-linuxMinimal;
 
       efiSysMountPoint = toString efi.efiSysMountPoint;
-      sproutBinary = "${cfg.package}/bin/sprout.efi";
+      sproutBinary = "${cfg.package}/lib/sprout/sprout.efi";
 
       timeout =
         if config.boot.loader.timeout == null then
@@ -83,7 +75,7 @@ in
         The Sprout EFI bootloader package.
 
         The package must provide the bootloader executable at
-        `bin/sprout.efi`.
+        `lib/sprout/sprout.efi`.
       '';
     };
 
