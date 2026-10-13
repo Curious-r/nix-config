@@ -780,7 +780,7 @@ def write_initrd_with_secrets(
                     temporary_path,
                 ]
             )
-        except subprocess.CalledProcessError:
+        except (subprocess.CalledProcessError, OSError):
             if artifact.critical:
                 raise RuntimeError(
                     "failed to append initrd secrets to "

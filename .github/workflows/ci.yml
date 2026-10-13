@@ -94,6 +94,9 @@ jobs:
       - name: Lint workflows
         run: nix-shell -p actionlint --run actionlint
 
+      - name: Run regression tests
+        run: nix-shell -p python3 --run "python3 -B -m unittest discover tests -v"
+
       - name: Check flake
         run: nix flake check
 
