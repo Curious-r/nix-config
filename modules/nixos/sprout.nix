@@ -153,6 +153,14 @@ in
           Sprout requires an EFI-stub-capable kernel.
         '';
       }
+
+      {
+        assertion = cfg.configurationLimit == null || cfg.configurationLimit >= 0;
+
+        message = ''
+          boot.loader.sprout.configurationLimit must be null or non-negative.
+        '';
+      }
     ];
   };
 }
