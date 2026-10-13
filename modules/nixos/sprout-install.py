@@ -420,19 +420,17 @@ def bootspec_from_json(
             'boot.json "kernelParams" is not an array'
         )
 
-    systemd_boot_extension = document.get("org.nixos.systemd-boot")
+    devicetree_value = None
 
-    if systemd_boot_extension is None:
-        systemd_boot_extension = {}
-    elif not isinstance(systemd_boot_extension, dict):
-        raise RuntimeError(
-            'boot.json contains an invalid "org.nixos.systemd-boot" extension'
-        )
+    if "org.nixos.systemd-boot" in document:
+        systemd_boot_extension = document["org.nixos.systemd-boot"]
 
-    devicetree_value = systemd_boot_extension.get("devicetree")
+        if not isinstance(systemd_boot_extension, dict):
+            raise RuntimeError(
+                'boot.json contains an invalid "org.nixos.systemd-boot" extension'
+            )
 
-    if devicetree_value is None and "org.nixos.systemd-boot.devicetree" in document:
-        devicetree_value = document.get("org.nixos.systemd-boot.devicetree")
+        devicetree_value = systemd_boot_extension.get("devicetree")
 
     if devicetree_value is not None and not isinstance(devicetree_value, str):
         raise RuntimeError(

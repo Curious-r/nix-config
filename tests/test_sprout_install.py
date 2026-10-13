@@ -1460,6 +1460,10 @@ class BootSpecParserTest(unittest.TestCase):
         """Verify parsing minimal BootSpec document containing only required v1 data."""
         doc = {
             "org.nixos.bootspec.v1": {
+                "system": "x86_64-linux",
+                "kernel": "/nix/store/def-kernel/bzImage",
+                "kernelParams": ["console=ttyS0"],
+                "label": "NixOS 24.11 (Linux 6.6.20)",
                 "init": "/nix/store/abc-init",
                 "toplevel": "/nix/store/xyz-toplevel",
             }
@@ -1467,12 +1471,12 @@ class BootSpecParserTest(unittest.TestCase):
         spec = self.mod.bootspec_from_json(doc)
         self.assertEqual(spec.init, Path("/nix/store/abc-init"))
         self.assertEqual(spec.toplevel, Path("/nix/store/xyz-toplevel"))
-        self.assertEqual(spec.label, "")
-        self.assertIsNone(spec.kernel)
+        self.assertEqual(spec.label, "NixOS 24.11 (Linux 6.6.20)")
+        self.assertEqual(spec.kernel, Path("/nix/store/def-kernel/bzImage"))
         self.assertIsNone(spec.initrd)
         self.assertIsNone(spec.initrd_secrets)
         self.assertEqual(spec.extra_initrds, ())
-        self.assertEqual(spec.kernel_params, ())
+        self.assertEqual(spec.kernel_params, ("console=ttyS0",))
         self.assertEqual(spec.specialisations, {})
         self.assertIsNone(spec.devicetree)
 
@@ -1480,6 +1484,7 @@ class BootSpecParserTest(unittest.TestCase):
         """Verify parsing BootSpec with all optional fields, extra-initrds, devicetree, and specialisations."""
         doc = {
             "org.nixos.bootspec.v1": {
+                "system": "x86_64-linux",
                 "init": "/nix/store/abc-init",
                 "toplevel": "/nix/store/xyz-toplevel",
                 "label": "NixOS 24.11 (Linux 6.6.20)",
@@ -1497,6 +1502,7 @@ class BootSpecParserTest(unittest.TestCase):
             "org.nixos.specialisation.v1": {
                 "fallback": {
                     "org.nixos.bootspec.v1": {
+                        "system": "x86_64-linux",
                         "init": "/nix/store/abc-init",
                         "toplevel": "/nix/store/special-toplevel",
                         "label": "NixOS 24.11 (Fallback)",
@@ -1535,9 +1541,13 @@ class BootSpecParserTest(unittest.TestCase):
         self.assertIsNone(sub.devicetree)
 
     def test_bootspec_from_json_devicetree_absent_or_null(self) -> None:
-        """Verify devicetree is None when absent, null, or extension is null."""
+        """Verify devicetree is None when absent, missing field, null, or noncanonical alias."""
         base: dict[str, Any] = {
             "org.nixos.bootspec.v1": {
+                "system": "x86_64-linux",
+                "kernel": "/nix/store/kernel/bzImage",
+                "kernelParams": ["console=ttyS0"],
+                "label": "NixOS 24.11",
                 "init": "/nix/store/init",
                 "toplevel": "/nix/store/toplevel",
             }
@@ -1545,26 +1555,21 @@ class BootSpecParserTest(unittest.TestCase):
         # Absent extension
         self.assertIsNone(self.mod.bootspec_from_json(base).devicetree)
 
-        # Null extension
-        doc_null_ext = {**base, "org.nixos.systemd-boot": None}
-        self.assertIsNone(self.mod.bootspec_from_json(doc_null_ext).devicetree)
+        # Extension present with missing devicetree
+        doc_empty_ext = {**base, "org.nixos.systemd-boot": {}}
+        self.assertIsNone(self.mod.bootspec_from_json(doc_empty_ext).devicetree)
 
         # Extension present with null devicetree
         doc_null_dt = {**base, "org.nixos.systemd-boot": {"devicetree": None}}
         self.assertIsNone(self.mod.bootspec_from_json(doc_null_dt).devicetree)
 
-        # Top-level dot-notated null devicetree
-        doc_dot_null = {**base, "org.nixos.systemd-boot.devicetree": None}
-        self.assertIsNone(self.mod.bootspec_from_json(doc_dot_null).devicetree)
-
-        # Top-level dot-notated string devicetree
-        doc_dot_str = {
+        # Unknown extension keys must not be reinterpreted as fields of another extension
+        doc_unknown_alias = {
             **base,
             "org.nixos.systemd-boot.devicetree": "/nix/store/dot.dtb",
         }
-        self.assertEqual(
-            self.mod.bootspec_from_json(doc_dot_str).devicetree,
-            Path("/nix/store/dot.dtb"),
+        self.assertIsNone(
+            self.mod.bootspec_from_json(doc_unknown_alias).devicetree
         )
 
     def test_bootspec_from_json_validation_errors(self) -> None:
@@ -1597,8 +1602,12 @@ class BootSpecParserTest(unittest.TestCase):
 
         base: dict[str, Any] = {
             "org.nixos.bootspec.v1": {
-                "init": "/init",
-                "toplevel": "/toplevel",
+                "system": "x86_64-linux",
+                "kernel": "/nix/store/kernel/bzImage",
+                "kernelParams": ["console=ttyS0"],
+                "label": "NixOS 24.11",
+                "init": "/nix/store/init",
+                "toplevel": "/nix/store/toplevel",
             }
         }
 
@@ -1607,8 +1616,7 @@ class BootSpecParserTest(unittest.TestCase):
             self.mod.bootspec_from_json(
                 {
                     "org.nixos.bootspec.v1": {
-                        "init": "/init",
-                        "toplevel": "/toplevel",
+                        **base["org.nixos.bootspec.v1"],
                         "kernelParams": "bad",
                     }
                 }
@@ -1643,10 +1651,19 @@ class BootSpecParserTest(unittest.TestCase):
             'invalid "org.nixos.specialisation.v1" extension', str(ctx.exception)
         )
 
-        # systemd-boot not a dict
+        # systemd-boot not a dict (string)
         with self.assertRaises(RuntimeError) as ctx:
             self.mod.bootspec_from_json(
                 {**base, "org.nixos.systemd-boot": "bad"}
+            )
+        self.assertIn(
+            'invalid "org.nixos.systemd-boot" extension', str(ctx.exception)
+        )
+
+        # systemd-boot not a dict (null / None)
+        with self.assertRaises(RuntimeError) as ctx:
+            self.mod.bootspec_from_json(
+                {**base, "org.nixos.systemd-boot": None}
             )
         self.assertIn(
             'invalid "org.nixos.systemd-boot" extension', str(ctx.exception)
