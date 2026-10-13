@@ -97,6 +97,9 @@ jobs:
       - name: Run regression tests
         run: nix-shell -p python3 --run "python3 -B -m unittest discover tests -v"
 
+      - name: Run Sprout evaluation regression test
+        run: nix-instantiate --eval --strict tests/test-sprout-eval.nix
+
       - name: Check flake
         run: nix flake check
 

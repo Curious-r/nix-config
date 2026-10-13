@@ -128,6 +128,8 @@ in
   };
 
   config = mkIf cfg.enable {
+    boot.loader.grub.enable = lib.mkDefault false;
+
     boot.loader.supportsInitrdSecrets = true;
 
     system.boot.loader.id = "sprout";
