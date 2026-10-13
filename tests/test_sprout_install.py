@@ -63,7 +63,8 @@ class SproutInstallRegressionTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir_obj = tempfile.TemporaryDirectory()
         self.temp_dir = Path(self.temp_dir_obj.name).resolve()
-        self.esp_dir = self.temp_dir
+        self.esp_dir = self.temp_dir / "esp"
+        self.esp_dir.mkdir(parents=True, exist_ok=True)
 
         self.old_cwd = Path.cwd()
         os.chdir(self.temp_dir)
@@ -91,7 +92,7 @@ class SproutInstallRegressionTest(unittest.TestCase):
     def test_driver_atomic_replacement(self) -> None:
         """Verify driver destination is replaced atomically without leaving stale files."""
         # 1. Existing driver destination has old contents
-        dest = self.mod.DRIVERS_DIR / "btrfs.efi"
+        dest = self.esp_dir / self.mod.DRIVERS_DIR / "btrfs.efi"
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text("driver-version-1")
 
@@ -105,20 +106,25 @@ class SproutInstallRegressionTest(unittest.TestCase):
         self.assertEqual(dest.read_text(), "driver-version-2")
 
         # Verify no temporary files remain
-        tmp_files = list(self.mod.DRIVERS_DIR.glob("*.tmp"))
+        tmp_files = list((self.esp_dir / self.mod.DRIVERS_DIR).glob("*.tmp"))
         self.assertEqual(tmp_files, [])
+
+        # Verify nothing was written to working directory
+        self.assertFalse((self.temp_dir / "EFI").exists())
 
     def test_stale_driver_cleaned_up_by_garbage_collection(self) -> None:
         """Verify stale drivers removed during garbage collection after publication."""
-        dest_active = self.mod.DRIVERS_DIR / "btrfs.efi"
-        dest_stale = self.mod.DRIVERS_DIR / "zfs.efi"
+        dest_active = self.esp_dir / self.mod.DRIVERS_DIR / "btrfs.efi"
+        dest_stale = self.esp_dir / self.mod.DRIVERS_DIR / "zfs.efi"
         dest_active.parent.mkdir(parents=True, exist_ok=True)
 
         dest_active.write_text("driver-btrfs")
         dest_stale.write_text("driver-zfs-stale")
 
         installed = self.mod.install_drivers()
-        self.assertEqual(installed, {"btrfs": dest_active})
+        self.assertEqual(
+            installed, {"btrfs": self.mod.DRIVERS_DIR / "btrfs.efi"}
+        )
 
         # Run garbage collection on ESP
         self.mod.garbage_collect([], installed)
@@ -130,6 +136,7 @@ class SproutInstallRegressionTest(unittest.TestCase):
             dest_stale.exists(),
             "Stale unconfigured driver must be garbage collected",
         )
+        self.assertFalse((self.temp_dir / "EFI").exists())
 
     def test_critical_initrd_failure_aborts(self) -> None:
         """Verify critical initrd failure raises RuntimeError without copying raw source."""
@@ -154,7 +161,14 @@ class SproutInstallRegressionTest(unittest.TestCase):
             self.mod.write_artifact(crit_artifact)
 
         self.assertIn("failed to append initrd secrets", str(ctx.exception))
-        self.assertFalse(dest.exists(), "Destination must not exist on failure")
+        self.assertFalse(
+            (self.esp_dir / dest).exists(),
+            "Destination must not exist on failure",
+        )
+        self.assertFalse(
+            (self.temp_dir / dest).exists(),
+            "Must not write to working directory",
+        )
 
     def test_older_generation_failure_no_fallback_and_entry_pruned(
         self,
@@ -192,8 +206,10 @@ class SproutInstallRegressionTest(unittest.TestCase):
         success = self.mod.write_artifact(art_initrd)
         self.assertFalse(success)
         self.assertFalse(
-            dest_initrd.exists(), "Raw initrd must not be copied as a fallback"
+            (self.esp_dir / dest_initrd).exists(),
+            "Raw initrd must not be copied as a fallback",
         )
+        self.assertFalse((self.temp_dir / dest_initrd).exists())
 
         # 2. write_boot_files prunes the entry referencing the unavailable artifact
         entry1 = self.mod.BootEntry(
@@ -213,7 +229,8 @@ class SproutInstallRegressionTest(unittest.TestCase):
             [],
             "Entry referencing failed artifact must be omitted",
         )
-        self.assertFalse(dest_initrd.exists())
+        self.assertFalse((self.esp_dir / dest_initrd).exists())
+        self.assertFalse((self.temp_dir / dest_initrd).exists())
 
     def test_existing_older_generation_artifact_retained(self) -> None:
         """Verify an existing older generation artifact is retained under reuse policy."""
@@ -225,8 +242,9 @@ class SproutInstallRegressionTest(unittest.TestCase):
         raw_initrd.write_text("raw-initrd-g1")
 
         dest_initrd = self.mod.NIXOS_DIR / "initrd-g1.img"
-        dest_initrd.parent.mkdir(parents=True, exist_ok=True)
-        dest_initrd.write_text("pre-existing-valid-augmented-initrd")
+        phys_initrd = self.esp_dir / dest_initrd
+        phys_initrd.parent.mkdir(parents=True, exist_ok=True)
+        phys_initrd.write_text("pre-existing-valid-augmented-initrd")
 
         art_initrd = self.mod.BootArtifact(
             destination=dest_initrd,
@@ -241,8 +259,9 @@ class SproutInstallRegressionTest(unittest.TestCase):
             success, "Existing artifact should be reused successfully"
         )
         self.assertEqual(
-            dest_initrd.read_text(), "pre-existing-valid-augmented-initrd"
+            phys_initrd.read_text(), "pre-existing-valid-augmented-initrd"
         )
+        self.assertFalse((self.temp_dir / dest_initrd).exists())
 
     def test_shared_failure_omits_all_affected_entries_and_preserves_default(
         self,
@@ -313,8 +332,9 @@ class SproutInstallRegressionTest(unittest.TestCase):
         i0.write_text("i0")
         dest_k0 = self.mod.NIXOS_DIR / "k0.efi"
         dest_i0 = self.mod.NIXOS_DIR / "i0.img"
-        dest_i0.parent.mkdir(parents=True, exist_ok=True)
-        dest_i0.write_text("existing-i0")
+        phys_dest_i0 = self.esp_dir / dest_i0
+        phys_dest_i0.parent.mkdir(parents=True, exist_ok=True)
+        phys_dest_i0.write_text("existing-i0")
         art_k0 = self.mod.BootArtifact(dest_k0, k0, None, 0, False)
         art_i0 = self.mod.BootArtifact(dest_i0, i0, bad_secrets, 0, False)
         entry0 = self.mod.BootEntry(
@@ -344,15 +364,17 @@ class SproutInstallRegressionTest(unittest.TestCase):
         self.assertNotIn("nixos-g1", config)
 
         # Verify garbage collection cleans up orphaned k1 from omitted entry
-        self.assertTrue(dest_k1.exists())
+        self.assertTrue((self.esp_dir / dest_k1).exists())
         self.mod.garbage_collect(valid_entries, {})
         self.assertFalse(
-            dest_k1.exists(), "Orphaned kernel should be garbage collected"
+            (self.esp_dir / dest_k1).exists(),
+            "Orphaned kernel should be garbage collected",
         )
-        self.assertTrue(dest_k2.exists())
-        self.assertTrue(dest_i2.exists())
-        self.assertTrue(dest_k0.exists())
-        self.assertTrue(dest_i0.exists())
+        self.assertTrue((self.esp_dir / dest_k2).exists())
+        self.assertTrue((self.esp_dir / dest_i2).exists())
+        self.assertTrue((self.esp_dir / dest_k0).exists())
+        self.assertTrue((self.esp_dir / dest_i0).exists())
+        self.assertFalse((self.temp_dir / "EFI").exists())
 
     def test_empty_valid_entries_refuses_publication(self) -> None:
         """Verify that when no valid entries remain, publication is refused without writing sprout.toml."""
@@ -369,15 +391,23 @@ class SproutInstallRegressionTest(unittest.TestCase):
         art_k1 = self.mod.BootArtifact(dest_k1, k1, None, 1, False)
         art_i1 = self.mod.BootArtifact(dest_i1, i1, bad_secrets, 1, False)
         entry1 = self.mod.BootEntry(
-            "nixos-g1", "Gen 1", "g1", dest_k1, (dest_i1,), (), (art_k1, art_i1), False
+            "nixos-g1",
+            "Gen 1",
+            "g1",
+            dest_k1,
+            (dest_i1,),
+            (),
+            (art_k1, art_i1),
+            False,
         )
 
         valid_entries = self.mod.write_boot_files([entry1])
         self.assertEqual(valid_entries, [])
 
         # If entries is empty, install_bootloader would raise
-        config_path = self.mod.EFI_SYS_MOUNT_POINT / self.mod.SPROUT_CONFIG
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
         self.assertFalse(config_path.exists())
+        self.assertFalse((self.temp_dir / self.mod.SPROUT_CONFIG).exists())
 
     def test_critical_initrd_launch_failure_aborts(self) -> None:
         """Verify critical initrd helper launch failure raises RuntimeError without copying raw source."""
@@ -399,7 +429,11 @@ class SproutInstallRegressionTest(unittest.TestCase):
             self.mod.write_artifact(crit_artifact)
 
         self.assertIn("failed to append initrd secrets", str(ctx.exception))
-        self.assertFalse(dest.exists(), "Destination must not exist on failure")
+        self.assertFalse(
+            (self.esp_dir / dest).exists(),
+            "Destination must not exist on failure",
+        )
+        self.assertFalse((self.temp_dir / dest).exists())
 
     def test_preparation_filesystem_error_not_swallowed(self) -> None:
         """Verify filesystem error during initrd preparation is not swallowed as a helper failure."""
@@ -441,8 +475,10 @@ class SproutInstallRegressionTest(unittest.TestCase):
         success = self.mod.write_artifact(art_initrd)
         self.assertFalse(success)
         self.assertFalse(
-            dest.exists(), "Raw initrd must not be copied as a fallback"
+            (self.esp_dir / dest).exists(),
+            "Raw initrd must not be copied as a fallback",
         )
+        self.assertFalse((self.temp_dir / dest).exists())
 
     def test_install_bootloader_critical_secrets_failure_aborts_without_creating_or_replacing_config(
         self,
@@ -662,12 +698,333 @@ class SproutInstallRegressionTest(unittest.TestCase):
 
         # Confirm destination files:
         # Default entry artifacts exist
-        self.assertTrue(dest_kd.exists())
-        self.assertTrue(dest_id.exists())
+        self.assertTrue((self.esp_dir / dest_kd).exists())
+        self.assertTrue((self.esp_dir / dest_id).exists())
         # Older entry initrd was NOT created
-        self.assertFalse(dest_io.exists())
+        self.assertFalse((self.esp_dir / dest_io).exists())
         # Older entry kernel was cleaned up by garbage collection
-        self.assertFalse(dest_ko.exists())
+        self.assertFalse((self.esp_dir / dest_ko).exists())
+        self.assertFalse((self.temp_dir / "EFI").exists())
+
+    def test_extra_initrd_recognized_on_esp_and_preserves_order(self) -> None:
+        """Verify extra-initrds on ESP are recognized, ordered after main initrd, and not collected."""
+        extra_rel = Path("extra-initrd.img")
+        extra_esp = self.esp_dir / extra_rel
+        extra_esp.write_text("extra-initrd-content")
+
+        k = self.temp_dir / "k.efi"
+        k.write_text("kernel-binary")
+        i = self.temp_dir / "i.img"
+        i.write_text("main-initrd-binary")
+
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+
+        bootspec = self.mod.BootSpec(
+            init=Path("/nix/store/dummy-init"),
+            toplevel=toplevel,
+            label="NixOS 24.11",
+            kernel=k,
+            initrd=i,
+            initrd_secrets=None,
+            extra_initrds=(extra_rel,),
+            kernel_params=("console=tty0",),
+            specialisations={},
+        )
+
+        entry = self.mod.prepare_entry(
+            profile=None,
+            generation=1,
+            specialisation=None,
+            bootspec=bootspec,
+            current_toplevel=toplevel,
+        )
+        self.assertIsNotNone(entry)
+        assert entry is not None
+
+        # Verify entry.initrds order: main initrd first, then extra initrd
+        self.assertEqual(len(entry.initrds), 2)
+        main_initrd_dest = entry.initrds[0]
+        self.assertEqual(entry.initrds[1], extra_rel)
+
+        # Artifacts should only include kernel and main initrd (extra initrd is already on ESP)
+        self.assertEqual(len(entry.artifacts), 2)
+        artifact_dests = [art.destination for art in entry.artifacts]
+        self.assertIn(entry.kernel, artifact_dests)
+        self.assertIn(main_initrd_dest, artifact_dests)
+        self.assertNotIn(extra_rel, artifact_dests)
+
+        # Install bootloader
+        with patch.object(self.mod, "check_mountpoint"), patch.object(
+            self.mod, "collect_entries", return_value=[entry]
+        ):
+            self.mod.install_bootloader(toplevel)
+
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+        self.assertTrue(config_path.exists())
+        config_text = config_path.read_text()
+
+        # Verify linux-initrd-chain has main initrd followed by extra initrd
+        expected_main_uefi = self.mod.uefi_path(main_initrd_dest)
+        expected_extra_uefi = self.mod.uefi_path(extra_rel)
+        expected_chain = f"chainload.linux-initrd-chain = {self.mod.array_toml([expected_main_uefi, expected_extra_uefi])}"
+        self.assertIn(expected_chain, config_text)
+
+        # Verify extra initrd still exists on ESP and was not deleted by GC
+        self.assertTrue(extra_esp.exists())
+        self.assertEqual(extra_esp.read_text(), "extra-initrd-content")
+
+        # Verify no files were created in working directory
+        self.assertFalse((self.temp_dir / "EFI").exists())
+        self.assertFalse((self.temp_dir / extra_rel).exists())
+
+    def test_missing_extra_initrd_critical_aborts_without_publishing(self) -> None:
+        """Verify missing extra initrd for critical entry aborts installation without modifying config."""
+        extra_rel = Path("missing-extra.img")
+        self.assertFalse((self.esp_dir / extra_rel).exists())
+
+        k = self.temp_dir / "k.efi"
+        k.write_text("kernel-binary")
+        i = self.temp_dir / "i.img"
+        i.write_text("main-initrd-binary")
+
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+
+        bootspec = self.mod.BootSpec(
+            init=Path("/nix/store/dummy-init"),
+            toplevel=toplevel,
+            label="NixOS 24.11",
+            kernel=k,
+            initrd=i,
+            initrd_secrets=None,
+            extra_initrds=(extra_rel,),
+            kernel_params=(),
+            specialisations={},
+        )
+
+        # 1. prepare_entry with critical=True raises RuntimeError
+        with self.assertRaises(RuntimeError) as ctx:
+            self.mod.prepare_entry(
+                profile=None,
+                generation=1,
+                specialisation=None,
+                bootspec=bootspec,
+                current_toplevel=toplevel,
+            )
+        self.assertIn("references missing extra initrd on ESP", str(ctx.exception))
+
+        # 2. Existing sprout.toml must remain untouched
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("pre-existing-config")
+
+        dest_k = self.mod.NIXOS_DIR / "k.efi"
+        dest_i = self.mod.NIXOS_DIR / "i.img"
+        art_k = self.mod.BootArtifact(dest_k, k, None, 1, True)
+        art_i = self.mod.BootArtifact(dest_i, i, None, 1, True)
+        entry = self.mod.BootEntry(
+            "nixos-g1",
+            "Gen 1",
+            "g1",
+            dest_k,
+            (dest_i, extra_rel),
+            (),
+            (art_k, art_i),
+            True,
+        )
+
+        with patch.object(self.mod, "check_mountpoint"), patch.object(
+            self.mod, "collect_entries", return_value=[entry]
+        ):
+            with self.assertRaises(RuntimeError) as ctx2:
+                self.mod.install_bootloader(self.temp_dir)
+            self.assertIn("missing initrd on ESP", str(ctx2.exception))
+
+        self.assertEqual(config_path.read_text(), "pre-existing-config")
+        self.assertFalse((self.temp_dir / "EFI").exists())
+
+    def test_missing_extra_initrd_older_generation_pruned(self) -> None:
+        """Verify missing extra initrd for older generation prunes only affected entry."""
+        # Default generation 2: valid
+        k2 = self.temp_dir / "k2.efi"
+        k2.write_text("k2")
+        i2 = self.temp_dir / "i2.img"
+        i2.write_text("i2")
+        dest_k2 = self.mod.NIXOS_DIR / "k2.efi"
+        dest_i2 = self.mod.NIXOS_DIR / "i2.img"
+        art_k2 = self.mod.BootArtifact(dest_k2, k2, None, 2, True)
+        art_i2 = self.mod.BootArtifact(dest_i2, i2, None, 2, True)
+        entry_default = self.mod.BootEntry(
+            "nixos-g2",
+            "Gen 2",
+            "g2",
+            dest_k2,
+            (dest_i2,),
+            (),
+            (art_k2, art_i2),
+            True,
+        )
+
+        # Older generation 1: references missing extra initrd
+        missing_extra = Path("missing-extra-g1.img")
+        k1 = self.temp_dir / "k1.efi"
+        k1.write_text("k1")
+        i1 = self.temp_dir / "i1.img"
+        i1.write_text("i1")
+        dest_k1 = self.mod.NIXOS_DIR / "k1.efi"
+        dest_i1 = self.mod.NIXOS_DIR / "i1.img"
+        art_k1 = self.mod.BootArtifact(dest_k1, k1, None, 1, False)
+        art_i1 = self.mod.BootArtifact(dest_i1, i1, None, 1, False)
+        entry_older = self.mod.BootEntry(
+            "nixos-g1",
+            "Gen 1",
+            "g1",
+            dest_k1,
+            (dest_i1, missing_extra),
+            (),
+            (art_k1, art_i1),
+            False,
+        )
+
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+
+        with patch.object(self.mod, "check_mountpoint"), patch.object(
+            self.mod,
+            "collect_entries",
+            return_value=[entry_default, entry_older],
+        ):
+            self.mod.install_bootloader(self.temp_dir)
+
+        self.assertTrue(config_path.exists())
+        config_text = config_path.read_text()
+
+        # Default entry published
+        self.assertIn('[entries."nixos-g2"]', config_text)
+        self.assertIn('default-entry = "nixos-g2"', config_text)
+
+        # Older entry omitted
+        self.assertNotIn("nixos-g1", config_text)
+
+        # Default artifacts exist on ESP
+        self.assertTrue((self.esp_dir / dest_k2).exists())
+        self.assertTrue((self.esp_dir / dest_i2).exists())
+
+        # Older artifacts were cleaned up by garbage collection
+        self.assertFalse((self.esp_dir / dest_k1).exists())
+        self.assertFalse((self.esp_dir / dest_i1).exists())
+        self.assertFalse((self.temp_dir / "EFI").exists())
+
+    def test_invalid_extra_initrd_escaping_esp_rejected(self) -> None:
+        """Verify invalid extra initrd path attempting to escape ESP is rejected safely."""
+        k = self.temp_dir / "k.efi"
+        k.write_text("k")
+        i = self.temp_dir / "i.img"
+        i.write_text("i")
+
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+        other_toplevel = self.temp_dir / "other-toplevel"
+        other_toplevel.mkdir(parents=True, exist_ok=True)
+
+        for bad_path in (
+            Path("../escape.img"),
+            Path("../../etc/passwd"),
+            Path("/absolute/path.img"),
+            Path("/EFI/test.img"),
+        ):
+            bootspec = self.mod.BootSpec(
+                init=Path("/nix/store/dummy-init"),
+                toplevel=toplevel,
+                label="NixOS 24.11",
+                kernel=k,
+                initrd=i,
+                initrd_secrets=None,
+                extra_initrds=(bad_path,),
+                kernel_params=(),
+                specialisations={},
+            )
+
+            # 1. Critical entry raises RuntimeError
+            with self.assertRaises(RuntimeError) as ctx:
+                self.mod.prepare_entry(
+                    profile=None,
+                    generation=1,
+                    specialisation=None,
+                    bootspec=bootspec,
+                    current_toplevel=toplevel,
+                )
+            self.assertIn("not a valid ESP-relative path", str(ctx.exception))
+
+            # 2. Non-critical entry is safely skipped (returns None)
+            skipped = self.mod.prepare_entry(
+                profile=None,
+                generation=1,
+                specialisation=None,
+                bootspec=bootspec,
+                current_toplevel=other_toplevel,
+            )
+            self.assertIsNone(skipped)
+
+    def test_separate_esp_and_working_directory_no_parallel_artifacts(
+        self,
+    ) -> None:
+        """Verify full installation when ESP is a distinct subdirectory does not leak files to CWD."""
+        k = self.temp_dir / "k.efi"
+        k.write_text("k")
+        i = self.temp_dir / "i.img"
+        i.write_text("i")
+
+        extra_initrd = Path("EFI/vendor/addon.img")
+        (self.esp_dir / extra_initrd).parent.mkdir(parents=True, exist_ok=True)
+        (self.esp_dir / extra_initrd).write_text("extra-addon")
+
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+
+        bootspec = self.mod.BootSpec(
+            init=Path("/nix/store/dummy-init"),
+            toplevel=toplevel,
+            label="NixOS 24.11",
+            kernel=k,
+            initrd=i,
+            initrd_secrets=None,
+            extra_initrds=(extra_initrd,),
+            kernel_params=("quiet",),
+            specialisations={},
+        )
+
+        entry = self.mod.prepare_entry(
+            profile=None,
+            generation=1,
+            specialisation=None,
+            bootspec=bootspec,
+            current_toplevel=toplevel,
+        )
+        self.assertIsNotNone(entry)
+        assert entry is not None
+
+        with patch.object(self.mod, "check_mountpoint"), patch.object(
+            self.mod, "collect_entries", return_value=[entry]
+        ):
+            self.mod.install_bootloader(toplevel)
+
+        # Sprout files exist on ESP
+        self.assertTrue((self.esp_dir / self.mod.SPROUT_CONFIG).exists())
+        self.assertTrue((self.esp_dir / self.mod.SPROUT_BINARY).exists())
+        self.assertTrue((self.esp_dir / entry.kernel).exists())
+        self.assertTrue((self.esp_dir / entry.initrds[0]).exists())
+        self.assertTrue((self.esp_dir / entry.initrds[1]).exists())
+        self.assertTrue(
+            (self.esp_dir / self.mod.DRIVERS_DIR / "btrfs.efi").exists()
+        )
+
+        # CWD must contain NO boot artifacts / directories
+        self.assertFalse((self.temp_dir / "EFI").exists())
+        self.assertFalse((self.temp_dir / "sprout.toml").exists())
+        self.assertFalse((self.temp_dir / entry.kernel).exists())
+        self.assertFalse((self.temp_dir / entry.initrds[0]).exists())
+
 
 
 if __name__ == "__main__":

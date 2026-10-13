@@ -42,6 +42,15 @@ DRIVERS_DIR = SPROUT_DIR / "drivers"
 SPROUT_BINARY = SPROUT_DIR / "sprout.efi"
 SPROUT_CONFIG = Path("sprout.toml")
 
+
+def esp_path(relative: Path | str) -> Path:
+    path = Path(relative)
+    if path.is_absolute() or ".." in path.parts:
+        raise RuntimeError(
+            f"path {relative!r} is not a valid ESP-relative path"
+        )
+    return EFI_SYS_MOUNT_POINT / path
+
 FIRMWARE_LOADER_PATH = r"\EFI\Sprout\sprout.efi"
 
 _MACHINE_BOOT_FALLBACKS = {
@@ -547,8 +556,6 @@ def prepare_entry(
     if selected_bootspec.initrd is not None:
         required_sources.append(selected_bootspec.initrd)
 
-    required_sources.extend(selected_bootspec.extra_initrds)
-
     if selected_bootspec.initrd_secrets is not None:
         required_sources.append(selected_bootspec.initrd_secrets)
 
@@ -580,6 +587,51 @@ def prepare_entry(
 
         print(f"warning: {message}; skipping", file=sys.stderr)
         return None
+
+    for extra_initrd in selected_bootspec.extra_initrds:
+        try:
+            extra_path = esp_path(extra_initrd)
+        except RuntimeError as exc:
+            message = (
+                f"generation {generation}"
+                + (
+                    f" of profile {profile}"
+                    if profile is not None
+                    else ""
+                )
+                + (
+                    f" specialisation {specialisation}"
+                    if specialisation is not None
+                    else ""
+                )
+                + f" references invalid extra initrd path {extra_initrd}: {exc}"
+            )
+            if critical:
+                raise RuntimeError(message) from exc
+
+            print(f"warning: {message}; skipping", file=sys.stderr)
+            return None
+
+        if not extra_path.is_file():
+            message = (
+                f"generation {generation}"
+                + (
+                    f" of profile {profile}"
+                    if profile is not None
+                    else ""
+                )
+                + (
+                    f" specialisation {specialisation}"
+                    if specialisation is not None
+                    else ""
+                )
+                + f" references missing extra initrd on ESP: {extra_initrd}"
+            )
+            if critical:
+                raise RuntimeError(message)
+
+            print(f"warning: {message}; skipping", file=sys.stderr)
+            return None
 
     kernel_destination = artifact_path(
         "kernel",
@@ -621,28 +673,8 @@ def prepare_entry(
             )
         )
 
-    extra_initrd_destinations: list[Path] = []
-
-    for extra_initrd in selected_bootspec.extra_initrds:
-        destination = artifact_path(
-            "extra-initrd",
-            extra_initrd,
-        )
-
-        extra_initrd_destinations.append(destination)
-
-        artifacts.append(
-            BootArtifact(
-                destination=destination,
-                source=extra_initrd,
-                initrd_secrets=None,
-                generation=generation,
-                critical=critical,
-            )
-        )
-
     initrds = tuple(
-        initrd_destinations + extra_initrd_destinations
+        initrd_destinations + list(selected_bootspec.extra_initrds)
     )
 
     identifier = entry_identifier(
@@ -749,7 +781,9 @@ def write_initrd_with_secrets(
 ) -> bool:
     assert artifact.initrd_secrets is not None
 
-    artifact.destination.parent.mkdir(
+    destination = esp_path(artifact.destination)
+
+    destination.parent.mkdir(
         parents=True,
         exist_ok=True,
     )
@@ -759,8 +793,8 @@ def write_initrd_with_secrets(
     try:
         with tempfile.NamedTemporaryFile(
             mode="wb",
-            dir=artifact.destination.parent,
-            prefix=f".{artifact.destination.name}.",
+            dir=destination.parent,
+            prefix=f".{destination.name}.",
             suffix=".tmp",
             delete=False,
         ) as temporary:
@@ -787,7 +821,7 @@ def write_initrd_with_secrets(
                     f"{artifact.source}"
                 ) from None
 
-            if artifact.destination.exists():
+            if destination.exists():
                 print(
                     "warning: failed to update initrd secrets for older "
                     f"generation {artifact.generation}; keeping the previous "
@@ -808,9 +842,9 @@ def write_initrd_with_secrets(
 
         os.replace(
             temporary_path,
-            artifact.destination,
+            destination,
         )
-        fsync_path(artifact.destination.parent)
+        fsync_path(destination.parent)
 
         temporary_path = None
         return True
@@ -822,9 +856,11 @@ def write_initrd_with_secrets(
 def write_artifact(
     artifact: BootArtifact,
 ) -> bool:
+    destination = esp_path(artifact.destination)
+
     if artifact.initrd_secrets is not None:
         if (
-            artifact.destination.exists()
+            destination.exists()
             and not artifact.critical
         ):
             # Older generations can retain an existing valid initrd when
@@ -835,7 +871,7 @@ def write_artifact(
 
     atomic_copy(
         artifact.source,
-        artifact.destination,
+        destination,
         replace=False,
     )
     return True
@@ -864,17 +900,41 @@ def write_boot_files(
     valid_entries: list[BootEntry] = []
 
     for entry in entries:
-        if all(
+        if not all(
             artifact.destination in available_artifacts
             for artifact in entry.artifacts
         ):
-            valid_entries.append(entry)
-        else:
             print(
                 f"warning: boot entry {entry.identifier!r} references "
                 "unavailable boot files; omitting from boot menu",
                 file=sys.stderr,
             )
+            continue
+
+        missing_initrd = False
+        for initrd in entry.initrds:
+            try:
+                target = esp_path(initrd)
+                if not target.is_file():
+                    missing_initrd = True
+                    break
+            except RuntimeError:
+                missing_initrd = True
+                break
+
+        if missing_initrd:
+            if entry.critical:
+                raise RuntimeError(
+                    f"boot entry {entry.identifier!r} references missing initrd on ESP"
+                )
+            print(
+                f"warning: boot entry {entry.identifier!r} references "
+                "unavailable boot files; omitting from boot menu",
+                file=sys.stderr,
+            )
+            continue
+
+        valid_entries.append(entry)
 
     return valid_entries
 
@@ -902,7 +962,7 @@ def install_drivers() -> dict[str, Path]:
 
         atomic_copy(
             source,
-            destination,
+            esp_path(destination),
             replace=True,
         )
 
@@ -979,7 +1039,7 @@ def generate_sprout_config(
 
 
 def install_sprout_binary() -> None:
-    destination = EFI_SYS_MOUNT_POINT / SPROUT_BINARY
+    destination = esp_path(SPROUT_BINARY)
 
     if not SPROUT_BINARY_SOURCE.is_file():
         raise RuntimeError(
@@ -1005,14 +1065,8 @@ def removable_loader_name() -> str:
 
 
 def install_removable_loader() -> None:
-    destination = (
-        EFI_SYS_MOUNT_POINT
-        / "EFI"
-        / "BOOT"
-        / removable_loader_name()
-    )
-
-    source = EFI_SYS_MOUNT_POINT / SPROUT_BINARY
+    destination = esp_path(Path("EFI/BOOT") / removable_loader_name())
+    source = esp_path(SPROUT_BINARY)
 
     atomic_copy(
         source,
@@ -1198,19 +1252,26 @@ def garbage_collect(
     drivers: dict[str, Path],
 ) -> None:
     keep = {
-        EFI_SYS_MOUNT_POINT / artifact.destination
+        esp_path(artifact.destination)
         for entry in entries
         for artifact in entry.artifacts
     }
 
     keep.update(
-        EFI_SYS_MOUNT_POINT / path
+        esp_path(path)
         for path in drivers.values()
     )
 
+    for entry in entries:
+        for initrd in entry.initrds:
+            try:
+                keep.add(esp_path(initrd))
+            except RuntimeError:
+                pass
+
     for directory in (
-        EFI_SYS_MOUNT_POINT / NIXOS_DIR,
-        EFI_SYS_MOUNT_POINT / DRIVERS_DIR,
+        esp_path(NIXOS_DIR),
+        esp_path(DRIVERS_DIR),
     ):
         if not directory.exists():
             continue
@@ -1254,17 +1315,15 @@ def install_bootloader(
         current_toplevel=current_toplevel,
     )
 
-    esp_root = EFI_SYS_MOUNT_POINT
-
-    (esp_root / SPROUT_DIR).mkdir(
+    esp_path(SPROUT_DIR).mkdir(
         parents=True,
         exist_ok=True,
     )
-    (esp_root / NIXOS_DIR).mkdir(
+    esp_path(NIXOS_DIR).mkdir(
         parents=True,
         exist_ok=True,
     )
-    (esp_root / DRIVERS_DIR).mkdir(
+    esp_path(DRIVERS_DIR).mkdir(
         parents=True,
         exist_ok=True,
     )
@@ -1295,7 +1354,7 @@ def install_bootloader(
 
     # Atomically replace sprout.toml only after all referenced files are present.
     atomic_write_text(
-        esp_root / SPROUT_CONFIG,
+        esp_path(SPROUT_CONFIG),
         configuration,
     )
 
