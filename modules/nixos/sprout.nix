@@ -161,6 +161,14 @@ in
           boot.loader.sprout.configurationLimit must be null or non-negative.
         '';
       }
+
+      {
+        assertion = config.boot.loader.timeout == null || config.boot.loader.timeout >= 0;
+
+        message = ''
+          boot.loader.timeout must be non-negative.
+        '';
+      }
     ];
   };
 }

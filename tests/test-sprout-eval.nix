@@ -144,6 +144,64 @@ let
     assert toplevelEval.success == true;
     assert sproutFailedAssertions == [ ];
     true;
+
+  # 9. Sprout enabled, negative timeout:
+  #    evaluating the NixOS system build assertion path rejects the configuration,
+  #    and the failed assertion identifies boot.loader.timeout.
+  case9 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.timeout = -1;
+    }
+  ];
+  testCase9 =
+    let
+      toplevelEval = builtins.tryEval case9.config.system.build.toplevel;
+      failedAssertions = builtins.filter (
+        x: !x.assertion && pkgs.lib.hasInfix "boot.loader.timeout" x.message
+      ) case9.config.assertions;
+    in
+    assert toplevelEval.success == false;
+    assert failedAssertions != [ ];
+    true;
+
+  # 10. Sprout enabled, zero timeout:
+  #     evaluating the NixOS system build assertion path accepts the configuration.
+  case10 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.timeout = 0;
+    }
+  ];
+  testCase10 =
+    let
+      toplevelEval = builtins.tryEval case10.config.system.build.toplevel;
+      timeoutFailedAssertions = builtins.filter (
+        x: !x.assertion && pkgs.lib.hasInfix "boot.loader.timeout" x.message
+      ) case10.config.assertions;
+    in
+    assert toplevelEval.success == true;
+    assert timeoutFailedAssertions == [ ];
+    true;
+
+  # 11. Sprout enabled, positive timeout:
+  #     evaluating the NixOS system build assertion path accepts the configuration.
+  case11 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.timeout = 10;
+    }
+  ];
+  testCase11 =
+    let
+      toplevelEval = builtins.tryEval case11.config.system.build.toplevel;
+      timeoutFailedAssertions = builtins.filter (
+        x: !x.assertion && pkgs.lib.hasInfix "boot.loader.timeout" x.message
+      ) case11.config.assertions;
+    in
+    assert toplevelEval.success == true;
+    assert timeoutFailedAssertions == [ ];
+    true;
 in
 assert testCase1;
 assert testCase2;
@@ -153,6 +211,9 @@ assert testCase5;
 assert testCase6;
 assert testCase7;
 assert testCase8;
+assert testCase9;
+assert testCase10;
+assert testCase11;
 {
   inherit
     testCase1
@@ -163,5 +224,8 @@ assert testCase8;
     testCase6
     testCase7
     testCase8
+    testCase9
+    testCase10
+    testCase11
     ;
 }
