@@ -9,6 +9,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import ModuleType
+from typing import Any
 from unittest.mock import patch
 
 
@@ -1025,6 +1026,641 @@ class SproutInstallRegressionTest(unittest.TestCase):
         self.assertFalse((self.temp_dir / entry.kernel).exists())
         self.assertFalse((self.temp_dir / entry.initrds[0]).exists())
 
+    def test_kernel_params_retained_in_order_with_init_first(self) -> None:
+        """Verify kernel parameters retain order and are emitted with init=<path> first."""
+        k = self.temp_dir / "k.efi"
+        k.write_text("k")
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+
+        params = (
+            "console=ttyS0,115200",
+            "earlycon",
+            "loglevel=4",
+            "rootflags=subvol=@root",
+            "systemd.debug_shell=1",
+        )
+
+        bootspec = self.mod.BootSpec(
+            init=Path("/nix/store/custom-init-script"),
+            toplevel=toplevel,
+            label="NixOS 24.11",
+            kernel=k,
+            initrd=None,
+            initrd_secrets=None,
+            extra_initrds=(),
+            kernel_params=params,
+            specialisations={},
+        )
+
+        entry = self.mod.prepare_entry(
+            profile=None,
+            generation=1,
+            specialisation=None,
+            bootspec=bootspec,
+            current_toplevel=toplevel,
+        )
+        self.assertIsNotNone(entry)
+        assert entry is not None
+
+        expected_options = (
+            "init=/nix/store/custom-init-script",
+            *params,
+        )
+        self.assertEqual(entry.options, expected_options)
+
+        config = self.mod.generate_sprout_config([entry], entry.identifier, {})
+        expected_options_toml = (
+            f"chainload.options = {self.mod.array_toml(list(expected_options))}"
+        )
+        self.assertIn(expected_options_toml, config)
+
+    def test_single_main_initrd_emits_linux_initrd(self) -> None:
+        """Verify a single main initrd is emitted as chainload.linux-initrd without chain."""
+        dest_k = self.mod.NIXOS_DIR / "k.efi"
+        dest_i = self.mod.NIXOS_DIR / "i.img"
+        entry = self.mod.BootEntry(
+            identifier="nixos-g1",
+            title="NixOS Gen 1",
+            sort_key="00000000000000000001",
+            kernel=dest_k,
+            initrds=(dest_i,),
+            options=("init=/nix/store/init",),
+            artifacts=(),
+            critical=True,
+        )
+
+        config = self.mod.generate_sprout_config([entry], entry.identifier, {})
+        expected_initrd_toml = (
+            f"chainload.linux-initrd = {self.mod.quote_toml(self.mod.uefi_path(dest_i))}"
+        )
+        self.assertIn(expected_initrd_toml, config)
+        self.assertNotIn("chainload.linux-initrd-chain", config)
+
+    def test_main_and_extra_initrd_chain_emits_ordered_chain(self) -> None:
+        """Verify main plus extra initrds emit chainload.linux-initrd-chain in correct order."""
+        dest_k = self.mod.NIXOS_DIR / "k.efi"
+        dest_main = self.mod.NIXOS_DIR / "main-initrd.img"
+        extra1 = Path("EFI/vendor/extra1.img")
+        extra2 = Path("extra2.img")
+
+        entry = self.mod.BootEntry(
+            identifier="nixos-g1",
+            title="NixOS Gen 1",
+            sort_key="00000000000000000001",
+            kernel=dest_k,
+            initrds=(dest_main, extra1, extra2),
+            options=("init=/nix/store/init",),
+            artifacts=(),
+            critical=True,
+        )
+
+        config = self.mod.generate_sprout_config([entry], entry.identifier, {})
+        expected_chain_toml = (
+            "chainload.linux-initrd-chain = "
+            + self.mod.array_toml(
+                [
+                    self.mod.uefi_path(dest_main),
+                    self.mod.uefi_path(extra1),
+                    self.mod.uefi_path(extra2),
+                ]
+            )
+        )
+        self.assertIn(expected_chain_toml, config)
+        self.assertNotIn("chainload.linux-initrd = ", config)
+
+    def test_specialisation_produces_separate_entry_with_own_artifacts(
+        self,
+    ) -> None:
+        """Verify a specialisation produces its own boot entry with its own kernel, initrd, and options."""
+        k_main = self.temp_dir / "k-main.efi"
+        k_main.write_text("k-main")
+        i_main = self.temp_dir / "i-main.img"
+        i_main.write_text("i-main")
+        toplevel_main = self.temp_dir / "toplevel-main"
+        toplevel_main.mkdir(parents=True, exist_ok=True)
+
+        k_spec = self.temp_dir / "k-spec.efi"
+        k_spec.write_text("k-spec")
+        i_spec = self.temp_dir / "i-spec.img"
+        i_spec.write_text("i-spec")
+        toplevel_spec = self.temp_dir / "toplevel-spec"
+        toplevel_spec.mkdir(parents=True, exist_ok=True)
+
+        spec_bootspec = self.mod.BootSpec(
+            init=Path("/nix/store/spec-init"),
+            toplevel=toplevel_spec,
+            label="NixOS 24.11 (Debug)",
+            kernel=k_spec,
+            initrd=i_spec,
+            initrd_secrets=None,
+            extra_initrds=(),
+            kernel_params=("debug", "systemd.log_level=debug"),
+            specialisations={},
+        )
+
+        main_bootspec = self.mod.BootSpec(
+            init=Path("/nix/store/main-init"),
+            toplevel=toplevel_main,
+            label="NixOS 24.11",
+            kernel=k_main,
+            initrd=i_main,
+            initrd_secrets=None,
+            extra_initrds=(),
+            kernel_params=("quiet",),
+            specialisations={"debug": spec_bootspec},
+        )
+
+        with patch.object(
+            self.mod,
+            "get_generations",
+            return_value=[self.mod.SystemIdentifier(None, 1)],
+        ), patch.object(
+            self.mod, "get_profiles", return_value=[]
+        ), patch.object(
+            self.mod, "load_bootspec", return_value=main_bootspec
+        ):
+            entries = self.mod.collect_entries(current_toplevel=toplevel_main)
+
+        self.assertEqual(len(entries), 2)
+        entry_main = next(e for e in entries if e.identifier == "nixos-g1")
+        expected_spec_id = self.mod.entry_identifier(None, 1, "debug")
+        entry_spec = next(
+            e for e in entries if e.identifier == expected_spec_id
+        )
+
+        # Main entry uses its own kernel, initrd, options
+        self.assertEqual(
+            entry_main.options, ("init=/nix/store/main-init", "quiet")
+        )
+        self.assertEqual(len(entry_main.initrds), 1)
+        self.assertTrue(entry_main.critical)
+
+        # Specialisation entry uses its own kernel, initrd, options
+        self.assertEqual(
+            entry_spec.options,
+            ("init=/nix/store/spec-init", "debug", "systemd.log_level=debug"),
+        )
+        self.assertEqual(len(entry_spec.initrds), 1)
+        # Distinct artifacts from main
+        self.assertNotEqual(entry_main.kernel, entry_spec.kernel)
+        self.assertNotEqual(entry_main.initrds[0], entry_spec.initrds[0])
+        self.assertFalse(entry_spec.critical)
+
+        # Check serialized config
+        config = self.mod.generate_sprout_config(
+            entries, entry_main.identifier, {}
+        )
+        self.assertIn('[entries."nixos-g1"]', config)
+        self.assertIn(f'[entries."{expected_spec_id}"]', config)
+        self.assertIn('[actions."nixos-g1"]', config)
+        self.assertIn(f'[actions."{expected_spec_id}"]', config)
+        self.assertIn(
+            f"chainload.path = {self.mod.quote_toml(self.mod.uefi_path(entry_main.kernel))}",
+            config,
+        )
+        self.assertIn(
+            f"chainload.path = {self.mod.quote_toml(self.mod.uefi_path(entry_spec.kernel))}",
+            config,
+        )
+
+    def test_bootspec_without_specialisations_produces_only_main_entry(
+        self,
+    ) -> None:
+        """Verify a BootSpec without specialisations produces only the main entry."""
+        k = self.temp_dir / "k.efi"
+        k.write_text("k")
+        i = self.temp_dir / "i.img"
+        i.write_text("i")
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+
+        bootspec = self.mod.BootSpec(
+            init=Path("/nix/store/init"),
+            toplevel=toplevel,
+            label="NixOS 24.11",
+            kernel=k,
+            initrd=i,
+            initrd_secrets=None,
+            extra_initrds=(),
+            kernel_params=(),
+            specialisations={},
+        )
+
+        with patch.object(
+            self.mod,
+            "get_generations",
+            return_value=[self.mod.SystemIdentifier(None, 1)],
+        ), patch.object(
+            self.mod, "get_profiles", return_value=[]
+        ), patch.object(
+            self.mod, "load_bootspec", return_value=bootspec
+        ):
+            entries = self.mod.collect_entries(current_toplevel=toplevel)
+
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0].identifier, "nixos-g1")
+
+    def test_bootspec_without_devicetree_supported(self) -> None:
+        """Verify BootSpec without devicetree request remains supported."""
+        k = self.temp_dir / "k.efi"
+        k.write_text("k")
+        i = self.temp_dir / "i.img"
+        i.write_text("i")
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+
+        bootspec = self.mod.BootSpec(
+            init=Path("/nix/store/init"),
+            toplevel=toplevel,
+            label="NixOS 24.11",
+            kernel=k,
+            initrd=i,
+            initrd_secrets=None,
+            extra_initrds=(),
+            kernel_params=(),
+            specialisations={},
+            devicetree=None,
+        )
+
+        entry = self.mod.prepare_entry(
+            profile=None,
+            generation=1,
+            specialisation=None,
+            bootspec=bootspec,
+            current_toplevel=toplevel,
+        )
+        self.assertIsNotNone(entry)
+
+    def test_devicetree_critical_entry_aborts_without_creating_or_replacing_config(
+        self,
+    ) -> None:
+        """Verify critical entry requesting devicetree aborts installation without creating or replacing sprout.toml."""
+        k = self.temp_dir / "k.efi"
+        k.write_text("k")
+        i = self.temp_dir / "i.img"
+        i.write_text("i")
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+
+        bootspec = self.mod.BootSpec(
+            init=Path("/nix/store/init"),
+            toplevel=toplevel,
+            label="NixOS 24.11",
+            kernel=k,
+            initrd=i,
+            initrd_secrets=None,
+            extra_initrds=(),
+            kernel_params=(),
+            specialisations={},
+            devicetree=Path("/nix/store/dummy.dtb"),
+        )
+
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+
+        # 1. Fresh install: sprout.toml does not exist
+        self.assertFalse(config_path.exists())
+        with patch.object(
+            self.mod,
+            "get_generations",
+            return_value=[self.mod.SystemIdentifier(None, 1)],
+        ), patch.object(
+            self.mod, "get_profiles", return_value=[]
+        ), patch.object(
+            self.mod, "load_bootspec", return_value=bootspec
+        ), patch.object(
+            self.mod, "check_mountpoint"
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                self.mod.install_bootloader(toplevel)
+            self.assertIn("requests devicetree", str(ctx.exception))
+            self.assertIn(
+                "devicetree is not supported by Sprout", str(ctx.exception)
+            )
+
+        self.assertFalse(
+            config_path.exists(),
+            "sprout.toml must not be created when devicetree fails",
+        )
+
+        # 2. Existing config: sprout.toml already exists
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("pre-existing-valid-config")
+
+        with patch.object(
+            self.mod,
+            "get_generations",
+            return_value=[self.mod.SystemIdentifier(None, 1)],
+        ), patch.object(
+            self.mod, "get_profiles", return_value=[]
+        ), patch.object(
+            self.mod, "load_bootspec", return_value=bootspec
+        ), patch.object(
+            self.mod, "check_mountpoint"
+        ):
+            with self.assertRaises(RuntimeError) as ctx2:
+                self.mod.install_bootloader(toplevel)
+            self.assertIn("requests devicetree", str(ctx2.exception))
+
+        self.assertEqual(
+            config_path.read_text(),
+            "pre-existing-valid-config",
+            "Existing sprout.toml must remain untouched",
+        )
+
+    def test_devicetree_older_generation_skipped_and_valid_entries_retained(
+        self,
+    ) -> None:
+        """Verify older generation requesting devicetree is skipped while valid entries are retained."""
+        k2 = self.temp_dir / "k2.efi"
+        k2.write_text("k2")
+        i2 = self.temp_dir / "i2.img"
+        i2.write_text("i2")
+        toplevel2 = self.temp_dir / "toplevel2"
+        toplevel2.mkdir(parents=True, exist_ok=True)
+
+        k1 = self.temp_dir / "k1.efi"
+        k1.write_text("k1")
+        i1 = self.temp_dir / "i1.img"
+        i1.write_text("i1")
+        toplevel1 = self.temp_dir / "toplevel1"
+        toplevel1.mkdir(parents=True, exist_ok=True)
+
+        # Default gen 2: valid, no devicetree
+        bootspec2 = self.mod.BootSpec(
+            init=Path("/nix/store/init2"),
+            toplevel=toplevel2,
+            label="NixOS Gen 2",
+            kernel=k2,
+            initrd=i2,
+            initrd_secrets=None,
+            extra_initrds=(),
+            kernel_params=(),
+            specialisations={},
+            devicetree=None,
+        )
+
+        # Older gen 1: requests devicetree
+        bootspec1 = self.mod.BootSpec(
+            init=Path("/nix/store/init1"),
+            toplevel=toplevel1,
+            label="NixOS Gen 1",
+            kernel=k1,
+            initrd=i1,
+            initrd_secrets=None,
+            extra_initrds=(),
+            kernel_params=(),
+            specialisations={},
+            devicetree=Path("/nix/store/dtb1.dtb"),
+        )
+
+        def mock_load(profile: str | None, generation: int) -> Any:
+            return bootspec2 if generation == 2 else bootspec1
+
+        with patch.object(
+            self.mod,
+            "get_generations",
+            return_value=[
+                self.mod.SystemIdentifier(None, 2),
+                self.mod.SystemIdentifier(None, 1),
+            ],
+        ), patch.object(
+            self.mod, "get_profiles", return_value=[]
+        ), patch.object(
+            self.mod, "load_bootspec", side_effect=mock_load
+        ), patch.object(
+            self.mod, "check_mountpoint"
+        ):
+            self.mod.install_bootloader(toplevel2)
+
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+        self.assertTrue(config_path.exists())
+        config_text = config_path.read_text()
+
+        # Gen 2 is present and is default
+        self.assertIn('[entries."nixos-g2"]', config_text)
+        self.assertIn('default-entry = "nixos-g2"', config_text)
+
+        # Gen 1 with devicetree was skipped
+        self.assertNotIn("nixos-g1", config_text)
+
+        # Gen 2 artifacts installed
+        self.assertTrue((self.esp_dir / self.mod.NIXOS_DIR).exists())
+        # Gen 1 kernel was not installed
+        self.assertFalse(
+            (self.esp_dir / self.mod.artifact_path("kernel", k1)).exists()
+        )
+
+
+class BootSpecParserTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.mod = load_sprout_installer(Path("/dummy/esp"))
+
+    def test_bootspec_from_json_minimal_required_data(self) -> None:
+        """Verify parsing minimal BootSpec document containing only required v1 data."""
+        doc = {
+            "org.nixos.bootspec.v1": {
+                "init": "/nix/store/abc-init",
+                "toplevel": "/nix/store/xyz-toplevel",
+            }
+        }
+        spec = self.mod.bootspec_from_json(doc)
+        self.assertEqual(spec.init, Path("/nix/store/abc-init"))
+        self.assertEqual(spec.toplevel, Path("/nix/store/xyz-toplevel"))
+        self.assertEqual(spec.label, "")
+        self.assertIsNone(spec.kernel)
+        self.assertIsNone(spec.initrd)
+        self.assertIsNone(spec.initrd_secrets)
+        self.assertEqual(spec.extra_initrds, ())
+        self.assertEqual(spec.kernel_params, ())
+        self.assertEqual(spec.specialisations, {})
+        self.assertIsNone(spec.devicetree)
+
+    def test_bootspec_from_json_all_optional_and_extension_fields(self) -> None:
+        """Verify parsing BootSpec with all optional fields, extra-initrds, devicetree, and specialisations."""
+        doc = {
+            "org.nixos.bootspec.v1": {
+                "init": "/nix/store/abc-init",
+                "toplevel": "/nix/store/xyz-toplevel",
+                "label": "NixOS 24.11 (Linux 6.6.20)",
+                "kernel": "/nix/store/def-kernel/bzImage",
+                "initrd": "/nix/store/ghi-initrd/initrd",
+                "initrdSecrets": "/nix/store/jkl-secrets/append-secrets.sh",
+                "kernelParams": ["console=ttyS0", "loglevel=4"],
+            },
+            "org.nixos.extra-initrd.v1": {
+                "paths": ["extra1.img", "extra2.img"],
+            },
+            "org.nixos.systemd-boot": {
+                "devicetree": "/nix/store/mno-dtb/bcm2711.dtb",
+            },
+            "org.nixos.specialisation.v1": {
+                "fallback": {
+                    "org.nixos.bootspec.v1": {
+                        "init": "/nix/store/abc-init",
+                        "toplevel": "/nix/store/special-toplevel",
+                        "label": "NixOS 24.11 (Fallback)",
+                        "kernel": "/nix/store/spec-kernel/bzImage",
+                        "initrd": "/nix/store/spec-initrd/initrd",
+                        "kernelParams": ["nomodeset"],
+                    }
+                }
+            },
+        }
+        spec = self.mod.bootspec_from_json(doc)
+        self.assertEqual(spec.init, Path("/nix/store/abc-init"))
+        self.assertEqual(spec.toplevel, Path("/nix/store/xyz-toplevel"))
+        self.assertEqual(spec.label, "NixOS 24.11 (Linux 6.6.20)")
+        self.assertEqual(spec.kernel, Path("/nix/store/def-kernel/bzImage"))
+        self.assertEqual(spec.initrd, Path("/nix/store/ghi-initrd/initrd"))
+        self.assertEqual(
+            spec.initrd_secrets, Path("/nix/store/jkl-secrets/append-secrets.sh")
+        )
+        self.assertEqual(
+            spec.extra_initrds, (Path("extra1.img"), Path("extra2.img"))
+        )
+        self.assertEqual(spec.kernel_params, ("console=ttyS0", "loglevel=4"))
+        self.assertEqual(spec.devicetree, Path("/nix/store/mno-dtb/bcm2711.dtb"))
+
+        # Verify specialisation parsed correctly
+        self.assertIn("fallback", spec.specialisations)
+        sub = spec.specialisations["fallback"]
+        self.assertEqual(sub.init, Path("/nix/store/abc-init"))
+        self.assertEqual(sub.toplevel, Path("/nix/store/special-toplevel"))
+        self.assertEqual(sub.label, "NixOS 24.11 (Fallback)")
+        self.assertEqual(sub.kernel, Path("/nix/store/spec-kernel/bzImage"))
+        self.assertEqual(sub.initrd, Path("/nix/store/spec-initrd/initrd"))
+        self.assertEqual(sub.kernel_params, ("nomodeset",))
+        self.assertEqual(sub.specialisations, {})
+        self.assertIsNone(sub.devicetree)
+
+    def test_bootspec_from_json_devicetree_absent_or_null(self) -> None:
+        """Verify devicetree is None when absent, null, or extension is null."""
+        base: dict[str, Any] = {
+            "org.nixos.bootspec.v1": {
+                "init": "/nix/store/init",
+                "toplevel": "/nix/store/toplevel",
+            }
+        }
+        # Absent extension
+        self.assertIsNone(self.mod.bootspec_from_json(base).devicetree)
+
+        # Null extension
+        doc_null_ext = {**base, "org.nixos.systemd-boot": None}
+        self.assertIsNone(self.mod.bootspec_from_json(doc_null_ext).devicetree)
+
+        # Extension present with null devicetree
+        doc_null_dt = {**base, "org.nixos.systemd-boot": {"devicetree": None}}
+        self.assertIsNone(self.mod.bootspec_from_json(doc_null_dt).devicetree)
+
+        # Top-level dot-notated null devicetree
+        doc_dot_null = {**base, "org.nixos.systemd-boot.devicetree": None}
+        self.assertIsNone(self.mod.bootspec_from_json(doc_dot_null).devicetree)
+
+        # Top-level dot-notated string devicetree
+        doc_dot_str = {
+            **base,
+            "org.nixos.systemd-boot.devicetree": "/nix/store/dot.dtb",
+        }
+        self.assertEqual(
+            self.mod.bootspec_from_json(doc_dot_str).devicetree,
+            Path("/nix/store/dot.dtb"),
+        )
+
+    def test_bootspec_from_json_validation_errors(self) -> None:
+        """Verify invalid document structure and field types raise RuntimeError."""
+        # Missing org.nixos.bootspec.v1
+        with self.assertRaises(RuntimeError) as ctx:
+            self.mod.bootspec_from_json({})
+        self.assertIn(
+            'does not contain "org.nixos.bootspec.v1"', str(ctx.exception)
+        )
+
+        # Missing init
+        with self.assertRaises(RuntimeError) as ctx:
+            self.mod.bootspec_from_json(
+                {"org.nixos.bootspec.v1": {"toplevel": "/toplevel"}}
+            )
+        self.assertIn(
+            'does not contain "org.nixos.bootspec.v1.init"', str(ctx.exception)
+        )
+
+        # Missing toplevel
+        with self.assertRaises(RuntimeError) as ctx:
+            self.mod.bootspec_from_json(
+                {"org.nixos.bootspec.v1": {"init": "/init"}}
+            )
+        self.assertIn(
+            'does not contain "org.nixos.bootspec.v1.toplevel"',
+            str(ctx.exception),
+        )
+
+        base: dict[str, Any] = {
+            "org.nixos.bootspec.v1": {
+                "init": "/init",
+                "toplevel": "/toplevel",
+            }
+        }
+
+        # kernelParams not a list
+        with self.assertRaises(RuntimeError) as ctx:
+            self.mod.bootspec_from_json(
+                {
+                    "org.nixos.bootspec.v1": {
+                        "init": "/init",
+                        "toplevel": "/toplevel",
+                        "kernelParams": "bad",
+                    }
+                }
+            )
+        self.assertIn('"kernelParams" is not an array', str(ctx.exception))
+
+        # extra-initrd not a dict
+        with self.assertRaises(RuntimeError) as ctx:
+            self.mod.bootspec_from_json(
+                {**base, "org.nixos.extra-initrd.v1": "bad"}
+            )
+        self.assertIn(
+            'invalid "org.nixos.extra-initrd.v1" extension', str(ctx.exception)
+        )
+
+        # extra-initrd.paths not a list
+        with self.assertRaises(RuntimeError) as ctx:
+            self.mod.bootspec_from_json(
+                {**base, "org.nixos.extra-initrd.v1": {"paths": "bad"}}
+            )
+        self.assertIn(
+            '"org.nixos.extra-initrd.v1.paths" is not an array',
+            str(ctx.exception),
+        )
+
+        # specialisation not a dict
+        with self.assertRaises(RuntimeError) as ctx:
+            self.mod.bootspec_from_json(
+                {**base, "org.nixos.specialisation.v1": "bad"}
+            )
+        self.assertIn(
+            'invalid "org.nixos.specialisation.v1" extension', str(ctx.exception)
+        )
+
+        # systemd-boot not a dict
+        with self.assertRaises(RuntimeError) as ctx:
+            self.mod.bootspec_from_json(
+                {**base, "org.nixos.systemd-boot": "bad"}
+            )
+        self.assertIn(
+            'invalid "org.nixos.systemd-boot" extension', str(ctx.exception)
+        )
+
+        # devicetree not a string
+        with self.assertRaises(RuntimeError) as ctx:
+            self.mod.bootspec_from_json(
+                {**base, "org.nixos.systemd-boot": {"devicetree": 123}}
+            )
+        self.assertIn(
+            '"org.nixos.systemd-boot.devicetree" is not a string',
+            str(ctx.exception),
+        )
 
 
 if __name__ == "__main__":

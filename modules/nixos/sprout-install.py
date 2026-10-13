@@ -81,6 +81,7 @@ class BootSpec:
     extra_initrds: tuple[Path, ...]
     kernel_params: tuple[str, ...]
     specialisations: dict[str, "BootSpec"]
+    devicetree: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -419,6 +420,31 @@ def bootspec_from_json(
             'boot.json "kernelParams" is not an array'
         )
 
+    systemd_boot_extension = document.get("org.nixos.systemd-boot")
+
+    if systemd_boot_extension is None:
+        systemd_boot_extension = {}
+    elif not isinstance(systemd_boot_extension, dict):
+        raise RuntimeError(
+            'boot.json contains an invalid "org.nixos.systemd-boot" extension'
+        )
+
+    devicetree_value = systemd_boot_extension.get("devicetree")
+
+    if devicetree_value is None and "org.nixos.systemd-boot.devicetree" in document:
+        devicetree_value = document.get("org.nixos.systemd-boot.devicetree")
+
+    if devicetree_value is not None and not isinstance(devicetree_value, str):
+        raise RuntimeError(
+            'boot.json "org.nixos.systemd-boot.devicetree" is not a string'
+        )
+
+    devicetree = (
+        Path(devicetree_value)
+        if devicetree_value is not None
+        else None
+    )
+
     return BootSpec(
         init=Path(str(main["init"])),
         toplevel=Path(str(main["toplevel"])),
@@ -435,6 +461,7 @@ def bootspec_from_json(
             for parameter in kernel_params_value
         ),
         specialisations=specialisations,
+        devicetree=devicetree,
     )
 
 
@@ -528,6 +555,29 @@ def prepare_entry(
         selected_bootspec = bootspec.specialisations[specialisation]
 
     critical = selected_bootspec.toplevel.resolve() == current_toplevel
+
+    if selected_bootspec.devicetree is not None:
+        message = (
+            f"generation {generation}"
+            + (
+                f" of profile {profile}"
+                if profile is not None
+                else ""
+            )
+            + (
+                f" specialisation {specialisation}"
+                if specialisation is not None
+                else ""
+            )
+            + f" requests devicetree {selected_bootspec.devicetree}; "
+            + "devicetree is not supported by Sprout"
+        )
+
+        if critical:
+            raise RuntimeError(message)
+
+        print(f"warning: {message}; skipping", file=sys.stderr)
+        return None
 
     if selected_bootspec.kernel is None:
         message = (
