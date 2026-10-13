@@ -746,7 +746,7 @@ def collect_entries(
 
 def write_initrd_with_secrets(
     artifact: BootArtifact,
-) -> None:
+) -> bool:
     assert artifact.initrd_secrets is not None
 
     artifact.destination.parent.mkdir(
@@ -787,20 +787,21 @@ def write_initrd_with_secrets(
                     f"{artifact.source}"
                 ) from None
 
-            if not artifact.destination.exists():
-                atomic_copy(
-                    artifact.source,
-                    artifact.destination,
-                    replace=False,
+            if artifact.destination.exists():
+                print(
+                    "warning: failed to update initrd secrets for older "
+                    f"generation {artifact.generation}; keeping the previous "
+                    "initrd",
+                    file=sys.stderr,
                 )
+                return True
 
             print(
-                "warning: failed to update initrd secrets for older "
-                f"generation {artifact.generation}; keeping the previous "
-                "initrd if available",
+                "warning: failed to append initrd secrets to older "
+                f"generation {artifact.generation}; omitting affected boot entries",
                 file=sys.stderr,
             )
-            return
+            return False
 
         with temporary_path.open("rb") as result:
             os.fsync(result.fileno())
@@ -812,6 +813,7 @@ def write_initrd_with_secrets(
         fsync_path(artifact.destination.parent)
 
         temporary_path = None
+        return True
     finally:
         if temporary_path is not None:
             temporary_path.unlink(missing_ok=True)
@@ -819,7 +821,7 @@ def write_initrd_with_secrets(
 
 def write_artifact(
     artifact: BootArtifact,
-) -> None:
+) -> bool:
     if artifact.initrd_secrets is not None:
         if (
             artifact.destination.exists()
@@ -827,21 +829,21 @@ def write_artifact(
         ):
             # Older generations can retain an existing valid initrd when
             # secret material is no longer available.
-            return
+            return True
 
-        write_initrd_with_secrets(artifact)
-        return
+        return write_initrd_with_secrets(artifact)
 
     atomic_copy(
         artifact.source,
         artifact.destination,
         replace=False,
     )
+    return True
 
 
 def write_boot_files(
     entries: Sequence[BootEntry],
-) -> set[Path]:
+) -> list[BootEntry]:
     artifacts: dict[Path, BootArtifact] = {}
 
     for entry in entries:
@@ -853,10 +855,28 @@ def write_boot_files(
             ):
                 artifacts[artifact.destination] = artifact
 
-    for artifact in artifacts.values():
-        write_artifact(artifact)
+    available_artifacts: set[Path] = set()
 
-    return set(artifacts)
+    for destination, artifact in artifacts.items():
+        if write_artifact(artifact):
+            available_artifacts.add(destination)
+
+    valid_entries: list[BootEntry] = []
+
+    for entry in entries:
+        if all(
+            artifact.destination in available_artifacts
+            for artifact in entry.artifacts
+        ):
+            valid_entries.append(entry)
+        else:
+            print(
+                f"warning: boot entry {entry.identifier!r} references "
+                "unavailable boot files; omitting from boot menu",
+                file=sys.stderr,
+            )
+
+    return valid_entries
 
 
 def install_drivers() -> dict[str, Path]:
@@ -883,7 +903,7 @@ def install_drivers() -> dict[str, Path]:
         atomic_copy(
             source,
             destination,
-            replace=False,
+            replace=True,
         )
 
         installed[name] = destination
@@ -1234,8 +1254,6 @@ def install_bootloader(
         current_toplevel=current_toplevel,
     )
 
-    default_entry = find_default_entry(entries)
-
     esp_root = EFI_SYS_MOUNT_POINT
 
     (esp_root / SPROUT_DIR).mkdir(
@@ -1251,7 +1269,14 @@ def install_bootloader(
         exist_ok=True,
     )
 
-    write_boot_files(entries)
+    entries = write_boot_files(entries)
+
+    if not entries:
+        raise RuntimeError(
+            "no valid boot entries remain; refusing to publish configuration"
+        )
+
+    default_entry = find_default_entry(entries)
 
     drivers = install_drivers()
 
