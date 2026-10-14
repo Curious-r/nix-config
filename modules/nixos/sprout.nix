@@ -136,6 +136,10 @@ in
 
     system.build.installBootLoader = sproutInstaller;
 
+    system.requiredKernelConfig = with config.lib.kernelConfig; [
+      (isYes "EFI_STUB")
+    ];
+
     assertions = [
       {
         assertion = cfg.efiInstallAsRemovable || efi.canTouchEfiVariables;

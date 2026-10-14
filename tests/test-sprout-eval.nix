@@ -202,6 +202,22 @@ let
     assert toplevelEval.success == true;
     assert timeoutFailedAssertions == [ ];
     true;
+
+  # 12. Sprout enabled, EFI Stub kernel requirement:
+  #     system.requiredKernelConfig contains structured metadata with configLine "CONFIG_EFI_STUB=y".
+  case12 = eval [ { boot.loader.sprout.enable = true; } ];
+  testCase12 =
+    let
+      hasEfiStub = pkgs.lib.any (
+        req: req.configLine == "CONFIG_EFI_STUB=y"
+      ) case12.config.system.requiredKernelConfig;
+      disabledHasEfiStub = pkgs.lib.any (
+        req: req.configLine == "CONFIG_EFI_STUB=y"
+      ) case2.config.system.requiredKernelConfig;
+    in
+    assert hasEfiStub;
+    assert !disabledHasEfiStub;
+    true;
 in
 assert testCase1;
 assert testCase2;
@@ -214,6 +230,7 @@ assert testCase8;
 assert testCase9;
 assert testCase10;
 assert testCase11;
+assert testCase12;
 {
   inherit
     testCase1
@@ -227,5 +244,6 @@ assert testCase11;
     testCase9
     testCase10
     testCase11
+    testCase12
     ;
 }
