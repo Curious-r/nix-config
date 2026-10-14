@@ -6,6 +6,7 @@ import importlib.util
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -3124,6 +3125,215 @@ class BootSpecParserTest(unittest.TestCase):
             '"org.nixos.systemd-boot.devicetree" is not a string',
             str(ctx.exception),
         )
+
+
+class NvramEntryTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp_dir_obj = tempfile.TemporaryDirectory()
+        self.esp_dir = Path(self.temp_dir_obj.name).resolve()
+        self.mod = load_sprout_installer(
+            self.esp_dir,
+            entry_label="NixOS Sprout",
+        )
+
+    def tearDown(self) -> None:
+        self.temp_dir_obj.cleanup()
+
+    def test_exact_label_and_exact_loader_path_recognized_as_already_installed(
+        self,
+    ) -> None:
+        """Verify exact label and exact loader path are recognized as installed without creating new entry."""
+        efibootmgr_output = (
+            "BootCurrent: 0001\n"
+            "Timeout: 5 seconds\n"
+            "BootOrder: 0001,0002\n"
+            "Boot0001* NixOS Sprout\tHD(1,GPT,e9a4f4d2-36c9-4b6a-939e-473d091a1348,0x800,0x100000)/File(\\EFI\\Sprout\\sprout.efi)\n"
+            "Boot0002  UEFI OS\tHD(1,GPT,e9a4f4d2-36c9-4b6a-939e-473d091a1348,0x800,0x100000)/File(\\EFI\\BOOT\\BOOTX64.EFI)\n"
+        )
+        with patch.object(self.mod, "check_efivars"), patch.object(
+            self.mod, "capture", return_value=efibootmgr_output
+        ), patch.object(self.mod, "get_esp_device") as mock_get_esp, patch.object(
+            self.mod, "run"
+        ) as mock_run:
+            self.mod.install_nvram_entry()
+            mock_run.assert_not_called()
+            mock_get_esp.assert_not_called()
+
+    def test_case_insensitive_matching_for_label_and_path(self) -> None:
+        """Verify case-insensitive matching recognizes mixed-case label and loader path."""
+        efibootmgr_output = (
+            "Boot0001* nixos sprout\tHD(1,GPT,11111111-2222-3333-4444-555555555555,0x800,0x100000)/File(\\efi\\SPROUT\\SPROUT.EFI)\n"
+        )
+        with patch.object(self.mod, "check_efivars"), patch.object(
+            self.mod, "capture", return_value=efibootmgr_output
+        ), patch.object(self.mod, "run") as mock_run:
+            self.mod.install_nvram_entry()
+            mock_run.assert_not_called()
+
+    def test_exact_label_different_path_fails_closed(self) -> None:
+        """Verify exact label pointing to a different path fails closed without modifying or creating entries."""
+        efibootmgr_output = (
+            "Boot0001* NixOS Sprout\tHD(1,GPT,e9a4f4d2-36c9-4b6a-939e-473d091a1348,0x800,0x100000)/File(\\EFI\\systemd\\systemd-bootx64.efi)\n"
+        )
+        with patch.object(self.mod, "check_efivars"), patch.object(
+            self.mod, "capture", return_value=efibootmgr_output
+        ), patch.object(self.mod, "run") as mock_run:
+            with self.assertRaises(RuntimeError) as ctx:
+                self.mod.install_nvram_entry()
+            self.assertIn(
+                "an existing UEFI entry named 'NixOS Sprout' does not point to \\EFI\\Sprout\\sprout.efi",
+                str(ctx.exception),
+            )
+            mock_run.assert_not_called()
+
+    def test_similar_labels_do_not_match(self) -> None:
+        """Verify labels with prefixes or suffixes do not match and trigger new entry creation."""
+        efibootmgr_output = (
+            "Boot0001* NixOS Sprout Test\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\Sprout\\sprout.efi)\n"
+            "Boot0002* My NixOS Sprout\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\Sprout\\sprout.efi)\n"
+            "Boot0003* NixOS\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\Sprout\\sprout.efi)\n"
+            "Boot0004* Sprout\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\Sprout\\sprout.efi)\n"
+        )
+        with patch.object(self.mod, "check_efivars"), patch.object(
+            self.mod, "capture", return_value=efibootmgr_output
+        ), patch.object(
+            self.mod, "get_esp_device", return_value=("/dev/sda", "1")
+        ), patch.object(
+            self.mod, "run"
+        ) as mock_run:
+            self.mod.install_nvram_entry()
+            mock_run.assert_called_once_with(
+                [
+                    self.mod.EFIBOOTMGR,
+                    "-c",
+                    "-d",
+                    "/dev/sda",
+                    "-p",
+                    "1",
+                    "-L",
+                    "NixOS Sprout",
+                    "-l",
+                    r"\EFI\Sprout\sprout.efi",
+                ]
+            )
+
+    def test_path_with_suffix_such_as_dot_old_rejected(self) -> None:
+        """Verify paths merely containing expected loader path (e.g. .old suffix) are rejected."""
+        efibootmgr_output = (
+            "Boot0001* NixOS Sprout\tHD(1,GPT,e9a4f4d2-36c9-4b6a-939e-473d091a1348,0x800,0x100000)/File(\\EFI\\Sprout\\sprout.efi.old)\n"
+        )
+        with patch.object(self.mod, "check_efivars"), patch.object(
+            self.mod, "capture", return_value=efibootmgr_output
+        ), patch.object(self.mod, "run") as mock_run:
+            with self.assertRaises(RuntimeError) as ctx:
+                self.mod.install_nvram_entry()
+            self.assertIn(
+                "an existing UEFI entry named 'NixOS Sprout' does not point to \\EFI\\Sprout\\sprout.efi",
+                str(ctx.exception),
+            )
+            mock_run.assert_not_called()
+
+    def test_no_matching_entry_invokes_efibootmgr_create(self) -> None:
+        """Verify absent matching entry causes efibootmgr -c invocation with disk, partition, label, and loader."""
+        efibootmgr_output = (
+            "BootCurrent: 0002\n"
+            "Timeout: 5 seconds\n"
+            "BootOrder: 0000,0002\n"
+            "Boot0000* Windows Boot Manager\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\Microsoft\\Boot\\bootmgfw.efi)\n"
+            "Boot0002  UEFI OS\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\BOOT\\BOOTX64.EFI)\n"
+        )
+        with patch.object(self.mod, "check_efivars"), patch.object(
+            self.mod, "capture", return_value=efibootmgr_output
+        ), patch.object(
+            self.mod, "get_esp_device", return_value=("/dev/nvme0n1", "2")
+        ), patch.object(
+            self.mod, "run"
+        ) as mock_run:
+            self.mod.install_nvram_entry()
+            mock_run.assert_called_once_with(
+                [
+                    self.mod.EFIBOOTMGR,
+                    "-c",
+                    "-d",
+                    "/dev/nvme0n1",
+                    "-p",
+                    "2",
+                    "-L",
+                    "NixOS Sprout",
+                    "-l",
+                    r"\EFI\Sprout\sprout.efi",
+                ]
+            )
+
+    def test_retry_after_command_failure_detects_existing_entry_without_duplicates(
+        self,
+    ) -> None:
+        """Verify command failure after firmware creates entry can be retried without duplicate creation."""
+        initial_output = (
+            "Boot0000* Windows Boot Manager\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\Microsoft\\Boot\\bootmgfw.efi)\n"
+        )
+        subsequent_output = (
+            "Boot0000* Windows Boot Manager\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\Microsoft\\Boot\\bootmgfw.efi)\n"
+            "Boot0001* NixOS Sprout\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\Sprout\\sprout.efi)\n"
+        )
+
+        with patch.object(self.mod, "check_efivars"), patch.object(
+            self.mod, "capture", side_effect=[initial_output, subsequent_output]
+        ), patch.object(
+            self.mod, "get_esp_device", return_value=("/dev/nvme0n1", "1")
+        ), patch.object(
+            self.mod, "run", side_effect=subprocess.CalledProcessError(1, ["efibootmgr", "-c"])
+        ) as mock_run:
+            # First attempt fails after efibootmgr invocation
+            with self.assertRaises(subprocess.CalledProcessError):
+                self.mod.install_nvram_entry()
+            mock_run.assert_called_once()
+
+            # Second attempt (retry) discovers the entry created by firmware and does not create duplicate
+            mock_run.reset_mock()
+            self.mod.install_nvram_entry()
+            mock_run.assert_not_called()
+
+    def test_parse_nvram_entry_variants(self) -> None:
+        """Verify parse_nvram_entry handles spaces, tabs, trailing data, and non-boot lines."""
+        # Non-boot lines
+        self.assertIsNone(self.mod.parse_nvram_entry("BootCurrent: 0001"))
+        self.assertIsNone(self.mod.parse_nvram_entry("Timeout: 5 seconds"))
+        self.assertIsNone(self.mod.parse_nvram_entry("BootOrder: 0001,0002"))
+
+        # Space separated device path
+        e1 = self.mod.parse_nvram_entry(
+            "Boot0001* NixOS Sprout HD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\Sprout\\sprout.efi)"
+        )
+        self.assertIsNotNone(e1)
+        assert e1 is not None
+        self.assertEqual(e1.label, "NixOS Sprout")
+        self.assertEqual(e1.loader_path, r"\EFI\Sprout\sprout.efi")
+
+        # Inactive entry (double space)
+        e2 = self.mod.parse_nvram_entry(
+            "Boot0002  UEFI OS\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\BOOT\\BOOTX64.EFI)"
+        )
+        self.assertIsNotNone(e2)
+        assert e2 is not None
+        self.assertEqual(e2.label, "UEFI OS")
+        self.assertEqual(e2.loader_path, r"\EFI\BOOT\BOOTX64.EFI")
+
+        # Trailing optional data
+        e3 = self.mod.parse_nvram_entry(
+            "Boot0000* Windows Boot Manager\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\Microsoft\\Boot\\bootmgfw.efi)WINDOWS........."
+        )
+        self.assertIsNotNone(e3)
+        assert e3 is not None
+        self.assertEqual(e3.label, "Windows Boot Manager")
+        self.assertEqual(e3.loader_path, r"\EFI\Microsoft\Boot\bootmgfw.efi")
+
+        # Non-file device path (e.g. BBS)
+        e4 = self.mod.parse_nvram_entry("Boot0003* CD-ROM Drive\tBBS(CDROM,,0x0)")
+        self.assertIsNotNone(e4)
+        assert e4 is not None
+        self.assertEqual(e4.label, "CD-ROM Drive")
+        self.assertIsNone(e4.loader_path)
 
 
 if __name__ == "__main__":

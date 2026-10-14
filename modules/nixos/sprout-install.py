@@ -1442,6 +1442,59 @@ def get_esp_device() -> tuple[str, str]:
     return f"/dev/{parent}", partition
 
 
+def normalize_label(label: str) -> str:
+    return label.strip().lower()
+
+
+def normalize_efi_path(path: str) -> str:
+    cleaned = path.strip().replace("/", "\\")
+    if not cleaned.startswith("\\"):
+        cleaned = "\\" + cleaned
+    return cleaned.lower()
+
+
+@dataclass(frozen=True)
+class NvramEntry:
+    label: str
+    loader_path: str | None
+
+
+def parse_nvram_entry(line: str) -> NvramEntry | None:
+    match = re.match(r"^Boot[0-9A-Fa-f]{4}\*?\s+", line)
+    if not match:
+        return None
+
+    remainder = line[match.end():]
+    if "\t" in remainder:
+        parts = remainder.split("\t", 1)
+        raw_label = parts[0]
+        raw_device = parts[1]
+    else:
+        device_match = re.search(
+            r"\s+((?:/?File|HD|Pci|PciRoot|VenHw|ACPI|BBS|NVMe|Fv|MemoryMapped)\(.*)$",
+            remainder,
+            re.IGNORECASE,
+        )
+        if device_match:
+            raw_label = remainder[:device_match.start()]
+            raw_device = device_match.group(1)
+        else:
+            raw_label = remainder
+            raw_device = ""
+
+    label = raw_label.strip()
+
+    file_match = re.search(r"File\((.*?)\)", raw_device, re.IGNORECASE)
+    if file_match:
+        loader_path = file_match.group(1).strip()
+    elif raw_device.strip().startswith(("\\", "/")):
+        loader_path = raw_device.strip()
+    else:
+        loader_path = None
+
+    return NvramEntry(label=label, loader_path=loader_path)
+
+
 def install_nvram_entry() -> None:
     check_efivars()
 
@@ -1452,25 +1505,26 @@ def install_nvram_entry() -> None:
         ]
     )
 
-    normalized_loader = FIRMWARE_LOADER_PATH.lower()
+    normalized_target_label = normalize_label(FIRMWARE_ENTRY_LABEL)
+    normalized_target_loader = normalize_efi_path(FIRMWARE_LOADER_PATH)
 
     label_seen = False
     matching_loader = False
 
     for line in existing.splitlines():
-        if not re.match(
-            r"^Boot[0-9A-Fa-f]{4}\*?\s",
-            line,
-        ):
+        entry = parse_nvram_entry(line)
+        if entry is None:
             continue
 
-        normalized_line = line.lower()
-
-        if FIRMWARE_ENTRY_LABEL.lower() in normalized_line:
+        if normalize_label(entry.label) == normalized_target_label:
             label_seen = True
 
-            if normalized_loader in normalized_line:
+            if (
+                entry.loader_path is not None
+                and normalize_efi_path(entry.loader_path) == normalized_target_loader
+            ):
                 matching_loader = True
+                break
 
     if matching_loader:
         return
