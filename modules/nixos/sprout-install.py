@@ -168,6 +168,10 @@ def sync_filesystem(path: Path) -> None:
         os.close(fd)
 
 
+class SourceArtifactError(RuntimeError):
+    """Raised when opening or reading a boot artifact source fails."""
+
+
 def atomic_copy(
     source: Path,
     destination: Path,
@@ -182,22 +186,45 @@ def atomic_copy(
     temporary_path: Path | None = None
 
     try:
-        with tempfile.NamedTemporaryFile(
-            mode="wb",
-            dir=destination.parent,
-            prefix=f".{destination.name}.",
-            suffix=".tmp",
-            delete=False,
-        ) as temporary:
-            temporary_path = Path(temporary.name)
+        try:
+            source_file = source.open("rb")
+        except OSError as exc:
+            raise SourceArtifactError(
+                f"failed to open source artifact {source}: {exc}"
+            ) from exc
 
-        with source.open("rb") as source_file, temporary_path.open("wb") as target:
-            shutil.copyfileobj(source_file, target)
-            target.flush()
-            os.fsync(target.fileno())
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="wb",
+                dir=destination.parent,
+                prefix=f".{destination.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as temporary:
+                temporary_path = Path(temporary.name)
+
+            with temporary_path.open("wb") as target:
+                while True:
+                    try:
+                        chunk = source_file.read(65536)
+                    except OSError as exc:
+                        raise SourceArtifactError(
+                            f"failed to read source artifact {source}: {exc}"
+                        ) from exc
+
+                    if not chunk:
+                        break
+
+                    target.write(chunk)
+
+                target.flush()
+                os.fsync(target.fileno())
+        finally:
+            source_file.close()
 
         os.replace(temporary_path, destination)
         fsync_path(destination.parent)
+        temporary_path = None
     finally:
         if temporary_path is not None:
             temporary_path.unlink(missing_ok=True)
@@ -945,11 +972,26 @@ def write_artifact(
 
         return write_initrd_with_secrets(artifact)
 
-    atomic_copy(
-        artifact.source,
-        destination,
-        replace=False,
-    )
+    try:
+        atomic_copy(
+            artifact.source,
+            destination,
+            replace=False,
+        )
+    except SourceArtifactError as exc:
+        if artifact.critical:
+            raise RuntimeError(
+                f"failed to read boot artifact source {artifact.source}"
+            ) from exc
+
+        print(
+            "warning: failed to read boot artifact source "
+            f"{artifact.source} for older generation {artifact.generation}; "
+            "omitting affected boot entries",
+            file=sys.stderr,
+        )
+        return False
+
     return True
 
 

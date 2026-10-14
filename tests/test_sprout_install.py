@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import errno
 import hashlib
 import importlib.util
 import json
@@ -1815,6 +1816,385 @@ class SproutInstallRegressionTest(unittest.TestCase):
         # Assert no ESP mutations occurred
         self.assertFalse((self.esp_dir / self.mod.SPROUT_DIR).exists())
         self.assertFalse((self.esp_dir / self.mod.SPROUT_CONFIG).exists())
+
+    def test_source_open_failure_non_critical_historical_artifact_omitted_and_valid_published(
+        self,
+    ) -> None:
+        """Verify source read failure for non-critical historical artifact omits older entry while publishing valid critical entry."""
+        toplevel_crit = self.temp_dir / "toplevel-crit"
+        toplevel_crit.mkdir(parents=True, exist_ok=True)
+        toplevel_older = self.temp_dir / "toplevel-older"
+        toplevel_older.mkdir(parents=True, exist_ok=True)
+
+        k_crit = self.temp_dir / "kernel-crit.efi"
+        k_crit.write_text("k-crit")
+        i_crit = self.temp_dir / "initrd-crit.img"
+        i_crit.write_text("i-crit")
+
+        k_older = self.temp_dir / "kernel-older.efi"
+        k_older.write_text("k-older")
+        i_older = self.temp_dir / "initrd-older.img"
+        i_older.write_text("i-older")
+
+        dest_k_crit = self.mod.artifact_path("kernel", k_crit)
+        dest_i_crit = self.mod.artifact_path("initrd", i_crit)
+        dest_k_older = self.mod.artifact_path("kernel", k_older)
+        dest_i_older = self.mod.artifact_path("initrd", i_older)
+
+        entry_crit = self.mod.BootEntry(
+            identifier="nixos-g2",
+            title="NixOS Gen 2",
+            sort_key="g2",
+            kernel=dest_k_crit,
+            initrds=(dest_i_crit,),
+            options=("init=/init",),
+            artifacts=(
+                self.mod.BootArtifact(
+                    destination=dest_k_crit,
+                    source=k_crit,
+                    initrd_secrets=None,
+                    generation=2,
+                    critical=True,
+                ),
+                self.mod.BootArtifact(
+                    destination=dest_i_crit,
+                    source=i_crit,
+                    initrd_secrets=None,
+                    generation=2,
+                    critical=True,
+                ),
+            ),
+            critical=True,
+        )
+
+        entry_older = self.mod.BootEntry(
+            identifier="nixos-g1",
+            title="NixOS Gen 1",
+            sort_key="g1",
+            kernel=dest_k_older,
+            initrds=(dest_i_older,),
+            options=("init=/init",),
+            artifacts=(
+                self.mod.BootArtifact(
+                    destination=dest_k_older,
+                    source=k_older,
+                    initrd_secrets=None,
+                    generation=1,
+                    critical=False,
+                ),
+                self.mod.BootArtifact(
+                    destination=dest_i_older,
+                    source=i_older,
+                    initrd_secrets=None,
+                    generation=1,
+                    critical=False,
+                ),
+            ),
+            critical=False,
+        )
+
+        orig_open = Path.open
+
+        def mock_open(path_obj: Path, *args: Any, **kwargs: Any) -> Any:
+            if path_obj.resolve() == k_older.resolve():
+                raise OSError("Simulated source read failure on historical kernel")
+            return orig_open(path_obj, *args, **kwargs)
+
+        with patch.object(self.mod, "check_mountpoint"), patch.object(
+            self.mod, "collect_entries", return_value=[entry_crit, entry_older]
+        ), patch.object(Path, "open", mock_open):
+            self.mod.install_bootloader(toplevel_crit)
+
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+        self.assertTrue(config_path.exists())
+        config_text = config_path.read_text()
+
+        # Gen 2 is present and default
+        self.assertIn('[entries."nixos-g2"]', config_text)
+        self.assertIn('default-entry = "nixos-g2"', config_text)
+
+        # Gen 1 was omitted due to source artifact failure
+        self.assertNotIn("nixos-g1", config_text)
+
+        # Gen 2 artifacts installed
+        self.assertTrue((self.esp_dir / dest_k_crit).exists())
+        self.assertTrue((self.esp_dir / dest_i_crit).exists())
+
+        # Gen 1 kernel was NOT installed
+        self.assertFalse((self.esp_dir / dest_k_older).exists())
+
+        # No temporary files remain
+        self.assertEqual(list(self.esp_dir.rglob("*.tmp")), [])
+
+    def test_source_open_failure_critical_artifact_aborts_and_preserves_config(
+        self,
+    ) -> None:
+        """Verify source read failure for critical artifact aborts and leaves sprout.toml unchanged."""
+        toplevel_crit = self.temp_dir / "toplevel-crit"
+        toplevel_crit.mkdir(parents=True, exist_ok=True)
+
+        k_crit = self.temp_dir / "kernel-crit.efi"
+        k_crit.write_text("k-crit")
+        dest_k_crit = self.mod.artifact_path("kernel", k_crit)
+
+        entry_crit = self.mod.BootEntry(
+            identifier="nixos-g2",
+            title="NixOS Gen 2",
+            sort_key="g2",
+            kernel=dest_k_crit,
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(
+                self.mod.BootArtifact(
+                    destination=dest_k_crit,
+                    source=k_crit,
+                    initrd_secrets=None,
+                    generation=2,
+                    critical=True,
+                ),
+            ),
+            critical=True,
+        )
+
+        # Initial successful installation
+        with patch.object(self.mod, "check_mountpoint"), patch.object(
+            self.mod, "collect_entries", return_value=[entry_crit]
+        ):
+            self.mod.install_bootloader(toplevel_crit)
+
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+        self.assertTrue(config_path.exists())
+        original_config = config_path.read_text()
+
+        # Now simulate a new critical kernel that fails to open on source side
+        k_crit_new = self.temp_dir / "kernel-crit-new.efi"
+        k_crit_new.write_text("k-crit-new")
+        dest_k_crit_new = self.mod.artifact_path("kernel", k_crit_new)
+
+        entry_crit_new = self.mod.BootEntry(
+            identifier="nixos-g3",
+            title="NixOS Gen 3",
+            sort_key="g3",
+            kernel=dest_k_crit_new,
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(
+                self.mod.BootArtifact(
+                    destination=dest_k_crit_new,
+                    source=k_crit_new,
+                    initrd_secrets=None,
+                    generation=3,
+                    critical=True,
+                ),
+            ),
+            critical=True,
+        )
+
+        orig_open = Path.open
+
+        def mock_open(path_obj: Path, *args: Any, **kwargs: Any) -> Any:
+            if path_obj.resolve() == k_crit_new.resolve():
+                raise OSError("Simulated source read failure on critical kernel")
+            return orig_open(path_obj, *args, **kwargs)
+
+        with patch.object(self.mod, "check_mountpoint"), patch.object(
+            self.mod, "collect_entries", return_value=[entry_crit_new]
+        ), patch.object(Path, "open", mock_open):
+            with self.assertRaises(RuntimeError) as ctx:
+                self.mod.install_bootloader(toplevel_crit)
+            self.assertIn("failed to read boot artifact source", str(ctx.exception))
+
+        # Existing sprout.toml remains byte-for-byte unchanged
+        self.assertEqual(config_path.read_text(), original_config)
+        self.assertFalse((self.esp_dir / dest_k_crit_new).exists())
+        self.assertEqual(list(self.esp_dir.rglob("*.tmp")), [])
+
+    def test_esp_write_failure_during_non_critical_artifact_copy_aborts_installation(
+        self,
+    ) -> None:
+        """Verify ESP-side write failure during non-critical artifact copy aborts rather than pruning entry."""
+        toplevel_crit = self.temp_dir / "toplevel-crit"
+        toplevel_crit.mkdir(parents=True, exist_ok=True)
+
+        k_crit = self.temp_dir / "kernel-crit.efi"
+        k_crit.write_text("k-crit")
+        dest_k_crit = self.mod.artifact_path("kernel", k_crit)
+
+        k_older = self.temp_dir / "kernel-older.efi"
+        k_older.write_text("k-older")
+        dest_k_older = self.mod.artifact_path("kernel", k_older)
+
+        entry_crit = self.mod.BootEntry(
+            identifier="nixos-g2",
+            title="NixOS Gen 2",
+            sort_key="g2",
+            kernel=dest_k_crit,
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(
+                self.mod.BootArtifact(
+                    destination=dest_k_crit,
+                    source=k_crit,
+                    initrd_secrets=None,
+                    generation=2,
+                    critical=True,
+                ),
+            ),
+            critical=True,
+        )
+
+        entry_older = self.mod.BootEntry(
+            identifier="nixos-g1",
+            title="NixOS Gen 1",
+            sort_key="g1",
+            kernel=dest_k_older,
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(
+                self.mod.BootArtifact(
+                    destination=dest_k_older,
+                    source=k_older,
+                    initrd_secrets=None,
+                    generation=1,
+                    critical=False,
+                ),
+            ),
+            critical=False,
+        )
+
+        # Set an existing sprout.toml
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        initial_config = "version = 1\n# previous published config"
+        config_path.write_text(initial_config)
+
+        orig_replace = os.replace
+
+        def mock_replace(src: Any, dst: Any) -> None:
+            if Path(dst) == (self.esp_dir / dest_k_older):
+                raise OSError(errno.EIO, "Simulated ESP filesystem write/replace failure")
+            orig_replace(src, dst)
+
+        with patch.object(self.mod, "check_mountpoint"), patch.object(
+            self.mod, "collect_entries", return_value=[entry_crit, entry_older]
+        ), patch("os.replace", mock_replace):
+            with self.assertRaises(OSError) as ctx:
+                self.mod.install_bootloader(toplevel_crit)
+            self.assertEqual(ctx.exception.errno, errno.EIO)
+
+        # Installation aborted: sprout.toml was NOT updated to a reduced menu
+        self.assertEqual(config_path.read_text(), initial_config)
+        # Temporary files cleaned up
+        self.assertEqual(list(self.esp_dir.rglob("*.tmp")), [])
+
+    def test_shared_artifact_with_critical_entry_remains_critical_on_failure(
+        self,
+    ) -> None:
+        """Verify shared artifact referenced by both critical and older entries is treated as critical."""
+        toplevel_crit = self.temp_dir / "toplevel-crit"
+        toplevel_crit.mkdir(parents=True, exist_ok=True)
+
+        k_shared = self.temp_dir / "kernel-shared.efi"
+        k_shared.write_text("k-shared")
+        dest_k_shared = self.mod.artifact_path("kernel", k_shared)
+
+        entry_older = self.mod.BootEntry(
+            identifier="nixos-g1",
+            title="NixOS Gen 1",
+            sort_key="g1",
+            kernel=dest_k_shared,
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(
+                self.mod.BootArtifact(
+                    destination=dest_k_shared,
+                    source=k_shared,
+                    initrd_secrets=None,
+                    generation=1,
+                    critical=False,
+                ),
+            ),
+            critical=False,
+        )
+
+        entry_crit = self.mod.BootEntry(
+            identifier="nixos-g2",
+            title="NixOS Gen 2",
+            sort_key="g2",
+            kernel=dest_k_shared,
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(
+                self.mod.BootArtifact(
+                    destination=dest_k_shared,
+                    source=k_shared,
+                    initrd_secrets=None,
+                    generation=2,
+                    critical=True,
+                ),
+            ),
+            critical=True,
+        )
+
+        orig_open = Path.open
+
+        def mock_open(path_obj: Path, *args: Any, **kwargs: Any) -> Any:
+            if path_obj.resolve() == k_shared.resolve():
+                raise OSError("Simulated read failure on shared kernel")
+            return orig_open(path_obj, *args, **kwargs)
+
+        with patch.object(self.mod, "check_mountpoint"), patch.object(
+            self.mod, "collect_entries", return_value=[entry_older, entry_crit]
+        ), patch.object(Path, "open", mock_open):
+            with self.assertRaises(RuntimeError) as ctx:
+                self.mod.install_bootloader(toplevel_crit)
+            self.assertIn("failed to read boot artifact source", str(ctx.exception))
+
+    def test_failed_copies_clean_up_temporary_files_and_never_publish_partially_written_dest(
+        self,
+    ) -> None:
+        """Verify failed copies clean up temporary files and never publish partially written destination."""
+        k_src = self.temp_dir / "kernel-large.efi"
+        k_src.write_bytes(b"A" * 131072)  # 128 KiB
+        dest_k = self.esp_dir / self.mod.NIXOS_DIR / "kernel-test.efi"
+
+        # Case A: Source read failure midway through copy
+        class FailingReader:
+            def __init__(self, real_file: Any) -> None:
+                self.real_file = real_file
+                self.calls = 0
+
+            def read(self, size: int = -1) -> bytes:
+                self.calls += 1
+                if self.calls > 1:
+                    raise OSError("Simulated I/O failure on source read chunk")
+                return self.real_file.read(size)  # type: ignore[no-any-return]
+
+            def close(self) -> None:
+                self.real_file.close()
+
+        orig_open = Path.open
+
+        def mock_open(path_obj: Path, *args: Any, **kwargs: Any) -> Any:
+            if path_obj.resolve() == k_src.resolve():
+                f = orig_open(path_obj, *args, **kwargs)
+                return FailingReader(f)
+            return orig_open(path_obj, *args, **kwargs)
+
+        with patch.object(Path, "open", mock_open):
+            with self.assertRaises(self.mod.SourceArtifactError):
+                self.mod.atomic_copy(k_src, dest_k, replace=True)
+
+        self.assertFalse(dest_k.exists(), "Destination must not exist after source failure")
+        self.assertEqual(list(self.esp_dir.rglob("*.tmp")), [], "No temp files on ESP")
+
+        # Case B: Destination fsync failure
+        with patch("os.fsync", side_effect=OSError("Simulated ESP fsync error")):
+            with self.assertRaises(OSError):
+                self.mod.atomic_copy(k_src, dest_k, replace=True)
+
+        self.assertFalse(dest_k.exists(), "Destination must not exist after destination failure")
+        self.assertEqual(list(self.esp_dir.rglob("*.tmp")), [], "No temp files on ESP")
 
 
 class BootSpecParserTest(unittest.TestCase):
