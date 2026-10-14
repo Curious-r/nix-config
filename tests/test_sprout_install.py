@@ -1451,6 +1451,143 @@ class SproutInstallRegressionTest(unittest.TestCase):
             (self.esp_dir / self.mod.artifact_path("kernel", k1)).exists()
         )
 
+    def test_profile_identifier_collision_resistance_distinct_slug_normalization(
+        self,
+    ) -> None:
+        """Verify that profiles with identical normalized slugs produce distinct identifiers."""
+        id1 = self.mod.entry_identifier("foo bar", 1, None)
+        id2 = self.mod.entry_identifier("foo+bar", 1, None)
+
+        self.assertNotEqual(id1, id2)
+        self.assertTrue(id1.startswith("nixos-p-foo-bar-"))
+        self.assertTrue(id2.startswith("nixos-p-foo-bar-"))
+        self.assertTrue(id1.endswith("-g1"))
+        self.assertTrue(id2.endswith("-g1"))
+
+        # Deterministic generation across calls
+        self.assertEqual(id1, self.mod.entry_identifier("foo bar", 1, None))
+
+        # Default system profile retains nixos-gN format
+        default_id = self.mod.entry_identifier(None, 1, None)
+        self.assertEqual(default_id, "nixos-g1")
+
+        # Specialisations have distinct identifiers
+        spec1 = self.mod.entry_identifier("foo bar", 1, "debug")
+        spec2 = self.mod.entry_identifier("foo+bar", 1, "debug")
+        self.assertNotEqual(spec1, spec2)
+        self.assertNotEqual(id1, spec1)
+        self.assertIn("-s-", spec1)
+
+    def test_collect_entries_unique_identifiers_for_base_and_specialisations(
+        self,
+    ) -> None:
+        """Verify collected entries have unique identifiers across multiple profiles and specialisations."""
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+        kernel = self.temp_dir / "kernel"
+        kernel.touch()
+        initrd = self.temp_dir / "initrd"
+        initrd.touch()
+
+        bootspec = self.mod.BootSpec(
+            init=Path("/nix/store/init"),
+            initrd=initrd,
+            initrd_secrets=None,
+            extra_initrds=(),
+            kernel=kernel,
+            kernel_params=(),
+            label="Test",
+            toplevel=toplevel,
+            specialisations={
+                "debug": self.mod.BootSpec(
+                    init=Path("/nix/store/init-debug"),
+                    initrd=initrd,
+                    initrd_secrets=None,
+                    extra_initrds=(),
+                    kernel=kernel,
+                    kernel_params=(),
+                    label="Test (debug)",
+                    toplevel=self.temp_dir / "toplevel-debug",
+                    specialisations={},
+                    devicetree=None,
+                )
+            },
+            devicetree=None,
+        )
+
+        def mock_get_generations(profile: str | None = None) -> list[Any]:
+            return [self.mod.SystemIdentifier(profile, 1)]
+
+        with patch.object(
+            self.mod, "get_generations", side_effect=mock_get_generations
+        ), patch.object(
+            self.mod, "get_profiles", return_value=["foo bar", "foo+bar"]
+        ), patch.object(
+            self.mod, "load_bootspec", return_value=bootspec
+        ):
+            entries = self.mod.collect_entries(current_toplevel=toplevel)
+
+        # 3 profiles (None, 'foo bar', 'foo+bar') * 2 entries each (base + specialisation) = 6
+        self.assertEqual(len(entries), 6)
+        identifiers = [e.identifier for e in entries]
+        self.assertEqual(len(identifiers), len(set(identifiers)))
+        self.assertIn("nixos-g1", identifiers)
+
+    def test_duplicate_identifier_rejected_before_esp_mutation(self) -> None:
+        """Verify that duplicate entry identifiers are rejected before any ESP mutations occur."""
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+        kernel = self.temp_dir / "kernel"
+        kernel.touch()
+
+        dummy_entry1 = self.mod.BootEntry(
+            identifier="duplicate-id",
+            title="Entry 1",
+            sort_key="00000000000000000001",
+            kernel=Path("EFI/Sprout/nixos/k1.efi"),
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(
+                self.mod.BootArtifact(
+                    destination=Path("EFI/Sprout/nixos/k1.efi"),
+                    source=kernel,
+                    initrd_secrets=None,
+                    generation=1,
+                    critical=True,
+                ),
+            ),
+            critical=True,
+        )
+        dummy_entry2 = self.mod.BootEntry(
+            identifier="duplicate-id",
+            title="Entry 2",
+            sort_key="00000000000000000002",
+            kernel=Path("EFI/Sprout/nixos/k2.efi"),
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(
+                self.mod.BootArtifact(
+                    destination=Path("EFI/Sprout/nixos/k2.efi"),
+                    source=kernel,
+                    initrd_secrets=None,
+                    generation=2,
+                    critical=False,
+                ),
+            ),
+            critical=False,
+        )
+
+        with patch.object(self.mod, "check_mountpoint"), patch.object(
+            self.mod, "collect_entries", return_value=[dummy_entry1, dummy_entry2]
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                self.mod.install_bootloader(toplevel)
+            self.assertIn("duplicate boot entry identifier 'duplicate-id'", str(ctx.exception))
+
+        # Assert no ESP mutations occurred
+        self.assertFalse((self.esp_dir / self.mod.SPROUT_DIR).exists())
+        self.assertFalse((self.esp_dir / self.mod.SPROUT_CONFIG).exists())
+
 
 class BootSpecParserTest(unittest.TestCase):
     def setUp(self) -> None:

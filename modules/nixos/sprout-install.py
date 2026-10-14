@@ -497,6 +497,14 @@ def specialisation_suffix(name: str) -> str:
     return digest[:12]
 
 
+def profile_suffix(name: str) -> str:
+    digest = hashlib.sha256(
+        name.encode("utf-8")
+    ).hexdigest()
+
+    return digest[:12]
+
+
 def entry_identifier(
     profile: str | None,
     generation: int,
@@ -505,13 +513,17 @@ def entry_identifier(
     if profile is None:
         identifier = f"nixos-g{generation}"
     else:
-        profile_id = re.sub(
+        profile_slug = re.sub(
             r"[^A-Za-z0-9._-]+",
             "-",
             profile,
         ).strip("-")
+        suffix = profile_suffix(profile)
 
-        identifier = f"nixos-p-{profile_id}-g{generation}"
+        if profile_slug:
+            identifier = f"nixos-p-{profile_slug}-{suffix}-g{generation}"
+        else:
+            identifier = f"nixos-p-{suffix}-g{generation}"
 
     if specialisation is not None:
         identifier += f"-s-{specialisation_suffix(specialisation)}"
@@ -755,6 +767,20 @@ def prepare_entry(
     )
 
 
+def check_unique_identifiers(
+    entries: Sequence[BootEntry],
+) -> None:
+    seen: set[str] = set()
+
+    for entry in entries:
+        if entry.identifier in seen:
+            raise RuntimeError(
+                f"duplicate boot entry identifier '{entry.identifier}'; "
+                "refusing to publish configuration"
+            )
+        seen.add(entry.identifier)
+
+
 def collect_entries(
     *,
     current_toplevel: Path,
@@ -820,6 +846,8 @@ def collect_entries(
             "selected generations; refusing to install a boot menu "
             "that cannot boot the target system"
         )
+
+    check_unique_identifiers(entries)
 
     return entries
 
@@ -1362,6 +1390,8 @@ def install_bootloader(
     entries = collect_entries(
         current_toplevel=current_toplevel,
     )
+
+    check_unique_identifiers(entries)
 
     esp_path(SPROUT_DIR).mkdir(
         parents=True,
