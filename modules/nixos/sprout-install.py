@@ -1335,7 +1335,7 @@ def check_mountpoint() -> None:
                 "--noheadings",
                 "--output",
                 "SOURCE",
-                "--target",
+                "--mountpoint",
                 EFI_SYS_MOUNT_POINT,
             ]
         )
@@ -1349,16 +1349,21 @@ def check_mountpoint() -> None:
             f"{EFI_SYS_MOUNT_POINT} is not a mounted filesystem"
         )
 
-    filesystem_type = capture(
-        [
-            FINDMNT,
-            "--noheadings",
-            "--output",
-            "FSTYPE",
-            "--target",
-            EFI_SYS_MOUNT_POINT,
-        ]
-    )
+    try:
+        filesystem_type = capture(
+            [
+                FINDMNT,
+                "--noheadings",
+                "--output",
+                "FSTYPE",
+                "--mountpoint",
+                EFI_SYS_MOUNT_POINT,
+            ]
+        )
+    except subprocess.CalledProcessError:
+        raise RuntimeError(
+            f"{EFI_SYS_MOUNT_POINT} is not a mounted filesystem"
+        ) from None
 
     if filesystem_type.lower() != "vfat":
         raise RuntimeError(
@@ -1398,48 +1403,73 @@ def check_efivars() -> None:
 
 
 def get_esp_device() -> tuple[str, str]:
-    source = capture(
-        [
-            FINDMNT,
-            "--noheadings",
-            "--output",
-            "SOURCE",
-            "--target",
-            EFI_SYS_MOUNT_POINT,
-        ]
-    )
+    try:
+        source = capture(
+            [
+                FINDMNT,
+                "--noheadings",
+                "--output",
+                "SOURCE",
+                "--mountpoint",
+                EFI_SYS_MOUNT_POINT,
+            ]
+        )
+    except subprocess.CalledProcessError:
+        raise RuntimeError(
+            f"{EFI_SYS_MOUNT_POINT} is not a mounted filesystem"
+        ) from None
 
-    parent = capture(
-        [
-            LSBLK,
-            "--noheadings",
-            "--output",
-            "PKNAME",
-            source,
-        ]
-    )
+    if not source:
+        raise RuntimeError(
+            f"{EFI_SYS_MOUNT_POINT} is not a mounted filesystem"
+        )
 
-    partition = capture(
-        [
-            LSBLK,
-            "--noheadings",
-            "--output",
-            "PARTN",
-            source,
-        ]
-    )
+    try:
+        parent = capture(
+            [
+                LSBLK,
+                "--noheadings",
+                "--output",
+                "PKNAME",
+                source,
+            ]
+        )
+    except subprocess.CalledProcessError:
+        raise RuntimeError(
+            f"could not determine the parent disk of ESP device {source}"
+        ) from None
+
+    try:
+        partition = capture(
+            [
+                LSBLK,
+                "--noheadings",
+                "--output",
+                "PARTN",
+                source,
+            ]
+        )
+    except subprocess.CalledProcessError:
+        raise RuntimeError(
+            f"could not determine the partition number of ESP device {source}"
+        ) from None
 
     if not parent:
         raise RuntimeError(
             f"could not determine the parent disk of ESP device {source}"
         )
 
-    if not partition or not partition.isdigit():
+    try:
+        partition_num = int(partition)
+    except (ValueError, TypeError):
+        partition_num = 0
+
+    if partition_num <= 0:
         raise RuntimeError(
             f"could not determine the partition number of ESP device {source}"
         )
 
-    return f"/dev/{parent}", partition
+    return f"/dev/{parent}", str(partition_num)
 
 
 def normalize_label(label: str) -> str:

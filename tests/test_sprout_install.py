@@ -3336,5 +3336,255 @@ class NvramEntryTest(unittest.TestCase):
         self.assertIsNone(e4.loader_path)
 
 
+class EspMountpointAndDeviceTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp_dir_obj = tempfile.TemporaryDirectory()
+        self.esp_dir = Path(self.temp_dir_obj.name).resolve()
+        self.mod = load_sprout_installer(
+            self.esp_dir,
+            entry_label="NixOS Sprout",
+        )
+
+    def tearDown(self) -> None:
+        self.temp_dir_obj.cleanup()
+
+    def test_exact_vfat_mountpoint_accepted(self) -> None:
+        """Verify an exact VFAT mountpoint is accepted without error."""
+        captured_commands: list[list[str]] = []
+
+        def mock_capture(cmd: Any) -> str:
+            cmd_strs = [str(x) for x in cmd]
+            captured_commands.append(cmd_strs)
+            if cmd_strs[0] == self.mod.FINDMNT:
+                self.assertIn("--mountpoint", cmd_strs)
+                self.assertNotIn("--target", cmd_strs)
+                if "--output" in cmd_strs and "SOURCE" in cmd_strs:
+                    return "/dev/nvme0n1p1"
+                if "--output" in cmd_strs and "FSTYPE" in cmd_strs:
+                    return "vfat"
+            raise AssertionError(f"Unexpected command: {cmd_strs}")
+
+        with patch.object(self.mod, "capture", side_effect=mock_capture):
+            self.mod.check_mountpoint()
+
+        self.assertEqual(len(captured_commands), 2)
+
+    def test_exact_vfat_mountpoint_case_insensitive(self) -> None:
+        """Verify VFAT filesystem type check is case-insensitive."""
+        def mock_capture(cmd: Any) -> str:
+            cmd_strs = [str(x) for x in cmd]
+            if cmd_strs[0] == self.mod.FINDMNT:
+                if "SOURCE" in cmd_strs:
+                    return "/dev/sda1"
+                if "FSTYPE" in cmd_strs:
+                    return "VFAT"
+            raise AssertionError(f"Unexpected command: {cmd_strs}")
+
+        with patch.object(self.mod, "capture", side_effect=mock_capture):
+            self.mod.check_mountpoint()
+
+    def test_ordinary_directory_inside_vfat_mount_rejected(self) -> None:
+        """Verify an ordinary directory inside a VFAT mount is rejected when not a mountpoint."""
+        def mock_capture(cmd: Any) -> str:
+            cmd_strs = [str(x) for x in cmd]
+            if cmd_strs[0] == self.mod.FINDMNT:
+                self.assertIn("--mountpoint", cmd_strs)
+                self.assertNotIn("--target", cmd_strs)
+                # findmnt exits with 1 when the specified path is not a mountpoint
+                raise subprocess.CalledProcessError(1, cmd_strs)
+            raise AssertionError(f"Unexpected command: {cmd_strs}")
+
+        with patch.object(self.mod, "capture", side_effect=mock_capture):
+            with self.assertRaises(RuntimeError) as ctx:
+                self.mod.check_mountpoint()
+            self.assertEqual(
+                str(ctx.exception),
+                f"{self.mod.EFI_SYS_MOUNT_POINT} is not a mounted filesystem",
+            )
+
+    def test_missing_mountpoint_rejected(self) -> None:
+        """Verify a missing mountpoint where findmnt fails is rejected."""
+        with patch.object(
+            self.mod, "capture", side_effect=subprocess.CalledProcessError(1, ["findmnt"])
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                self.mod.check_mountpoint()
+            self.assertEqual(
+                str(ctx.exception),
+                f"{self.mod.EFI_SYS_MOUNT_POINT} is not a mounted filesystem",
+            )
+
+    def test_empty_source_rejected(self) -> None:
+        """Verify an empty mount source is rejected."""
+        with patch.object(self.mod, "capture", return_value=""):
+            with self.assertRaises(RuntimeError) as ctx:
+                self.mod.check_mountpoint()
+            self.assertEqual(
+                str(ctx.exception),
+                f"{self.mod.EFI_SYS_MOUNT_POINT} is not a mounted filesystem",
+            )
+
+    def test_non_vfat_filesystem_type_rejected(self) -> None:
+        """Verify a filesystem type other than VFAT is rejected."""
+        def mock_capture(cmd: Any) -> str:
+            cmd_strs = [str(x) for x in cmd]
+            if "SOURCE" in cmd_strs:
+                return "/dev/sda1"
+            if "FSTYPE" in cmd_strs:
+                return "ext4"
+            raise AssertionError(f"Unexpected command: {cmd_strs}")
+
+        with patch.object(self.mod, "capture", side_effect=mock_capture):
+            with self.assertRaises(RuntimeError) as ctx:
+                self.mod.check_mountpoint()
+            self.assertEqual(
+                str(ctx.exception),
+                f"{self.mod.EFI_SYS_MOUNT_POINT} is mounted as 'ext4'; "
+                "Sprout currently requires a vfat ESP",
+            )
+
+    def test_install_bootloader_rejects_non_mountpoint_before_mutating_esp(self) -> None:
+        """Verify install_bootloader aborts on invalid mountpoint before creating directories or modifying ESP."""
+        def mock_capture(cmd: Any) -> str:
+            cmd_strs = [str(x) for x in cmd]
+            if cmd_strs[0] == self.mod.FINDMNT:
+                raise subprocess.CalledProcessError(1, cmd_strs)
+            raise AssertionError(f"Unexpected command: {cmd_strs}")
+
+        with patch.object(self.mod, "capture", side_effect=mock_capture):
+            with self.assertRaises(RuntimeError) as ctx:
+                self.mod.install_bootloader(self.esp_dir)
+            self.assertIn("is not a mounted filesystem", str(ctx.exception))
+
+        # ESP was not mutated
+        self.assertFalse((self.esp_dir / "EFI").exists())
+
+    def test_device_discovery_uses_exact_mountpoint_and_returns_disk_and_partition(
+        self,
+    ) -> None:
+        """Verify get_esp_device uses exact mountpoint lookup and returns disk and positive partition number."""
+        captured_commands: list[list[str]] = []
+
+        def mock_capture(cmd: Any) -> str:
+            cmd_strs = [str(x) for x in cmd]
+            captured_commands.append(cmd_strs)
+            if cmd_strs[0] == self.mod.FINDMNT:
+                self.assertIn("--mountpoint", cmd_strs)
+                self.assertNotIn("--target", cmd_strs)
+                return "/dev/nvme0n1p1"
+            if cmd_strs[0] == self.mod.LSBLK:
+                if "PKNAME" in cmd_strs:
+                    return "nvme0n1"
+                if "PARTN" in cmd_strs:
+                    return "1"
+            raise AssertionError(f"Unexpected command: {cmd_strs}")
+
+        with patch.object(self.mod, "capture", side_effect=mock_capture):
+            disk, partition = self.mod.get_esp_device()
+
+        self.assertEqual(disk, "/dev/nvme0n1")
+        self.assertEqual(partition, "1")
+        self.assertEqual(len(captured_commands), 3)
+
+    def test_device_discovery_rejects_non_mountpoint(self) -> None:
+        """Verify get_esp_device rejects a path that is not an exact mountpoint."""
+        def mock_capture(cmd: Any) -> str:
+            cmd_strs = [str(x) for x in cmd]
+            if cmd_strs[0] == self.mod.FINDMNT:
+                self.assertIn("--mountpoint", cmd_strs)
+                self.assertNotIn("--target", cmd_strs)
+                raise subprocess.CalledProcessError(1, cmd_strs)
+            raise AssertionError(f"Unexpected command: {cmd_strs}")
+
+        with patch.object(self.mod, "capture", side_effect=mock_capture):
+            with self.assertRaises(RuntimeError) as ctx:
+                self.mod.get_esp_device()
+            self.assertIn("is not a mounted filesystem", str(ctx.exception))
+
+    def test_device_discovery_missing_parent_disk_fails_closed(self) -> None:
+        """Verify missing parent disk information raises RuntimeError."""
+        def mock_capture(cmd: Any) -> str:
+            cmd_strs = [str(x) for x in cmd]
+            if cmd_strs[0] == self.mod.FINDMNT:
+                return "/dev/sda1"
+            if cmd_strs[0] == self.mod.LSBLK:
+                if "PKNAME" in cmd_strs:
+                    return ""
+                if "PARTN" in cmd_strs:
+                    return "1"
+            raise AssertionError(f"Unexpected command: {cmd_strs}")
+
+        with patch.object(self.mod, "capture", side_effect=mock_capture):
+            with self.assertRaises(RuntimeError) as ctx:
+                self.mod.get_esp_device()
+            self.assertEqual(
+                str(ctx.exception),
+                "could not determine the parent disk of ESP device /dev/sda1",
+            )
+
+    def test_device_discovery_lsblk_parent_error_fails_closed(self) -> None:
+        """Verify lsblk failure for parent disk raises RuntimeError."""
+        def mock_capture(cmd: Any) -> str:
+            cmd_strs = [str(x) for x in cmd]
+            if cmd_strs[0] == self.mod.FINDMNT:
+                return "/dev/sda1"
+            if cmd_strs[0] == self.mod.LSBLK and "PKNAME" in cmd_strs:
+                raise subprocess.CalledProcessError(1, cmd_strs)
+            raise AssertionError(f"Unexpected command: {cmd_strs}")
+
+        with patch.object(self.mod, "capture", side_effect=mock_capture):
+            with self.assertRaises(RuntimeError) as ctx:
+                self.mod.get_esp_device()
+            self.assertEqual(
+                str(ctx.exception),
+                "could not determine the parent disk of ESP device /dev/sda1",
+            )
+
+    def test_device_discovery_invalid_partition_number_fails_closed(self) -> None:
+        """Verify invalid partition numbers (0, negative, non-digit, empty) fail closed."""
+        for invalid_part in ["0", "-1", "abc", "", "   "]:
+            with self.subTest(invalid_part=invalid_part):
+                def mock_capture(cmd: Any, part: str = invalid_part) -> str:
+                    cmd_strs = [str(x) for x in cmd]
+                    if cmd_strs[0] == self.mod.FINDMNT:
+                        return "/dev/sda1"
+                    if cmd_strs[0] == self.mod.LSBLK:
+                        if "PKNAME" in cmd_strs:
+                            return "sda"
+                        if "PARTN" in cmd_strs:
+                            return part
+                    raise AssertionError(f"Unexpected command: {cmd_strs}")
+
+                with patch.object(self.mod, "capture", side_effect=mock_capture):
+                    with self.assertRaises(RuntimeError) as ctx:
+                        self.mod.get_esp_device()
+                    self.assertEqual(
+                        str(ctx.exception),
+                        "could not determine the partition number of ESP device /dev/sda1",
+                    )
+
+    def test_device_discovery_lsblk_partition_error_fails_closed(self) -> None:
+        """Verify lsblk failure for partition number raises RuntimeError."""
+        def mock_capture(cmd: Any) -> str:
+            cmd_strs = [str(x) for x in cmd]
+            if cmd_strs[0] == self.mod.FINDMNT:
+                return "/dev/sda1"
+            if cmd_strs[0] == self.mod.LSBLK:
+                if "PKNAME" in cmd_strs:
+                    return "sda"
+                if "PARTN" in cmd_strs:
+                    raise subprocess.CalledProcessError(1, cmd_strs)
+            raise AssertionError(f"Unexpected command: {cmd_strs}")
+
+        with patch.object(self.mod, "capture", side_effect=mock_capture):
+            with self.assertRaises(RuntimeError) as ctx:
+                self.mod.get_esp_device()
+            self.assertEqual(
+                str(ctx.exception),
+                "could not determine the partition number of ESP device /dev/sda1",
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
+
