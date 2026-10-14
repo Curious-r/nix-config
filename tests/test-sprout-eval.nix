@@ -218,6 +218,30 @@ let
     assert hasEfiStub;
     assert !disabledHasEfiStub;
     true;
+
+  # 13. Sprout enabled, null timeout:
+  #     evaluating the NixOS system build assertion path rejects the configuration,
+  #     and the failed assertion identifies boot.loader.timeout and explains that null
+  #     (an indefinitely displayed boot menu) is unsupported.
+  case13 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.timeout = null;
+    }
+  ];
+  testCase13 =
+    let
+      toplevelEval = builtins.tryEval case13.config.system.build.toplevel;
+      failedAssertions = builtins.filter (
+        x:
+        !x.assertion
+        && pkgs.lib.hasInfix "boot.loader.timeout" x.message
+        && pkgs.lib.hasInfix "null" x.message
+      ) case13.config.assertions;
+    in
+    assert toplevelEval.success == false;
+    assert failedAssertions != [ ];
+    true;
 in
 assert testCase1;
 assert testCase2;
@@ -231,6 +255,7 @@ assert testCase9;
 assert testCase10;
 assert testCase11;
 assert testCase12;
+assert testCase13;
 {
   inherit
     testCase1
@@ -245,5 +270,6 @@ assert testCase12;
     testCase10
     testCase11
     testCase12
+    testCase13
     ;
 }

@@ -167,10 +167,11 @@ in
       }
 
       {
-        assertion = config.boot.loader.timeout == null || config.boot.loader.timeout >= 0;
+        assertion = config.boot.loader.timeout != null && config.boot.loader.timeout >= 0;
 
         message = ''
-          boot.loader.timeout must be non-negative.
+          boot.loader.timeout must be non-null and non-negative. Sprout does not
+          support null / an indefinitely displayed boot menu.
         '';
       }
     ];
