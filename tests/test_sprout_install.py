@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import os
@@ -90,54 +91,280 @@ class SproutInstallRegressionTest(unittest.TestCase):
         os.chdir(self.old_cwd)
         self.temp_dir_obj.cleanup()
 
-    def test_driver_atomic_replacement(self) -> None:
-        """Verify driver destination is replaced atomically without leaving stale files."""
-        # 1. Existing driver destination has old contents
-        dest = self.esp_dir / self.mod.DRIVERS_DIR / "btrfs.efi"
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_text("driver-version-1")
+    def test_driver_path_stable_destination_for_same_identity(self) -> None:
+        """Verify the same driver name and source identity produce a stable destination path."""
+        path1 = self.mod.driver_path("btrfs", self.driver_src)
+        path2 = self.mod.driver_path("btrfs", self.driver_src)
 
-        # 2. Update source file with new contents
-        self.driver_src.write_text("driver-version-2")
+        self.assertEqual(path1, path2)
+        self.assertEqual(path1.parent, self.mod.DRIVERS_DIR)
+        self.assertTrue(path1.name.startswith("btrfs-"))
+        self.assertTrue(path1.name.endswith(".efi"))
 
-        # 3. install_drivers replaces the file atomically
-        installed = self.mod.install_drivers()
+        expected_digest = hashlib.sha256(
+            f"btrfs\n{self.driver_src.resolve()}".encode("utf-8")
+        ).hexdigest()
+        self.assertEqual(path1.name, f"btrfs-{expected_digest}.efi")
 
-        self.assertIn("btrfs", installed)
-        self.assertEqual(dest.read_text(), "driver-version-2")
+        # Symlink to the same source resolves to same canonical path and produces identical destination
+        symlink_src = self.temp_dir / "btrfs-symlink.efi"
+        symlink_src.symlink_to(self.driver_src)
+        self.assertEqual(
+            self.mod.driver_path("btrfs", symlink_src),
+            path1,
+        )
+
+        # Different driver name produces different destination
+        path_ext4 = self.mod.driver_path("ext4", self.driver_src)
+        self.assertNotEqual(path1, path_ext4)
+
+    def test_driver_update_produces_new_destination_and_leaves_older_file_untouched(
+        self,
+    ) -> None:
+        """Verify updating a driver source identity produces a different destination and leaves older file untouched."""
+        src_v1 = self.temp_dir / "driver-v1.efi"
+        src_v1.write_text("content-v1")
+        src_v2 = self.temp_dir / "driver-v2.efi"
+        src_v2.write_text("content-v2")
+
+        mod_v1 = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers={"btrfs": str(src_v1)},
+        )
+        installed_v1 = mod_v1.install_drivers()
+        dest_v1 = self.esp_dir / installed_v1["btrfs"]
+        self.assertTrue(dest_v1.exists())
+        self.assertEqual(dest_v1.read_text(), "content-v1")
+
+        mod_v2 = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers={"btrfs": str(src_v2)},
+        )
+        installed_v2 = mod_v2.install_drivers()
+        dest_v2 = self.esp_dir / installed_v2["btrfs"]
+
+        # Different destination path
+        self.assertNotEqual(dest_v1, dest_v2)
+        self.assertTrue(dest_v2.exists())
+        self.assertEqual(dest_v2.read_text(), "content-v2")
+
+        # Older driver file remains untouched
+        self.assertTrue(dest_v1.exists())
+        self.assertEqual(dest_v1.read_text(), "content-v1")
 
         # Verify no temporary files remain
         tmp_files = list((self.esp_dir / self.mod.DRIVERS_DIR).glob("*.tmp"))
         self.assertEqual(tmp_files, [])
-
-        # Verify nothing was written to working directory
         self.assertFalse((self.temp_dir / "EFI").exists())
 
-    def test_stale_driver_cleaned_up_by_garbage_collection(self) -> None:
-        """Verify stale drivers removed during garbage collection after publication."""
-        dest_active = self.esp_dir / self.mod.DRIVERS_DIR / "btrfs.efi"
-        dest_stale = self.esp_dir / self.mod.DRIVERS_DIR / "zfs.efi"
-        dest_active.parent.mkdir(parents=True, exist_ok=True)
+    def test_driver_installation_failure_before_publication_leaves_config_and_drivers_unchanged(
+        self,
+    ) -> None:
+        """Verify failure before publishing sprout.toml preserves prior config and referenced drivers."""
+        src_v1 = self.temp_dir / "driver-v1.efi"
+        src_v1.write_text("content-v1")
+        src_v2 = self.temp_dir / "driver-v2.efi"
+        src_v2.write_text("content-v2")
 
-        dest_active.write_text("driver-btrfs")
-        dest_stale.write_text("driver-zfs-stale")
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+        kernel = self.temp_dir / "kernel.efi"
+        kernel.write_text("kernel-bytes")
+        dest_k = self.mod.artifact_path("kernel", kernel)
+        entry = self.mod.BootEntry(
+            identifier="nixos-g1",
+            title="NixOS 1",
+            sort_key="00000000000000000001",
+            kernel=dest_k,
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(
+                self.mod.BootArtifact(
+                    destination=dest_k,
+                    source=kernel,
+                    initrd_secrets=None,
+                    generation=1,
+                    critical=True,
+                ),
+            ),
+            critical=True,
+        )
+
+        mod_v1 = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers={"btrfs": str(src_v1)},
+        )
+        with patch.object(mod_v1, "check_mountpoint"), patch.object(
+            mod_v1, "collect_entries", return_value=[entry]
+        ):
+            mod_v1.install_bootloader(toplevel)
+
+        config_path = self.esp_dir / mod_v1.SPROUT_CONFIG
+        self.assertTrue(config_path.exists())
+        initial_config = config_path.read_text()
+        dest_v1 = self.esp_dir / mod_v1.driver_path("btrfs", src_v1)
+        self.assertTrue(dest_v1.exists())
+        self.assertEqual(dest_v1.read_text(), "content-v1")
+        self.assertIn(dest_v1.name, initial_config)
+
+        # Attempt to install v2, but fail after install_drivers and before atomic_write_text(sprout.toml)
+        mod_v2 = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers={"btrfs": str(src_v2)},
+        )
+        with patch.object(mod_v2, "check_mountpoint"), patch.object(
+            mod_v2, "collect_entries", return_value=[entry]
+        ), patch.object(
+            mod_v2,
+            "install_sprout_binary",
+            side_effect=RuntimeError("simulated failure after driver install"),
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod_v2.install_bootloader(toplevel)
+            self.assertIn("simulated failure after driver install", str(ctx.exception))
+
+        # Previously published sprout.toml remains untouched
+        self.assertEqual(config_path.read_text(), initial_config)
+
+        # Referenced v1 driver remains untouched
+        self.assertTrue(dest_v1.exists())
+        self.assertEqual(dest_v1.read_text(), "content-v1")
+
+        # Newly copied v2 driver exists on ESP, but is not referenced
+        dest_v2 = self.esp_dir / mod_v2.driver_path("btrfs", src_v2)
+        self.assertTrue(dest_v2.exists())
+        self.assertNotIn(dest_v2.name, config_path.read_text())
+
+    def test_garbage_collection_removes_obsolete_driver_versions_after_publication(
+        self,
+    ) -> None:
+        """Verify garbage collection retains active driver and removes obsolete driver versions."""
+        src_v1 = self.temp_dir / "driver-v1.efi"
+        src_v1.write_text("content-v1")
+        src_v2 = self.temp_dir / "driver-v2.efi"
+        src_v2.write_text("content-v2")
+
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+        kernel = self.temp_dir / "kernel.efi"
+        kernel.write_text("kernel-bytes")
+        dest_k = self.mod.artifact_path("kernel", kernel)
+        entry = self.mod.BootEntry(
+            identifier="nixos-g1",
+            title="NixOS 1",
+            sort_key="00000000000000000001",
+            kernel=dest_k,
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(
+                self.mod.BootArtifact(
+                    destination=dest_k,
+                    source=kernel,
+                    initrd_secrets=None,
+                    generation=1,
+                    critical=True,
+                ),
+            ),
+            critical=True,
+        )
+
+        mod_v1 = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers={"btrfs": str(src_v1)},
+        )
+        with patch.object(mod_v1, "check_mountpoint"), patch.object(
+            mod_v1, "collect_entries", return_value=[entry]
+        ):
+            mod_v1.install_bootloader(toplevel)
+
+        dest_v1 = self.esp_dir / mod_v1.driver_path("btrfs", src_v1)
+        self.assertTrue(dest_v1.exists())
+
+        # Successful publication of v2
+        mod_v2 = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers={"btrfs": str(src_v2)},
+        )
+        with patch.object(mod_v2, "check_mountpoint"), patch.object(
+            mod_v2, "collect_entries", return_value=[entry]
+        ):
+            mod_v2.install_bootloader(toplevel)
+
+        dest_v2 = self.esp_dir / mod_v2.driver_path("btrfs", src_v2)
+        self.assertTrue(dest_v2.exists())
+        self.assertEqual(dest_v2.read_text(), "content-v2")
+
+        # Obsolete v1 driver removed by garbage collection
+        self.assertFalse(dest_v1.exists())
+
+    def test_stale_unconfigured_driver_cleaned_up_by_garbage_collection(self) -> None:
+        """Verify unconfigured stale drivers are removed by garbage collection."""
+        stale_driver = self.esp_dir / self.mod.DRIVERS_DIR / "zfs-stale.efi"
+        legacy_driver = self.esp_dir / self.mod.DRIVERS_DIR / "btrfs.efi"
+        stale_driver.parent.mkdir(parents=True, exist_ok=True)
+        stale_driver.write_text("stale-zfs")
+        legacy_driver.write_text("legacy-btrfs")
 
         installed = self.mod.install_drivers()
-        self.assertEqual(
-            installed, {"btrfs": self.mod.DRIVERS_DIR / "btrfs.efi"}
-        )
+        active_driver = self.esp_dir / installed["btrfs"]
+        self.assertTrue(active_driver.exists())
 
-        # Run garbage collection on ESP
+        # Run garbage collection
         self.mod.garbage_collect([], installed)
 
-        self.assertTrue(
-            dest_active.exists(), "Active configured driver must be kept"
-        )
+        self.assertTrue(active_driver.exists(), "Active configured driver must be kept")
         self.assertFalse(
-            dest_stale.exists(),
+            stale_driver.exists(),
             "Stale unconfigured driver must be garbage collected",
         )
+        self.assertFalse(
+            legacy_driver.exists(),
+            "Legacy unhashed driver must be garbage collected",
+        )
         self.assertFalse((self.temp_dir / "EFI").exists())
+
+    def test_driver_preflight_rejection_prevents_partial_installation(self) -> None:
+        """Verify invalid driver name or missing source is rejected before any driver is copied."""
+        # Case 1: Invalid driver name
+        mod_bad_name = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers={"invalid/name": str(self.driver_src)},
+        )
+        with self.assertRaises(RuntimeError) as ctx:
+            mod_bad_name.install_drivers()
+        self.assertIn("invalid Sprout driver name", str(ctx.exception))
+        self.assertEqual(
+            list((self.esp_dir / self.mod.DRIVERS_DIR).glob("*.efi")),
+            [],
+        )
+
+        # Case 2: One valid driver alongside a missing driver source
+        valid_src = self.temp_dir / "valid-driver.efi"
+        valid_src.write_text("valid-driver-content")
+        missing_src = self.temp_dir / "missing-driver.efi"
+        mod_missing = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers={
+                "aaa_valid": str(valid_src),
+                "bbb_missing": str(missing_src),
+            },
+        )
+        with self.assertRaises(RuntimeError) as ctx2:
+            mod_missing.install_drivers()
+        self.assertIn("does not exist", str(ctx2.exception))
+        # Ensure preflight aborted BEFORE copying aaa_valid
+        self.assertEqual(
+            list((self.esp_dir / self.mod.DRIVERS_DIR).glob("*.efi")),
+            [],
+        )
 
     def test_critical_initrd_failure_aborts(self) -> None:
         """Verify critical initrd failure raises RuntimeError without copying raw source."""
@@ -1016,8 +1243,9 @@ class SproutInstallRegressionTest(unittest.TestCase):
         self.assertTrue((self.esp_dir / entry.kernel).exists())
         self.assertTrue((self.esp_dir / entry.initrds[0]).exists())
         self.assertTrue((self.esp_dir / entry.initrds[1]).exists())
+        driver_dest = self.mod.driver_path("btrfs", self.driver_src)
         self.assertTrue(
-            (self.esp_dir / self.mod.DRIVERS_DIR / "btrfs.efi").exists()
+            (self.esp_dir / driver_dest).exists()
         )
 
         # CWD must contain NO boot artifacts / directories

@@ -1015,8 +1015,26 @@ def write_boot_files(
     return valid_entries
 
 
+def driver_path(
+    name: str,
+    source: Path,
+) -> Path:
+    identity = "\n".join(
+        [
+            name,
+            str(source.resolve()),
+        ]
+    )
+
+    digest = hashlib.sha256(
+        identity.encode("utf-8")
+    ).hexdigest()
+
+    return DRIVERS_DIR / f"{name}-{digest}.efi"
+
+
 def install_drivers() -> dict[str, Path]:
-    installed: dict[str, Path] = {}
+    prepared: list[tuple[str, Path, Path]] = []
 
     for name, source_string in sorted(DRIVERS.items()):
         if not re.fullmatch(
@@ -1034,12 +1052,16 @@ def install_drivers() -> dict[str, Path]:
                 f"Sprout driver {name!r} does not exist: {source}"
             )
 
-        destination = DRIVERS_DIR / f"{name}.efi"
+        destination = driver_path(name, source)
+        prepared.append((name, source, destination))
 
+    installed: dict[str, Path] = {}
+
+    for name, source, destination in prepared:
         atomic_copy(
             source,
             esp_path(destination),
-            replace=True,
+            replace=False,
         )
 
         installed[name] = destination
