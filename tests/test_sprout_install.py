@@ -2687,6 +2687,216 @@ class SproutInstallRegressionTest(unittest.TestCase):
                 "injected pre-publication error", str(ctx.exception.__cause__)
             )
 
+    def test_post_replacement_directory_close_error_does_not_rollback_loaders(
+        self,
+    ) -> None:
+        """Verify directory close error in fsync_path after os.replace does not trigger unsafe loader rollback."""
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+        kernel = self.temp_dir / "kernel.efi"
+        kernel.write_text("kernel-bytes")
+        dest_k = self.mod.artifact_path("kernel", kernel)
+        entry = self.mod.BootEntry(
+            identifier="nixos-g1",
+            title="NixOS 1",
+            sort_key="00000000000000000001",
+            kernel=dest_k,
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(
+                self.mod.BootArtifact(
+                    destination=dest_k,
+                    source=kernel,
+                    initrd_secrets=None,
+                    generation=1,
+                    critical=True,
+                ),
+            ),
+            critical=True,
+        )
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            removable=True,
+        )
+        fallback_path = self.esp_dir / "EFI" / "BOOT" / mod.removable_loader_name()
+        primary_path = self.esp_dir / mod.SPROUT_BINARY
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+
+        primary_path.parent.mkdir(parents=True, exist_ok=True)
+        primary_path.write_text("old-primary-loader")
+        fallback_path.parent.mkdir(parents=True, exist_ok=True)
+        fallback_path.write_text("old-fallback-loader")
+        config_path.write_text("version = 1\n# previous published config")
+
+        self.sprout_source.write_text("new-primary-loader")
+
+        orig_close = os.close
+        close_error_injected = False
+
+        def mock_close(fd: int) -> None:
+            nonlocal close_error_injected
+            if (
+                not close_error_injected
+                and config_path.exists()
+                and "nixos-g1" in config_path.read_text()
+            ):
+                close_error_injected = True
+                orig_close(fd)
+                raise OSError(errno.EIO, "Simulated error closing directory after replace")
+            orig_close(fd)
+
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ), patch("os.close", mock_close):
+            mod.install_bootloader(toplevel)
+
+        # Close error occurred post-replacement
+        self.assertTrue(close_error_injected, "Close error was injected during post-replacement")
+
+        # Loaders and config remain on the newly published version
+        self.assertEqual(primary_path.read_text(), "new-primary-loader")
+        self.assertEqual(fallback_path.read_text(), "new-primary-loader")
+        self.assertIn("nixos-g1", config_path.read_text())
+        self.assertNotIn("previous published config", config_path.read_text())
+        self.assertEqual(list(self.esp_dir.rglob("*.tmp")), [])
+
+    def test_post_replacement_fsync_path_error_does_not_rollback_loaders(
+        self,
+    ) -> None:
+        """Verify directory durability error after os.replace does not trigger unsafe loader rollback."""
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+        kernel = self.temp_dir / "kernel.efi"
+        kernel.write_text("kernel-bytes")
+        dest_k = self.mod.artifact_path("kernel", kernel)
+        entry = self.mod.BootEntry(
+            identifier="nixos-g1",
+            title="NixOS 1",
+            sort_key="00000000000000000001",
+            kernel=dest_k,
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(
+                self.mod.BootArtifact(
+                    destination=dest_k,
+                    source=kernel,
+                    initrd_secrets=None,
+                    generation=1,
+                    critical=True,
+                ),
+            ),
+            critical=True,
+        )
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            removable=True,
+        )
+        fallback_path = self.esp_dir / "EFI" / "BOOT" / mod.removable_loader_name()
+        primary_path = self.esp_dir / mod.SPROUT_BINARY
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+
+        primary_path.parent.mkdir(parents=True, exist_ok=True)
+        primary_path.write_text("old-primary-loader")
+        fallback_path.parent.mkdir(parents=True, exist_ok=True)
+        fallback_path.write_text("old-fallback-loader")
+        config_path.write_text("version = 1\n# previous published config")
+
+        self.sprout_source.write_text("new-primary-loader")
+
+        orig_fsync_path = mod.fsync_path
+        fsync_error_injected = False
+
+        def mock_fsync_path(path: Path) -> None:
+            nonlocal fsync_error_injected
+            if config_path.exists() and "nixos-g1" in config_path.read_text():
+                fsync_error_injected = True
+                raise OSError(errno.EIO, "Simulated directory durability failure")
+            orig_fsync_path(path)
+
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ), patch.object(mod, "fsync_path", mock_fsync_path):
+            mod.install_bootloader(toplevel)
+
+        # Durability error occurred post-replacement
+        self.assertTrue(fsync_error_injected, "Durability error was injected during post-replacement")
+
+        # Loaders and config remain on the newly published version
+        self.assertEqual(primary_path.read_text(), "new-primary-loader")
+        self.assertEqual(fallback_path.read_text(), "new-primary-loader")
+        self.assertIn("nixos-g1", config_path.read_text())
+        self.assertNotIn("previous published config", config_path.read_text())
+        self.assertEqual(list(self.esp_dir.rglob("*.tmp")), [])
+
+    def test_replace_failure_preserves_error_and_rolls_back_loaders(
+        self,
+    ) -> None:
+        """Verify failure during os.replace on sprout.toml preserves error and rolls back loaders."""
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+        kernel = self.temp_dir / "kernel.efi"
+        kernel.write_text("kernel-bytes")
+        dest_k = self.mod.artifact_path("kernel", kernel)
+        entry = self.mod.BootEntry(
+            identifier="nixos-g1",
+            title="NixOS 1",
+            sort_key="00000000000000000001",
+            kernel=dest_k,
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(
+                self.mod.BootArtifact(
+                    destination=dest_k,
+                    source=kernel,
+                    initrd_secrets=None,
+                    generation=1,
+                    critical=True,
+                ),
+            ),
+            critical=True,
+        )
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            removable=True,
+        )
+        fallback_path = self.esp_dir / "EFI" / "BOOT" / mod.removable_loader_name()
+        primary_path = self.esp_dir / mod.SPROUT_BINARY
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+
+        primary_path.parent.mkdir(parents=True, exist_ok=True)
+        primary_path.write_text("old-primary-loader")
+        fallback_path.parent.mkdir(parents=True, exist_ok=True)
+        fallback_path.write_text("old-fallback-loader")
+        config_path.write_text("version = 1\n# previous published config")
+
+        self.sprout_source.write_text("new-primary-loader")
+
+        orig_replace = os.replace
+
+        def mock_replace(src: Any, dst: Any) -> None:
+            if Path(dst) == config_path:
+                raise OSError(errno.ENOSPC, "No space left on device during replace")
+            orig_replace(src, dst)
+
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ), patch("os.replace", mock_replace):
+            with self.assertRaises(OSError) as ctx:
+                mod.install_bootloader(toplevel)
+            self.assertEqual(ctx.exception.errno, errno.ENOSPC)
+
+        # Pre-replacement failure rolled loaders back and preserved old config
+        self.assertEqual(primary_path.read_text(), "old-primary-loader")
+        self.assertEqual(fallback_path.read_text(), "old-fallback-loader")
+        self.assertEqual(config_path.read_text(), "version = 1\n# previous published config")
+        self.assertEqual(list(self.esp_dir.rglob("*.tmp")), [])
+
 
 class BootSpecParserTest(unittest.TestCase):
     def setUp(self) -> None:

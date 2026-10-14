@@ -146,7 +146,10 @@ def fsync_path(path: Path) -> None:
     except OSError:
         pass
     finally:
-        os.close(fd)
+        try:
+            os.close(fd)
+        except OSError:
+            pass
 
 
 def sync_filesystem(path: Path) -> None:
@@ -165,7 +168,10 @@ def sync_filesystem(path: Path) -> None:
                 file=sys.stderr,
             )
     finally:
-        os.close(fd)
+        try:
+            os.close(fd)
+        except OSError:
+            pass
 
 
 class SourceArtifactError(RuntimeError):
@@ -223,11 +229,15 @@ def atomic_copy(
             source_file.close()
 
         os.replace(temporary_path, destination)
-        fsync_path(destination.parent)
         temporary_path = None
     finally:
         if temporary_path is not None:
             temporary_path.unlink(missing_ok=True)
+
+    try:
+        fsync_path(destination.parent)
+    except OSError:
+        pass
 
 
 def atomic_write_text(
@@ -253,10 +263,15 @@ def atomic_write_text(
             os.fsync(temporary.fileno())
 
         os.replace(temporary_path, destination)
-        fsync_path(destination.parent)
+        temporary_path = None
     finally:
         if temporary_path is not None:
             temporary_path.unlink(missing_ok=True)
+
+    try:
+        fsync_path(destination.parent)
+    except OSError:
+        pass
 
 
 def generation_directory(
@@ -947,13 +962,17 @@ def write_initrd_with_secrets(
             temporary_path,
             destination,
         )
-        fsync_path(destination.parent)
-
         temporary_path = None
-        return True
     finally:
         if temporary_path is not None:
             temporary_path.unlink(missing_ok=True)
+
+    try:
+        fsync_path(destination.parent)
+    except OSError:
+        pass
+
+    return True
 
 
 def write_artifact(
@@ -1253,7 +1272,10 @@ class FixedLoaderTransaction:
     def commit(self) -> None:
         self._committed = True
         if self._temp_dir is not None:
-            self._temp_dir.cleanup()
+            try:
+                self._temp_dir.cleanup()
+            except OSError:
+                pass
             self._temp_dir = None
 
     def rollback(self) -> None:
@@ -1298,7 +1320,10 @@ class FixedLoaderTransaction:
                     ) from exc_val
         finally:
             if self._temp_dir is not None:
-                self._temp_dir.cleanup()
+                try:
+                    self._temp_dir.cleanup()
+                except OSError:
+                    pass
                 self._temp_dir = None
 
 
