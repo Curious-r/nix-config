@@ -2196,6 +2196,497 @@ class SproutInstallRegressionTest(unittest.TestCase):
         self.assertFalse(dest_k.exists(), "Destination must not exist after destination failure")
         self.assertEqual(list(self.esp_dir.rglob("*.tmp")), [], "No temp files on ESP")
 
+    def test_fallback_installation_failure_restores_loaders_and_config(
+        self,
+    ) -> None:
+        """Verify fallback installation failure after primary loader replacement restores loaders and config."""
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+        kernel = self.temp_dir / "kernel.efi"
+        kernel.write_text("kernel-bytes")
+        dest_k = self.mod.artifact_path("kernel", kernel)
+        entry = self.mod.BootEntry(
+            identifier="nixos-g1",
+            title="NixOS 1",
+            sort_key="00000000000000000001",
+            kernel=dest_k,
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(
+                self.mod.BootArtifact(
+                    destination=dest_k,
+                    source=kernel,
+                    initrd_secrets=None,
+                    generation=1,
+                    critical=True,
+                ),
+            ),
+            critical=True,
+        )
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            removable=True,
+        )
+        fallback_path = self.esp_dir / "EFI" / "BOOT" / mod.removable_loader_name()
+        primary_path = self.esp_dir / mod.SPROUT_BINARY
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+
+        # Set up prior installed loader, fallback loader, and configuration
+        primary_path.parent.mkdir(parents=True, exist_ok=True)
+        primary_path.write_text("old-primary-loader")
+        fallback_path.parent.mkdir(parents=True, exist_ok=True)
+        fallback_path.write_text("old-fallback-loader")
+        config_path.write_text("version = 1\n# previous published config")
+
+        # New binary content
+        self.sprout_source.write_text("new-primary-loader")
+
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ), patch.object(
+            mod,
+            "install_removable_loader",
+            side_effect=RuntimeError("simulated fallback installation failure"),
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod.install_bootloader(toplevel)
+            self.assertIn("simulated fallback installation failure", str(ctx.exception))
+
+        # Both loaders and configuration retain their exact previous contents
+        self.assertEqual(primary_path.read_text(), "old-primary-loader")
+        self.assertEqual(fallback_path.read_text(), "old-fallback-loader")
+        self.assertEqual(
+            config_path.read_text(), "version = 1\n# previous published config"
+        )
+        self.assertEqual(list(self.esp_dir.rglob("*.tmp")), [])
+
+    def test_config_publication_failure_restores_loaders_and_config_without_gc(
+        self,
+    ) -> None:
+        """Verify failure during configuration publication restores loaders and skips garbage collection."""
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+        kernel = self.temp_dir / "kernel.efi"
+        kernel.write_text("kernel-bytes")
+        dest_k = self.mod.artifact_path("kernel", kernel)
+        entry = self.mod.BootEntry(
+            identifier="nixos-g1",
+            title="NixOS 1",
+            sort_key="00000000000000000001",
+            kernel=dest_k,
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(
+                self.mod.BootArtifact(
+                    destination=dest_k,
+                    source=kernel,
+                    initrd_secrets=None,
+                    generation=1,
+                    critical=True,
+                ),
+            ),
+            critical=True,
+        )
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            removable=True,
+        )
+        fallback_path = self.esp_dir / "EFI" / "BOOT" / mod.removable_loader_name()
+        primary_path = self.esp_dir / mod.SPROUT_BINARY
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+
+        primary_path.parent.mkdir(parents=True, exist_ok=True)
+        primary_path.write_text("old-primary-loader")
+        fallback_path.parent.mkdir(parents=True, exist_ok=True)
+        fallback_path.write_text("old-fallback-loader")
+        config_path.write_text("version = 1\n# previous published config")
+
+        # Obsolete file to verify garbage collection does NOT run
+        obsolete_driver = self.esp_dir / mod.DRIVERS_DIR / "obsolete.efi"
+        obsolete_driver.parent.mkdir(parents=True, exist_ok=True)
+        obsolete_driver.write_text("obsolete-driver-content")
+
+        self.sprout_source.write_text("new-primary-loader")
+
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ), patch.object(
+            mod,
+            "atomic_write_text",
+            side_effect=OSError(errno.EIO, "simulated disk error during config publication"),
+        ):
+            with self.assertRaises(OSError) as ctx:
+                mod.install_bootloader(toplevel)
+            self.assertEqual(ctx.exception.errno, errno.EIO)
+
+        # Primary loader, fallback loader, and configuration are restored
+        self.assertEqual(primary_path.read_text(), "old-primary-loader")
+        self.assertEqual(fallback_path.read_text(), "old-fallback-loader")
+        self.assertEqual(
+            config_path.read_text(), "version = 1\n# previous published config"
+        )
+
+        # Garbage collection did NOT run
+        self.assertTrue(obsolete_driver.exists())
+        self.assertEqual(obsolete_driver.read_text(), "obsolete-driver-content")
+        self.assertEqual(list(self.esp_dir.rglob("*.tmp")), [])
+
+    def test_loader_rollback_previously_absent_loader_paths(self) -> None:
+        """Verify pre-publication failure removes newly created loader paths and preserves pre-existing fallback."""
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+        kernel = self.temp_dir / "kernel.efi"
+        kernel.write_text("kernel-bytes")
+        dest_k = self.mod.artifact_path("kernel", kernel)
+        entry = self.mod.BootEntry(
+            identifier="nixos-g1",
+            title="NixOS 1",
+            sort_key="00000000000000000001",
+            kernel=dest_k,
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(
+                self.mod.BootArtifact(
+                    destination=dest_k,
+                    source=kernel,
+                    initrd_secrets=None,
+                    generation=1,
+                    critical=True,
+                ),
+            ),
+            critical=True,
+        )
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            removable=True,
+        )
+        fallback_path = self.esp_dir / "EFI" / "BOOT" / mod.removable_loader_name()
+        primary_path = self.esp_dir / mod.SPROUT_BINARY
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+
+        # Fresh installation: primary loader and sprout.toml do NOT exist.
+        # Pre-existing fallback from another bootloader (e.g. GRUB) exists.
+        fallback_path.parent.mkdir(parents=True, exist_ok=True)
+        fallback_path.write_text("foreign-grub-fallback-binary")
+
+        self.assertFalse(primary_path.exists())
+        self.assertFalse(config_path.exists())
+
+        self.sprout_source.write_text("new-primary-loader")
+
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ), patch.object(
+            mod,
+            "atomic_write_text",
+            side_effect=RuntimeError("simulated config write failure"),
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod.install_bootloader(toplevel)
+            self.assertIn("simulated config write failure", str(ctx.exception))
+
+        # Newly created primary loader path was unlinked on rollback
+        self.assertFalse(primary_path.exists())
+
+        # Pre-existing fallback loader is preserved with original contents
+        self.assertTrue(fallback_path.exists())
+        self.assertEqual(fallback_path.read_text(), "foreign-grub-fallback-binary")
+
+        # sprout.toml was never published
+        self.assertFalse(config_path.exists())
+        self.assertEqual(list(self.esp_dir.rglob("*.tmp")), [])
+
+    def test_nvram_failure_after_publication_preserves_published_files_and_skips_gc(
+        self,
+    ) -> None:
+        """Verify NVRAM failure after publication does not roll back loaders/config and skips garbage collection."""
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+        kernel = self.temp_dir / "kernel.efi"
+        kernel.write_text("kernel-bytes")
+        dest_k = self.mod.artifact_path("kernel", kernel)
+        entry = self.mod.BootEntry(
+            identifier="nixos-g1",
+            title="NixOS 1",
+            sort_key="00000000000000000001",
+            kernel=dest_k,
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(
+                self.mod.BootArtifact(
+                    destination=dest_k,
+                    source=kernel,
+                    initrd_secrets=None,
+                    generation=1,
+                    critical=True,
+                ),
+            ),
+            critical=True,
+        )
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            removable=True,
+            can_touch_efi=True,
+        )
+        fallback_path = self.esp_dir / "EFI" / "BOOT" / mod.removable_loader_name()
+        primary_path = self.esp_dir / mod.SPROUT_BINARY
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+
+        primary_path.parent.mkdir(parents=True, exist_ok=True)
+        primary_path.write_text("old-primary-loader")
+        fallback_path.parent.mkdir(parents=True, exist_ok=True)
+        fallback_path.write_text("old-fallback-loader")
+        config_path.write_text("version = 1\n# previous published config")
+
+        obsolete_driver = self.esp_dir / mod.DRIVERS_DIR / "obsolete.efi"
+        obsolete_driver.parent.mkdir(parents=True, exist_ok=True)
+        obsolete_driver.write_text("obsolete-driver-content")
+
+        self.sprout_source.write_text("new-primary-loader")
+
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ), patch.object(
+            mod,
+            "install_nvram_entry",
+            side_effect=RuntimeError("simulated efibootmgr error"),
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod.install_bootloader(toplevel)
+            self.assertIn("simulated efibootmgr error", str(ctx.exception))
+
+        # Publication committed: loaders and configuration remain updated
+        self.assertEqual(primary_path.read_text(), "new-primary-loader")
+        self.assertEqual(fallback_path.read_text(), "new-primary-loader")
+        self.assertIn("nixos-g1", config_path.read_text())
+        self.assertNotIn("previous published config", config_path.read_text())
+
+        # Garbage collection was NOT run
+        self.assertTrue(obsolete_driver.exists())
+
+    def test_successful_retry_after_nvram_failure(self) -> None:
+        """Verify successful retry after NVRAM failure converges to expected state and runs garbage collection."""
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+        kernel = self.temp_dir / "kernel.efi"
+        kernel.write_text("kernel-bytes")
+        dest_k = self.mod.artifact_path("kernel", kernel)
+        entry = self.mod.BootEntry(
+            identifier="nixos-g1",
+            title="NixOS 1",
+            sort_key="00000000000000000001",
+            kernel=dest_k,
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(
+                self.mod.BootArtifact(
+                    destination=dest_k,
+                    source=kernel,
+                    initrd_secrets=None,
+                    generation=1,
+                    critical=True,
+                ),
+            ),
+            critical=True,
+        )
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            removable=True,
+            can_touch_efi=True,
+        )
+        fallback_path = self.esp_dir / "EFI" / "BOOT" / mod.removable_loader_name()
+        primary_path = self.esp_dir / mod.SPROUT_BINARY
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+
+        primary_path.parent.mkdir(parents=True, exist_ok=True)
+        primary_path.write_text("old-primary-loader")
+        fallback_path.parent.mkdir(parents=True, exist_ok=True)
+        fallback_path.write_text("old-fallback-loader")
+        config_path.write_text("version = 1\n# previous published config")
+
+        obsolete_driver = self.esp_dir / mod.DRIVERS_DIR / "obsolete.efi"
+        obsolete_driver.parent.mkdir(parents=True, exist_ok=True)
+        obsolete_driver.write_text("obsolete-driver-content")
+
+        self.sprout_source.write_text("new-primary-loader")
+
+        # First run: NVRAM fails
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ), patch.object(
+            mod,
+            "install_nvram_entry",
+            side_effect=RuntimeError("simulated efibootmgr error"),
+        ):
+            with self.assertRaises(RuntimeError):
+                mod.install_bootloader(toplevel)
+
+        # Files remain published, obsolete driver not yet collected
+        self.assertEqual(primary_path.read_text(), "new-primary-loader")
+        self.assertEqual(fallback_path.read_text(), "new-primary-loader")
+        self.assertTrue(obsolete_driver.exists())
+
+        # Second run: Retry succeeds
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ), patch.object(mod, "install_nvram_entry", return_value=None):
+            mod.install_bootloader(toplevel)
+
+        # Loaders and configuration are published, and garbage collection ran
+        self.assertEqual(primary_path.read_text(), "new-primary-loader")
+        self.assertEqual(fallback_path.read_text(), "new-primary-loader")
+        self.assertIn("nixos-g1", config_path.read_text())
+        self.assertFalse(
+            obsolete_driver.exists(), "Obsolete driver collected on successful retry"
+        )
+        self.assertEqual(list(self.esp_dir.rglob("*.tmp")), [])
+
+    def test_normal_successful_installation_removable_enabled_and_disabled(
+        self,
+    ) -> None:
+        """Confirm normal successful installation works with removable mode enabled and disabled."""
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+        kernel = self.temp_dir / "kernel.efi"
+        kernel.write_text("kernel-bytes")
+        dest_k = self.mod.artifact_path("kernel", kernel)
+        entry = self.mod.BootEntry(
+            identifier="nixos-g1",
+            title="NixOS 1",
+            sort_key="00000000000000000001",
+            kernel=dest_k,
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(
+                self.mod.BootArtifact(
+                    destination=dest_k,
+                    source=kernel,
+                    initrd_secrets=None,
+                    generation=1,
+                    critical=True,
+                ),
+            ),
+            critical=True,
+        )
+
+        # Case A: Removable disabled
+        esp_disabled = self.temp_dir / "esp-disabled"
+        esp_disabled.mkdir(parents=True, exist_ok=True)
+        mod_disabled = load_sprout_installer(
+            esp_disabled,
+            sprout_binary=self.sprout_source,
+            removable=False,
+        )
+        with patch.object(mod_disabled, "check_mountpoint"), patch.object(
+            mod_disabled, "collect_entries", return_value=[entry]
+        ):
+            mod_disabled.install_bootloader(toplevel)
+
+        self.assertTrue((esp_disabled / mod_disabled.SPROUT_BINARY).exists())
+        self.assertTrue((esp_disabled / mod_disabled.SPROUT_CONFIG).exists())
+        fallback_path_disabled = (
+            esp_disabled / "EFI" / "BOOT" / mod_disabled.removable_loader_name()
+        )
+        self.assertFalse(fallback_path_disabled.exists())
+
+        # Case B: Removable enabled
+        esp_enabled = self.temp_dir / "esp-enabled"
+        esp_enabled.mkdir(parents=True, exist_ok=True)
+        mod_enabled = load_sprout_installer(
+            esp_enabled,
+            sprout_binary=self.sprout_source,
+            removable=True,
+        )
+        with patch.object(mod_enabled, "check_mountpoint"), patch.object(
+            mod_enabled, "collect_entries", return_value=[entry]
+        ):
+            mod_enabled.install_bootloader(toplevel)
+
+        self.assertTrue((esp_enabled / mod_enabled.SPROUT_BINARY).exists())
+        self.assertTrue((esp_enabled / mod_enabled.SPROUT_CONFIG).exists())
+        fallback_path_enabled = (
+            esp_enabled / "EFI" / "BOOT" / mod_enabled.removable_loader_name()
+        )
+        self.assertTrue(fallback_path_enabled.exists())
+        self.assertEqual(
+            fallback_path_enabled.read_bytes(),
+            (esp_enabled / mod_enabled.SPROUT_BINARY).read_bytes(),
+        )
+
+    def test_restoration_failure_reports_clearly_and_chains_exception(
+        self,
+    ) -> None:
+        """Verify failure during rollback reports clearly to stderr and chains from original exception."""
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+        kernel = self.temp_dir / "kernel.efi"
+        kernel.write_text("kernel-bytes")
+        dest_k = self.mod.artifact_path("kernel", kernel)
+        entry = self.mod.BootEntry(
+            identifier="nixos-g1",
+            title="NixOS 1",
+            sort_key="00000000000000000001",
+            kernel=dest_k,
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(
+                self.mod.BootArtifact(
+                    destination=dest_k,
+                    source=kernel,
+                    initrd_secrets=None,
+                    generation=1,
+                    critical=True,
+                ),
+            ),
+            critical=True,
+        )
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            removable=False,
+        )
+        primary_path = self.esp_dir / mod.SPROUT_BINARY
+        primary_path.parent.mkdir(parents=True, exist_ok=True)
+        primary_path.write_text("prior-loader")
+
+        # Inject restoration error in rollback
+        orig_atomic_copy = mod.atomic_copy
+
+        def failing_restore_copy(src: Path, dst: Path, **kwargs: Any) -> Any:
+            if dst == primary_path and "loader_0.efi" in src.name:
+                raise OSError(errno.EROFS, "Simulated read-only ESP during restoration")
+            return orig_atomic_copy(src, dst, **kwargs)
+
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ), patch.object(
+            mod,
+            "atomic_write_text",
+            side_effect=RuntimeError("injected pre-publication error"),
+        ), patch.object(mod, "atomic_copy", failing_restore_copy):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod.install_bootloader(toplevel)
+
+            # Clearly reports restoration failure
+            self.assertIn("failed to restore bootloader files", str(ctx.exception))
+            # Chained from original pre-publication error
+            self.assertIsNotNone(ctx.exception.__cause__)
+            assert ctx.exception.__cause__ is not None
+            self.assertIn(
+                "injected pre-publication error", str(ctx.exception.__cause__)
+            )
+
 
 class BootSpecParserTest(unittest.TestCase):
     def setUp(self) -> None:

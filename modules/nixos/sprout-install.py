@@ -1215,6 +1215,93 @@ def install_removable_loader() -> None:
     )
 
 
+def fixed_loader_paths() -> list[Path]:
+    paths = [esp_path(SPROUT_BINARY)]
+    if EFI_INSTALL_AS_REMOVABLE:
+        paths.append(esp_path(Path("EFI/BOOT") / removable_loader_name()))
+    return paths
+
+
+class FixedLoaderTransaction:
+    """Manages backup and atomic restoration of fixed-path bootloaders."""
+
+    def __init__(self, paths: Sequence[Path]) -> None:
+        self.paths = list(paths)
+        self.backups: list[tuple[Path, Path | None]] = []
+        self._temp_dir: tempfile.TemporaryDirectory[str] | None = None
+        self._committed: bool = False
+        self._rolled_back: bool = False
+
+    def __enter__(self) -> FixedLoaderTransaction:
+        self._temp_dir = tempfile.TemporaryDirectory()
+        try:
+            temp_path = Path(self._temp_dir.name)
+            for index, path in enumerate(self.paths):
+                if path.is_file():
+                    backup_file = temp_path / f"loader_{index}.efi"
+                    atomic_copy(path, backup_file, replace=True)
+                    self.backups.append((path, backup_file))
+                else:
+                    self.backups.append((path, None))
+            return self
+        except BaseException:
+            if self._temp_dir is not None:
+                self._temp_dir.cleanup()
+                self._temp_dir = None
+            raise
+
+    def commit(self) -> None:
+        self._committed = True
+        if self._temp_dir is not None:
+            self._temp_dir.cleanup()
+            self._temp_dir = None
+
+    def rollback(self) -> None:
+        if self._rolled_back:
+            return
+        self._rolled_back = True
+
+        errors: list[Exception] = []
+        for path, backup_file in reversed(self.backups):
+            try:
+                if backup_file is not None:
+                    atomic_copy(backup_file, path, replace=True)
+                else:
+                    path.unlink(missing_ok=True)
+                    fsync_path(path.parent)
+            except Exception as exc:
+                errors.append(exc)
+
+        if errors:
+            if len(errors) == 1:
+                raise errors[0]
+            messages = "; ".join(str(e) for e in errors)
+            raise RuntimeError(f"multiple restoration errors: {messages}")
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: Any,
+    ) -> None:
+        try:
+            if exc_type is not None and not self._committed:
+                try:
+                    self.rollback()
+                except Exception as restore_exc:
+                    print(
+                        f"error: failed to restore bootloader files: {restore_exc}",
+                        file=sys.stderr,
+                    )
+                    raise RuntimeError(
+                        f"failed to restore bootloader files after installation error ({exc_val}): {restore_exc}"
+                    ) from exc_val
+        finally:
+            if self._temp_dir is not None:
+                self._temp_dir.cleanup()
+                self._temp_dir = None
+
+
 def check_mountpoint() -> None:
     try:
         source = capture(
@@ -1483,22 +1570,25 @@ def install_bootloader(
 
     # Install the loader before publishing the new configuration. At this
     # point all boot artifacts needed by the new configuration already exist.
-    install_sprout_binary()
+    with FixedLoaderTransaction(fixed_loader_paths()) as transaction:
+        install_sprout_binary()
 
-    if EFI_INSTALL_AS_REMOVABLE:
-        install_removable_loader()
+        if EFI_INSTALL_AS_REMOVABLE:
+            install_removable_loader()
 
-    configuration = generate_sprout_config(
-        entries,
-        default_entry.identifier,
-        drivers,
-    )
+        configuration = generate_sprout_config(
+            entries,
+            default_entry.identifier,
+            drivers,
+        )
 
-    # Atomically replace sprout.toml only after all referenced files are present.
-    atomic_write_text(
-        esp_path(SPROUT_CONFIG),
-        configuration,
-    )
+        # Atomically replace sprout.toml only after all referenced files are present.
+        atomic_write_text(
+            esp_path(SPROUT_CONFIG),
+            configuration,
+        )
+
+        transaction.commit()
 
     if CAN_TOUCH_EFI_VARIABLES:
         install_nvram_entry()
