@@ -100,6 +100,11 @@ jobs:
       - name: Run Sprout evaluation regression test
         run: nix-instantiate --eval --strict tests/test-sprout-eval.nix
 
+      - name: Build Sprout installer
+        run: |
+          installer="$(nix-build tests/sprout-installer.nix --no-out-link)"
+          test -x "${installer}"
+
       - name: Check flake
         run: nix flake check
 
