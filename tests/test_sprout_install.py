@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unittest
 from pathlib import Path
 from types import ModuleType
@@ -3583,6 +3584,262 @@ class EspMountpointAndDeviceTest(unittest.TestCase):
                 str(ctx.exception),
                 "could not determine the partition number of ESP device /dev/sda1",
             )
+
+
+class SproutTomlConfigConformanceTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp_dir_obj = tempfile.TemporaryDirectory()
+        self.esp_dir = Path(self.temp_dir_obj.name).resolve()
+        self.mod = load_sprout_installer(
+            self.esp_dir,
+            timeout=5,
+        )
+
+    def tearDown(self) -> None:
+        self.temp_dir_obj.cleanup()
+
+    def _create_sample_entry(
+        self,
+        identifier: str = "nixos-g1",
+        title: str = "NixOS - Generation 1",
+        sort_key: str = "nixos-g1",
+        kernel_path: str = "EFI/nixos/kernel.efi",
+        initrds: tuple[Path, ...] = (Path("EFI/nixos/initrd.efi"),),
+        options: tuple[str, ...] = ("init=/nix/store/test-init", "loglevel=4"),
+    ) -> Any:
+        return self.mod.BootEntry(
+            identifier=identifier,
+            title=title,
+            sort_key=sort_key,
+            kernel=Path(kernel_path),
+            initrds=initrds,
+            options=options,
+            artifacts=(),
+            critical=True,
+        )
+
+    def test_root_and_options_structure(self) -> None:
+        """Validate root version and options table against Sprout schema."""
+        entry1 = self._create_sample_entry(identifier="nixos-g1", sort_key="nixos-g1")
+        entry2 = self._create_sample_entry(identifier="nixos-g2", sort_key="nixos-g2")
+
+        toml_str = self.mod.generate_sprout_config(
+            entries=[entry1, entry2],
+            default_entry="nixos-g2",
+            drivers={},
+        )
+        data = tomllib.loads(toml_str)
+
+        self.assertEqual(data.get("version"), 1)
+        self.assertIn("options", data)
+        options = data["options"]
+        self.assertEqual(options.get("default-entry"), "nixos-g2")
+        self.assertEqual(options.get("menu-timeout"), 5)
+        self.assertIsInstance(options.get("menu-timeout"), int)
+
+        # The selected default entry exists in the generated entries
+        self.assertIn("entries", data)
+        self.assertIn(options["default-entry"], data["entries"])
+
+    def test_zero_timeout_option(self) -> None:
+        """Validate options table with a zero timeout."""
+        mod_zero = load_sprout_installer(self.esp_dir, timeout=0)
+        entry = self._create_sample_entry()
+
+        toml_str = mod_zero.generate_sprout_config(
+            entries=[entry],
+            default_entry="nixos-g1",
+            drivers={},
+        )
+        data = tomllib.loads(toml_str)
+
+        self.assertEqual(data["options"]["menu-timeout"], 0)
+        self.assertIsInstance(data["options"]["menu-timeout"], int)
+
+    def test_drivers_schema_conformance(self) -> None:
+        """Validate drivers table against Sprout schema."""
+        entry = self._create_sample_entry()
+        drivers = {
+            "btrfs": Path("EFI/Sprout/drivers/btrfs.efi"),
+            "ext4": Path("EFI/Sprout/drivers/ext4.efi"),
+        }
+
+        toml_str = self.mod.generate_sprout_config(
+            entries=[entry],
+            default_entry="nixos-g1",
+            drivers=drivers,
+        )
+        data = tomllib.loads(toml_str)
+
+        self.assertIn("drivers", data)
+        self.assertEqual(set(data["drivers"].keys()), {"btrfs", "ext4"})
+        self.assertEqual(
+            data["drivers"]["btrfs"],
+            {"path": r"\EFI\Sprout\drivers\btrfs.efi"},
+        )
+        self.assertEqual(
+            data["drivers"]["ext4"],
+            {"path": r"\EFI\Sprout\drivers\ext4.efi"},
+        )
+
+    def test_entries_and_actions_schema_conformance(self) -> None:
+        """Validate entries and actions tables and their referential integrity."""
+        entry1 = self._create_sample_entry(
+            identifier="nixos-g1",
+            title="NixOS Generation 1",
+            sort_key="nixos-g1",
+            kernel_path="EFI/nixos/k1.efi",
+            options=("init=foo", "quiet"),
+        )
+        entry2 = self._create_sample_entry(
+            identifier="nixos-g2",
+            title="NixOS Generation 2",
+            sort_key="nixos-g2",
+            kernel_path="EFI/nixos/k2.efi",
+            options=("init=bar", "loglevel=4"),
+        )
+
+        toml_str = self.mod.generate_sprout_config(
+            entries=[entry1, entry2],
+            default_entry="nixos-g2",
+            drivers={},
+        )
+        data = tomllib.loads(toml_str)
+
+        self.assertIn("entries", data)
+        self.assertIn("actions", data)
+
+        for entry in [entry1, entry2]:
+            self.assertIn(entry.identifier, data["entries"])
+            entry_dict = data["entries"][entry.identifier]
+            self.assertEqual(entry_dict["title"], entry.title)
+            self.assertEqual(entry_dict["sort-key"], entry.sort_key)
+            self.assertIsInstance(entry_dict["actions"], list)
+            self.assertEqual(entry_dict["actions"], [entry.identifier])
+
+            # Each referenced action must exist in the actions table
+            for action_name in entry_dict["actions"]:
+                self.assertIn(action_name, data["actions"])
+                action = data["actions"][action_name]
+                self.assertIn("chainload", action)
+                chainload = action["chainload"]
+                self.assertEqual(
+                    chainload["path"],
+                    self.mod.uefi_path(entry.kernel),
+                )
+                self.assertEqual(chainload["options"], list(entry.options))
+
+    def test_chainload_initrd_case_none(self) -> None:
+        """Validate that with no initrd, neither linux-initrd nor linux-initrd-chain is emitted."""
+        entry = self._create_sample_entry(initrds=())
+
+        toml_str = self.mod.generate_sprout_config(
+            entries=[entry],
+            default_entry=entry.identifier,
+            drivers={},
+        )
+        data = tomllib.loads(toml_str)
+
+        chainload = data["actions"][entry.identifier]["chainload"]
+        self.assertNotIn("linux-initrd", chainload)
+        self.assertNotIn("linux-initrd-chain", chainload)
+
+    def test_chainload_initrd_case_single(self) -> None:
+        """Validate that with one initrd, linux-initrd contains path and linux-initrd-chain is absent."""
+        initrd_path = Path("EFI/nixos/main-initrd.efi")
+        entry = self._create_sample_entry(initrds=(initrd_path,))
+
+        toml_str = self.mod.generate_sprout_config(
+            entries=[entry],
+            default_entry=entry.identifier,
+            drivers={},
+        )
+        data = tomllib.loads(toml_str)
+
+        chainload = data["actions"][entry.identifier]["chainload"]
+        self.assertEqual(chainload.get("linux-initrd"), r"\EFI\nixos\main-initrd.efi")
+        self.assertNotIn("linux-initrd-chain", chainload)
+
+    def test_chainload_initrd_case_multiple(self) -> None:
+        """Validate that with multiple initrds, linux-initrd-chain contains ordered paths and linux-initrd is absent."""
+        initrds = (
+            Path("EFI/nixos/initrd-secrets.efi"),
+            Path("EFI/nixos/initrd-extra.efi"),
+            Path("EFI/nixos/initrd-main.efi"),
+        )
+        entry = self._create_sample_entry(initrds=initrds)
+
+        toml_str = self.mod.generate_sprout_config(
+            entries=[entry],
+            default_entry=entry.identifier,
+            drivers={},
+        )
+        data = tomllib.loads(toml_str)
+
+        chainload = data["actions"][entry.identifier]["chainload"]
+        self.assertNotIn("linux-initrd", chainload)
+        expected_chain = [
+            r"\EFI\nixos\initrd-secrets.efi",
+            r"\EFI\nixos\initrd-extra.efi",
+            r"\EFI\nixos\initrd-main.efi",
+        ]
+        self.assertEqual(chainload.get("linux-initrd-chain"), expected_chain)
+
+    def test_toml_quoting_and_uefi_path_escaping(self) -> None:
+        """Verify TOML quoting and UEFI escaping with quotes, Unicode, dots, and backslashes."""
+        title_with_special_chars = (
+            'NixOS "24.11" (Special \'Debug\' & ❄️) [v1.0] \\path\\ test'
+        )
+        entry = self._create_sample_entry(
+            identifier="nixos-special.v1-abc",
+            title=title_with_special_chars,
+            sort_key="nixos-special.v1",
+            kernel_path="EFI/nixos/kernels/linux 6.12.efi",
+            options=(
+                "init=/nix/store/pkg-test/init",
+                'params="key with spaces"',
+                "flag",
+            ),
+        )
+        driver_name_with_dots = "vendor.filesystem.btrfs_v2.efi"
+        drivers = {
+            driver_name_with_dots: Path("EFI/Sprout/drivers/nested/btrfs.efi"),
+        }
+
+        toml_str = self.mod.generate_sprout_config(
+            entries=[entry],
+            default_entry=entry.identifier,
+            drivers=drivers,
+        )
+        data = tomllib.loads(toml_str)
+
+        # Title containing quotes, backslashes, Unicode parses to the exact original string
+        self.assertEqual(
+            data["entries"][entry.identifier]["title"],
+            title_with_special_chars,
+        )
+
+        # Driver name containing dots is correctly preserved as a single table key
+        self.assertIn(driver_name_with_dots, data["drivers"])
+        self.assertEqual(
+            data["drivers"][driver_name_with_dots]["path"],
+            r"\EFI\Sprout\drivers\nested\btrfs.efi",
+        )
+
+        # Kernel options with quotes are parsed without distortion
+        chainload = data["actions"][entry.identifier]["chainload"]
+        self.assertEqual(
+            chainload["options"],
+            [
+                "init=/nix/store/pkg-test/init",
+                'params="key with spaces"',
+                "flag",
+            ],
+        )
+        self.assertEqual(
+            chainload["path"],
+            r"\EFI\nixos\kernels\linux 6.12.efi",
+        )
 
 
 if __name__ == "__main__":
