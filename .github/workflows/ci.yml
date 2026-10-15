@@ -104,6 +104,7 @@ jobs:
         run: |
           installer="$(nix-build tests/sprout-installer.nix --no-out-link)"
           test -x "${installer}"
+          "${installer}" --help
 
       - name: Check flake
         run: nix flake check
