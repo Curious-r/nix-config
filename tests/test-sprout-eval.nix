@@ -58,7 +58,8 @@ let
 
   # 4. Sprout enabled, GRUB explicitly enabled:
   #    the explicit boot.loader.grub.enable = true definition is not silently overridden by Sprout's default.
-  #    Do not force GRUB off to conceal a conflicting bootloader selection.
+  #    Both bootloaders remain enabled, but evaluating the complete system configuration and
+  #    bootloader installer fails because only one bootloader can be enabled at a time.
   case4 = eval [
     {
       boot.loader.sprout.enable = true;
@@ -66,7 +67,14 @@ let
     }
   ];
   testCase4 =
+    let
+      toplevelEval = builtins.tryEval case4.config.system.build.toplevel;
+      installBootLoaderEval = builtins.tryEval case4.config.system.build.installBootLoader;
+    in
+    assert case4.config.boot.loader.sprout.enable == true;
     assert case4.config.boot.loader.grub.enable == true;
+    assert toplevelEval.success == false;
+    assert installBootLoaderEval.success == false;
     true;
 
   # 5. Sprout enabled, negative configurationLimit:
@@ -242,6 +250,26 @@ let
     assert toplevelEval.success == false;
     assert failedAssertions != [ ];
     true;
+
+  # 14. Sprout enabled, systemd-boot explicitly enabled:
+  #     both enable flags remain true, but evaluating the complete system configuration and
+  #     bootloader installer fails because only one bootloader can be enabled at a time.
+  case14 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.systemd-boot.enable = true;
+    }
+  ];
+  testCase14 =
+    let
+      toplevelEval = builtins.tryEval case14.config.system.build.toplevel;
+      installBootLoaderEval = builtins.tryEval case14.config.system.build.installBootLoader;
+    in
+    assert case14.config.boot.loader.sprout.enable == true;
+    assert case14.config.boot.loader.systemd-boot.enable == true;
+    assert toplevelEval.success == false;
+    assert installBootLoaderEval.success == false;
+    true;
 in
 assert testCase1;
 assert testCase2;
@@ -256,6 +284,7 @@ assert testCase10;
 assert testCase11;
 assert testCase12;
 assert testCase13;
+assert testCase14;
 {
   inherit
     testCase1
@@ -271,5 +300,6 @@ assert testCase13;
     testCase11
     testCase12
     testCase13
+    testCase14
     ;
 }
