@@ -3,6 +3,7 @@ from __future__ import annotations
 import errno
 import hashlib
 import importlib.util
+import io
 import json
 import os
 import shutil
@@ -14,7 +15,7 @@ import unittest
 from pathlib import Path
 from types import ModuleType
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import Mock, call, patch
 
 
 def load_sprout_installer(
@@ -3584,6 +3585,266 @@ class EspMountpointAndDeviceTest(unittest.TestCase):
                 str(ctx.exception),
                 "could not determine the partition number of ESP device /dev/sda1",
             )
+
+
+class EspDurabilityAndSyncTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp_dir_obj = tempfile.TemporaryDirectory()
+        self.temp_dir = Path(self.temp_dir_obj.name).resolve()
+        self.esp_dir = self.temp_dir / "esp"
+        self.esp_dir.mkdir(parents=True, exist_ok=True)
+
+        self.old_cwd = Path.cwd()
+        os.chdir(self.temp_dir)
+
+        self.sprout_source = self.temp_dir / "source-sprout.efi"
+        self.sprout_source.write_text("sprout-bin")
+
+        self.mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+        )
+
+    def tearDown(self) -> None:
+        os.chdir(self.old_cwd)
+        self.temp_dir_obj.cleanup()
+
+    def test_sync_filesystem_fails_when_path_cannot_be_opened(self) -> None:
+        """Verify sync_filesystem raises OSError when the directory cannot be opened."""
+        nonexistent = self.temp_dir / "nonexistent-dir"
+        with self.assertRaises(OSError) as ctx:
+            self.mod.sync_filesystem(nonexistent)
+        self.assertEqual(ctx.exception.errno, errno.ENOENT)
+
+        with patch("os.open", side_effect=OSError(errno.EACCES, "Permission denied")):
+            with self.assertRaises(OSError) as ctx2:
+                self.mod.sync_filesystem(self.esp_dir)
+            self.assertEqual(ctx2.exception.errno, errno.EACCES)
+
+    def test_sync_filesystem_fails_when_syncfs_reports_error_with_cleanup(self) -> None:
+        """Verify sync_filesystem raises OSError on syncfs failure, cleans up fd, and handles unset errno."""
+        fake_fd = 42
+        mock_close = Mock()
+
+        # Case A: syncfs fails with errno set (e.g. EIO)
+        with patch("os.open", return_value=fake_fd), patch(
+            "os.close", mock_close
+        ), patch.object(self.mod.libc, "syncfs", return_value=-1), patch(
+            "ctypes.get_errno", return_value=errno.EIO
+        ):
+            with self.assertRaises(OSError) as ctx:
+                self.mod.sync_filesystem(self.esp_dir)
+
+            self.assertEqual(ctx.exception.errno, errno.EIO)
+            self.assertEqual(ctx.exception.filename, str(self.esp_dir))
+            mock_close.assert_called_once_with(fake_fd)
+
+        # Case B: syncfs fails with errno unset (errno == 0), avoiding misleading "Success" message
+        mock_close.reset_mock()
+        with patch("os.open", return_value=fake_fd), patch(
+            "os.close", mock_close
+        ), patch.object(self.mod.libc, "syncfs", return_value=-1), patch(
+            "ctypes.get_errno", return_value=0
+        ):
+            with self.assertRaises(OSError) as ctx:
+                self.mod.sync_filesystem(self.esp_dir)
+
+            self.assertNotIn("Success", str(ctx.exception))
+            self.assertIn("could not sync", str(ctx.exception))
+            mock_close.assert_called_once_with(fake_fd)
+
+        # Case C: os.close raises OSError during cleanup, preserving the syncfs error
+        mock_close.reset_mock()
+        mock_close.side_effect = OSError(errno.EBADF, "Bad file descriptor")
+        with patch("os.open", return_value=fake_fd), patch(
+            "os.close", mock_close
+        ), patch.object(self.mod.libc, "syncfs", return_value=-1), patch(
+            "ctypes.get_errno", return_value=errno.ENOSPC
+        ):
+            with self.assertRaises(OSError) as ctx:
+                self.mod.sync_filesystem(self.esp_dir)
+
+            self.assertEqual(ctx.exception.errno, errno.ENOSPC)
+            mock_close.assert_called_once_with(fake_fd)
+
+    def test_early_sync_failure_preserves_published_files_and_skips_nvram_and_gc(
+        self,
+    ) -> None:
+        """Verify early ESP sync failure after publication does not roll back loaders/config and aborts NVRAM and GC."""
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+        kernel = self.temp_dir / "kernel.efi"
+        kernel.write_text("kernel-bytes")
+        dest_k = self.mod.artifact_path("kernel", kernel)
+        entry = self.mod.BootEntry(
+            identifier="nixos-g1",
+            title="NixOS 1",
+            sort_key="00000000000000000001",
+            kernel=dest_k,
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(
+                self.mod.BootArtifact(
+                    destination=dest_k,
+                    source=kernel,
+                    initrd_secrets=None,
+                    generation=1,
+                    critical=True,
+                ),
+            ),
+            critical=True,
+        )
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            removable=True,
+            can_touch_efi=True,
+        )
+        fallback_path = self.esp_dir / "EFI" / "BOOT" / mod.removable_loader_name()
+        primary_path = self.esp_dir / mod.SPROUT_BINARY
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+
+        primary_path.parent.mkdir(parents=True, exist_ok=True)
+        primary_path.write_text("old-primary-loader")
+        fallback_path.parent.mkdir(parents=True, exist_ok=True)
+        fallback_path.write_text("old-fallback-loader")
+        config_path.write_text("version = 1\n# previous published config")
+
+        obsolete_driver = self.esp_dir / mod.DRIVERS_DIR / "obsolete.efi"
+        obsolete_driver.parent.mkdir(parents=True, exist_ok=True)
+        obsolete_driver.write_text("obsolete-driver-content")
+
+        self.sprout_source.write_text("new-primary-loader")
+
+        mock_nvram = Mock()
+        mock_gc = Mock()
+
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ), patch.object(
+            mod,
+            "sync_filesystem",
+            side_effect=OSError(errno.EIO, "Simulated ESP sync failure at early checkpoint"),
+        ), patch.object(
+            mod, "install_nvram_entry", mock_nvram
+        ), patch.object(
+            mod, "garbage_collect", mock_gc
+        ):
+            with self.assertRaises(OSError) as ctx:
+                mod.install_bootloader(toplevel)
+            self.assertEqual(ctx.exception.errno, errno.EIO)
+            self.assertIn("Simulated ESP sync failure at early checkpoint", str(ctx.exception))
+
+        # Checkpoint failed: NVRAM and GC must NOT have run
+        mock_nvram.assert_not_called()
+        mock_gc.assert_not_called()
+
+        # Publication already committed: loaders and configuration remain updated (no rollback)
+        self.assertEqual(primary_path.read_text(), "new-primary-loader")
+        self.assertEqual(fallback_path.read_text(), "new-primary-loader")
+        self.assertIn("nixos-g1", config_path.read_text())
+
+        # Old boot files preserved (obsolete driver was not garbage-collected)
+        self.assertTrue(obsolete_driver.exists())
+        self.assertEqual(obsolete_driver.read_text(), "obsolete-driver-content")
+
+    def test_main_successful_install_failed_final_sync_exits_nonzero(self) -> None:
+        """Verify successful installation with failed final sync reports error and exits nonzero."""
+        toplevel = self.temp_dir / "toplevel"
+        stderr_buffer = io.StringIO()
+
+        with patch.object(
+            self.mod, "install_bootloader", return_value=None
+        ) as mock_install, patch.object(
+            self.mod,
+            "sync_filesystem",
+            side_effect=OSError(errno.EIO, "Simulated final sync I/O error"),
+        ), patch(
+            "sys.stderr", stderr_buffer
+        ):
+            with self.assertRaises(SystemExit) as ctx:
+                self.mod.main([str(toplevel)])
+
+            self.assertEqual(ctx.exception.code, 1)
+            mock_install.assert_called_once_with(Path(str(toplevel)))
+            self.assertIn("Simulated final sync I/O error", stderr_buffer.getvalue())
+
+    def test_main_installation_failure_preserved_when_final_sync_also_fails(self) -> None:
+        """Verify earlier installation failure remains primary exit status and error when final sync fails."""
+        toplevel = self.temp_dir / "toplevel"
+
+        # Case A: CalledProcessError during installation
+        cmd_error = subprocess.CalledProcessError(2, ["efibootmgr", "-c"])
+        stderr_buffer = io.StringIO()
+
+        with patch.object(
+            self.mod, "install_bootloader", side_effect=cmd_error
+        ), patch.object(
+            self.mod,
+            "sync_filesystem",
+            side_effect=OSError(errno.EIO, "Simulated final sync I/O error"),
+        ), patch(
+            "sys.stderr", stderr_buffer
+        ):
+            with self.assertRaises(SystemExit) as ctx:
+                self.mod.main([str(toplevel)])
+
+            self.assertEqual(ctx.exception.code, 2)
+            self.assertIs(ctx.exception.__cause__, cmd_error)
+            output = stderr_buffer.getvalue()
+            # Both primary installation error and synchronization failure are reported
+            self.assertIn("error: command failed: efibootmgr -c", output)
+            self.assertIn("Simulated final sync I/O error", output)
+
+        # Case B: RuntimeError during installation
+        runtime_error = RuntimeError("Simulated bootloader preparation failure")
+        stderr_buffer_b = io.StringIO()
+
+        with patch.object(
+            self.mod, "install_bootloader", side_effect=runtime_error
+        ), patch.object(
+            self.mod,
+            "sync_filesystem",
+            side_effect=OSError(errno.EIO, "Simulated final sync I/O error"),
+        ), patch(
+            "sys.stderr", stderr_buffer_b
+        ):
+            with self.assertRaises(SystemExit) as ctx:
+                self.mod.main([str(toplevel)])
+
+            self.assertEqual(ctx.exception.code, 1)
+            self.assertIs(ctx.exception.__cause__, runtime_error)
+            output_b = stderr_buffer_b.getvalue()
+            self.assertIn("error: Simulated bootloader preparation failure", output_b)
+            self.assertIn("Simulated final sync I/O error", output_b)
+
+        # Case C: Earlier installation failure with successful final sync preserves error and status
+        stderr_buffer_c = io.StringIO()
+        with patch.object(
+            self.mod, "install_bootloader", side_effect=cmd_error
+        ), patch.object(
+            self.mod, "sync_filesystem", return_value=None
+        ), patch(
+            "sys.stderr", stderr_buffer_c
+        ):
+            with self.assertRaises(SystemExit) as ctx:
+                self.mod.main([str(toplevel)])
+
+            self.assertEqual(ctx.exception.code, 2)
+            self.assertIs(ctx.exception.__cause__, cmd_error)
+            output_c = stderr_buffer_c.getvalue()
+            self.assertIn("error: command failed: efibootmgr -c", output_c)
+            self.assertNotIn("Simulated final sync", output_c)
+
+        # Case D: Completely successful installation and sync exits normally (exit 0)
+        with patch.object(
+            self.mod, "install_bootloader", return_value=None
+        ), patch.object(
+            self.mod, "sync_filesystem", return_value=None
+        ):
+            # Calling main([str(toplevel)]) returns normally without raising SystemExit
+            self.mod.main([str(toplevel)])
 
 
 class SproutTomlConfigConformanceTest(unittest.TestCase):

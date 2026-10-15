@@ -153,20 +153,14 @@ def fsync_path(path: Path) -> None:
 
 
 def sync_filesystem(path: Path) -> None:
-    try:
-        fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY)
-    except OSError as exc:
-        print(f"warning: could not open {path} for sync: {exc}", file=sys.stderr)
-        return
-
+    fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY)
     try:
         result = libc.syncfs(fd)
         if result != 0:
             error = ctypes.get_errno()
-            print(
-                f"warning: could not sync {path}: {os.strerror(error)}",
-                file=sys.stderr,
-            )
+            if error != 0:
+                raise OSError(error, os.strerror(error), str(path))
+            raise OSError(f"could not sync {path}: syncfs failed")
     finally:
         try:
             os.close(fd)
@@ -1699,6 +1693,8 @@ def install_bootloader(
 
         transaction.commit()
 
+    sync_filesystem(EFI_SYS_MOUNT_POINT)
+
     if CAN_TOUCH_EFI_VARIABLES:
         install_nvram_entry()
 
@@ -1708,7 +1704,7 @@ def install_bootloader(
     )
 
 
-def main() -> None:
+def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         description="Install and update the Sprout bootloader for NixOS."
     )
@@ -1718,7 +1714,10 @@ def main() -> None:
         help="The NixOS toplevel that should be the default boot entry.",
     )
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+
+    install_error: BaseException | None = None
+    exit_code: int | None = None
 
     try:
         install_bootloader(
@@ -1730,15 +1729,29 @@ def main() -> None:
             f"error: command failed: {command}",
             file=sys.stderr,
         )
-        raise SystemExit(exc.returncode) from exc
+        install_error = exc
+        exit_code = exc.returncode if exc.returncode else 1
     except (OSError, RuntimeError) as exc:
         print(
             f"error: {exc}",
             file=sys.stderr,
         )
-        raise SystemExit(1) from exc
-    finally:
+        install_error = exc
+        exit_code = 1
+
+    try:
         sync_filesystem(EFI_SYS_MOUNT_POINT)
+    except OSError as sync_exc:
+        print(
+            f"error: {sync_exc}",
+            file=sys.stderr,
+        )
+        if install_error is None:
+            raise SystemExit(1) from sync_exc
+
+    if install_error is not None:
+        assert exit_code is not None
+        raise SystemExit(exit_code) from install_error
 
 
 if __name__ == "__main__":
