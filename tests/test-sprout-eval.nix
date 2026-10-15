@@ -270,6 +270,68 @@ let
     assert toplevelEval.success == false;
     assert installBootLoaderEval.success == false;
     true;
+
+  # 15. Sprout enabled, canTouchEfiVariables = false, efiInstallAsRemovable unset:
+  #     efiInstallAsRemovable defaults to true, and the complete system configuration evaluates successfully.
+  case15 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.efi.canTouchEfiVariables = false;
+    }
+  ];
+  testCase15 =
+    let
+      toplevelEval = builtins.tryEval case15.config.system.build.toplevel;
+      failedAssertions = builtins.filter (
+        x: !x.assertion && pkgs.lib.hasInfix "boot.loader.sprout.efiInstallAsRemovable" x.message
+      ) case15.config.assertions;
+    in
+    assert case15.config.boot.loader.sprout.efiInstallAsRemovable == true;
+    assert toplevelEval.success == true;
+    assert failedAssertions == [ ];
+    true;
+
+  # 16. Sprout enabled, canTouchEfiVariables = false, efiInstallAsRemovable = false:
+  #     evaluating the complete system configuration fails, and the failed assertion
+  #     identifies the removable fallback requirement.
+  case16 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.efi.canTouchEfiVariables = false;
+      boot.loader.sprout.efiInstallAsRemovable = false;
+    }
+  ];
+  testCase16 =
+    let
+      toplevelEval = builtins.tryEval case16.config.system.build.toplevel;
+      failedAssertions = builtins.filter (
+        x: !x.assertion && pkgs.lib.hasInfix "boot.loader.sprout.efiInstallAsRemovable" x.message
+      ) case16.config.assertions;
+    in
+    assert case16.config.boot.loader.sprout.efiInstallAsRemovable == false;
+    assert toplevelEval.success == false;
+    assert failedAssertions != [ ];
+    true;
+
+  # 17. Sprout enabled, canTouchEfiVariables = true, efiInstallAsRemovable unset:
+  #     efiInstallAsRemovable defaults to false, and the complete system configuration evaluates successfully.
+  case17 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.efi.canTouchEfiVariables = true;
+    }
+  ];
+  testCase17 =
+    let
+      toplevelEval = builtins.tryEval case17.config.system.build.toplevel;
+      failedAssertions = builtins.filter (
+        x: !x.assertion && pkgs.lib.hasInfix "boot.loader.sprout.efiInstallAsRemovable" x.message
+      ) case17.config.assertions;
+    in
+    assert case17.config.boot.loader.sprout.efiInstallAsRemovable == false;
+    assert toplevelEval.success == true;
+    assert failedAssertions == [ ];
+    true;
 in
 assert testCase1;
 assert testCase2;
@@ -285,6 +347,9 @@ assert testCase11;
 assert testCase12;
 assert testCase13;
 assert testCase14;
+assert testCase15;
+assert testCase16;
+assert testCase17;
 {
   inherit
     testCase1
@@ -301,5 +366,8 @@ assert testCase14;
     testCase12
     testCase13
     testCase14
+    testCase15
+    testCase16
+    testCase17
     ;
 }
