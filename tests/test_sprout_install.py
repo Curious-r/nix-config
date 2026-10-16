@@ -238,9 +238,9 @@ class SproutInstallRegressionTest(unittest.TestCase):
         self.assertTrue(dest_v1.exists())
         self.assertEqual(dest_v1.read_text(), "content-v1")
 
-        # Newly copied v2 driver exists on ESP, but is not referenced
+        # Newly copied v2 driver is rolled back because publication failed
         dest_v2 = self.esp_dir / mod_v2.driver_path("btrfs", src_v2)
-        self.assertTrue(dest_v2.exists())
+        self.assertFalse(dest_v2.exists())
         self.assertNotIn(dest_v2.name, config_path.read_text())
 
     def test_garbage_collection_removes_obsolete_driver_versions_after_publication(
@@ -4164,6 +4164,474 @@ class SproutTomlConfigConformanceTest(unittest.TestCase):
             chainload["path"],
             r"\EFI\nixos\kernels\linux 6.12.efi",
         )
+
+class EspArtifactTransactionAndRetryTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp_dir_obj = tempfile.TemporaryDirectory()
+        self.temp_dir = Path(self.temp_dir_obj.name).resolve()
+        self.esp_dir = self.temp_dir / "esp"
+        self.esp_dir.mkdir(parents=True, exist_ok=True)
+
+        self.old_cwd = Path.cwd()
+        os.chdir(self.temp_dir)
+
+        self.sprout_source = self.temp_dir / "source-sprout.efi"
+        self.sprout_source.write_text("sprout-bin-content")
+
+        self.mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+        )
+
+    def tearDown(self) -> None:
+        os.chdir(self.old_cwd)
+        self.temp_dir_obj.cleanup()
+
+    def _create_entry(
+        self,
+        identifier: str,
+        generation: int,
+        critical: bool = True,
+        kernel_data: str = "kernel-data",
+        initrd_data: str | None = "initrd-data",
+    ) -> Any:
+        kernel_src = self.temp_dir / f"kernel-{identifier}.efi"
+        kernel_src.write_text(kernel_data)
+        dest_k = self.mod.artifact_path("kernel", kernel_src)
+
+        artifacts = [
+            self.mod.BootArtifact(
+                destination=dest_k,
+                source=kernel_src,
+                initrd_secrets=None,
+                generation=generation,
+                critical=critical,
+            )
+        ]
+
+        initrd_dests = []
+        if initrd_data is not None:
+            initrd_src = self.temp_dir / f"initrd-{identifier}.img"
+            initrd_src.write_text(initrd_data)
+            dest_i = self.mod.artifact_path("initrd", initrd_src)
+            initrd_dests.append(dest_i)
+            artifacts.append(
+                self.mod.BootArtifact(
+                    destination=dest_i,
+                    source=initrd_src,
+                    initrd_secrets=None,
+                    generation=generation,
+                    critical=critical,
+                )
+            )
+
+        return self.mod.BootEntry(
+            identifier=identifier,
+            title=f"NixOS {generation}",
+            sort_key=f"{generation:020d}",
+            kernel=dest_k,
+            initrds=tuple(initrd_dests),
+            options=("init=/init",),
+            artifacts=tuple(artifacts),
+            critical=critical,
+        )
+
+    def test_partial_artifact_staging_enospc_rolls_back_created_and_preserves_published(
+        self,
+    ) -> None:
+        """Verify ENOSPC while writing subsequent artifact cleans up staged files and leaves published state intact."""
+        entry1 = self._create_entry("nixos-g1", 1, kernel_data="k1-bytes", initrd_data="i1-bytes")
+        toplevel1 = self.temp_dir / "toplevel1"
+        toplevel1.mkdir(parents=True, exist_ok=True)
+
+        with patch.object(self.mod, "check_mountpoint"), patch.object(
+            self.mod, "collect_entries", return_value=[entry1]
+        ):
+            self.mod.install_bootloader(toplevel1)
+
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+        self.assertTrue(config_path.exists())
+        orig_config = config_path.read_text()
+        dest_k1 = self.esp_dir / entry1.kernel
+        dest_i1 = self.esp_dir / entry1.initrds[0]
+        self.assertTrue(dest_k1.exists())
+        self.assertTrue(dest_i1.exists())
+
+        # Attempt to install generation 2: kernel succeeds, initrd fails with ENOSPC
+        entry2 = self._create_entry("nixos-g2", 2, kernel_data="k2-bytes", initrd_data="i2-bytes")
+        toplevel2 = self.temp_dir / "toplevel2"
+        toplevel2.mkdir(parents=True, exist_ok=True)
+        dest_k2 = self.esp_dir / entry2.kernel
+        dest_i2 = self.esp_dir / entry2.initrds[0]
+
+        original_atomic_copy = self.mod.atomic_copy
+
+        def failing_atomic_copy(source: Path, destination: Path, replace: bool = False) -> None:
+            if destination == dest_i2:
+                raise OSError(errno.ENOSPC, "No space left on device")
+            original_atomic_copy(source, destination, replace=replace)
+
+        with patch.object(self.mod, "check_mountpoint"), patch.object(
+            self.mod, "collect_entries", return_value=[entry2, entry1]
+        ), patch.object(self.mod, "atomic_copy", side_effect=failing_atomic_copy):
+            with self.assertRaises(OSError) as ctx:
+                self.mod.install_bootloader(toplevel2)
+            self.assertEqual(ctx.exception.errno, errno.ENOSPC)
+
+        # Previously published sprout.toml and referenced generation 1 artifacts are unchanged
+        self.assertEqual(config_path.read_text(), orig_config)
+        self.assertTrue(dest_k1.exists())
+        self.assertTrue(dest_i1.exists())
+
+        # Newly staged generation 2 kernel (copied before failure) was rolled back and removed
+        self.assertFalse(dest_k2.exists())
+        self.assertFalse(dest_i2.exists())
+
+        # No leftover temporary files
+        tmp_files = list(self.esp_dir.rglob("*.tmp"))
+        self.assertEqual(tmp_files, [])
+
+    def test_driver_staging_failure_removes_unreferenced_drivers(self) -> None:
+        """Verify ENOSPC during driver staging removes unreferenced drivers and preserves prior state."""
+        src_btrfs_v1 = self.temp_dir / "driver-btrfs-v1.efi"
+        src_btrfs_v1.write_text("btrfs-v1")
+        entry1 = self._create_entry("nixos-g1", 1)
+        toplevel1 = self.temp_dir / "toplevel1"
+        toplevel1.mkdir(parents=True, exist_ok=True)
+
+        mod1 = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers={"btrfs": str(src_btrfs_v1)},
+        )
+        with patch.object(mod1, "check_mountpoint"), patch.object(
+            mod1, "collect_entries", return_value=[entry1]
+        ):
+            mod1.install_bootloader(toplevel1)
+
+        config_path = self.esp_dir / mod1.SPROUT_CONFIG
+        orig_config = config_path.read_text()
+        dest_btrfs_v1 = self.esp_dir / mod1.driver_path("btrfs", src_btrfs_v1)
+        self.assertTrue(dest_btrfs_v1.exists())
+
+        # Staging with btrfs v2 and ext4: btrfs v2 succeeds, ext4 fails with ENOSPC
+        src_btrfs_v2 = self.temp_dir / "driver-btrfs-v2.efi"
+        src_btrfs_v2.write_text("btrfs-v2")
+        src_ext4 = self.temp_dir / "driver-ext4.efi"
+        src_ext4.write_text("ext4-v1")
+
+        mod2 = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers={"btrfs": str(src_btrfs_v2), "ext4": str(src_ext4)},
+        )
+        dest_btrfs_v2 = self.esp_dir / mod2.driver_path("btrfs", src_btrfs_v2)
+        dest_ext4 = self.esp_dir / mod2.driver_path("ext4", src_ext4)
+
+        original_atomic_copy = mod2.atomic_copy
+
+        def failing_atomic_copy(source: Path, destination: Path, replace: bool = False) -> None:
+            if destination == dest_ext4:
+                raise OSError(errno.ENOSPC, "No space left on device")
+            original_atomic_copy(source, destination, replace=replace)
+
+        with patch.object(mod2, "check_mountpoint"), patch.object(
+            mod2, "collect_entries", return_value=[entry1]
+        ), patch.object(mod2, "atomic_copy", side_effect=failing_atomic_copy):
+            with self.assertRaises(OSError) as ctx:
+                mod2.install_bootloader(toplevel1)
+            self.assertEqual(ctx.exception.errno, errno.ENOSPC)
+
+        # Prior config and v1 driver remain intact
+        self.assertEqual(config_path.read_text(), orig_config)
+        self.assertTrue(dest_btrfs_v1.exists())
+
+        # Unreferenced btrfs-v2 driver was rolled back
+        self.assertFalse(dest_btrfs_v2.exists())
+        self.assertFalse(dest_ext4.exists())
+
+    def test_configuration_publication_failure_rolls_back_artifacts_and_loaders(
+        self,
+    ) -> None:
+        """Verify ENOSPC during publication leaves old config/loader intact and cleans up artifacts."""
+        entry1 = self._create_entry("nixos-g1", 1, kernel_data="k1-bytes", initrd_data="i1-bytes")
+        toplevel1 = self.temp_dir / "toplevel1"
+        toplevel1.mkdir(parents=True, exist_ok=True)
+
+        with patch.object(self.mod, "check_mountpoint"), patch.object(
+            self.mod, "collect_entries", return_value=[entry1]
+        ):
+            self.mod.install_bootloader(toplevel1)
+
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+        orig_config = config_path.read_text()
+        loader_path = self.esp_dir / self.mod.SPROUT_BINARY
+        orig_loader_bytes = loader_path.read_bytes()
+        dest_k1 = self.esp_dir / entry1.kernel
+        dest_i1 = self.esp_dir / entry1.initrds[0]
+
+        # Prepare generation 2 and update Sprout binary source
+        entry2 = self._create_entry("nixos-g2", 2, kernel_data="k2-bytes", initrd_data="i2-bytes")
+        toplevel2 = self.temp_dir / "toplevel2"
+        toplevel2.mkdir(parents=True, exist_ok=True)
+        dest_k2 = self.esp_dir / entry2.kernel
+        dest_i2 = self.esp_dir / entry2.initrds[0]
+        self.sprout_source.write_text("sprout-bin-v2-updated")
+
+        original_write_text = self.mod.atomic_write_text
+
+        def failing_write_text(dest: Path, contents: str) -> None:
+            if dest == config_path:
+                raise OSError(errno.ENOSPC, "No space left on device")
+            original_write_text(dest, contents)
+
+        with patch.object(self.mod, "check_mountpoint"), patch.object(
+            self.mod, "collect_entries", return_value=[entry2, entry1]
+        ), patch.object(self.mod, "atomic_write_text", side_effect=failing_write_text):
+            with self.assertRaises(OSError) as ctx:
+                self.mod.install_bootloader(toplevel2)
+            self.assertEqual(ctx.exception.errno, errno.ENOSPC)
+
+        # Config and loader are restored/intact
+        self.assertEqual(config_path.read_text(), orig_config)
+        self.assertEqual(loader_path.read_bytes(), orig_loader_bytes)
+
+        # Generation 1 artifacts remain intact
+        self.assertTrue(dest_k1.exists())
+        self.assertTrue(dest_i1.exists())
+
+        # Generation 2 artifacts are rolled back
+        self.assertFalse(dest_k2.exists())
+        self.assertFalse(dest_i2.exists())
+
+    def test_retry_after_failure_converges_cleanly(self) -> None:
+        """Verify successful retry after pre-publication failure converges cleanly without leftover orphans."""
+        entry1 = self._create_entry("nixos-g1", 1, kernel_data="k1-bytes", initrd_data="i1-bytes")
+        toplevel1 = self.temp_dir / "toplevel1"
+        toplevel1.mkdir(parents=True, exist_ok=True)
+
+        with patch.object(self.mod, "check_mountpoint"), patch.object(
+            self.mod, "collect_entries", return_value=[entry1]
+        ):
+            self.mod.install_bootloader(toplevel1)
+
+        entry2 = self._create_entry("nixos-g2", 2, kernel_data="k2-bytes", initrd_data="i2-bytes")
+        toplevel2 = self.temp_dir / "toplevel2"
+        toplevel2.mkdir(parents=True, exist_ok=True)
+        dest_k2 = self.esp_dir / entry2.kernel
+        dest_i2 = self.esp_dir / entry2.initrds[0]
+
+        original_atomic_copy = self.mod.atomic_copy
+
+        def failing_copy(source: Path, destination: Path, replace: bool = False) -> None:
+            if destination == dest_i2:
+                raise OSError(errno.ENOSPC, "No space left on device")
+            original_atomic_copy(source, destination, replace=replace)
+
+        # Step 1: Attempt fails with ENOSPC
+        with patch.object(self.mod, "check_mountpoint"), patch.object(
+            self.mod, "collect_entries", return_value=[entry2, entry1]
+        ), patch.object(self.mod, "atomic_copy", side_effect=failing_copy):
+            with self.assertRaises(OSError):
+                self.mod.install_bootloader(toplevel2)
+
+        self.assertFalse(dest_k2.exists())
+        self.assertFalse(dest_i2.exists())
+
+        # Step 2: Retry with injected failure removed succeeds completely
+        with patch.object(self.mod, "check_mountpoint"), patch.object(
+            self.mod, "collect_entries", return_value=[entry2, entry1]
+        ):
+            self.mod.install_bootloader(toplevel2)
+
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+        config_text = config_path.read_text()
+        self.assertIn("nixos-g2", config_text)
+        self.assertIn("default-entry = \"nixos-g2\"", config_text)
+
+        # Both generation 1 and generation 2 artifacts exist and are referenced
+        dest_k1 = self.esp_dir / entry1.kernel
+        dest_i1 = self.esp_dir / entry1.initrds[0]
+        self.assertTrue(dest_k1.exists())
+        self.assertTrue(dest_i1.exists())
+        self.assertTrue(dest_k2.exists())
+        self.assertTrue(dest_i2.exists())
+
+    def test_post_publication_failure_retains_newly_published_artifacts(
+        self,
+    ) -> None:
+        """Verify post-publication sync or NVRAM failure retains all newly published artifacts."""
+        entry1 = self._create_entry("nixos-g1", 1, kernel_data="k1-bytes", initrd_data="i1-bytes")
+        toplevel1 = self.temp_dir / "toplevel1"
+        toplevel1.mkdir(parents=True, exist_ok=True)
+
+        with patch.object(self.mod, "check_mountpoint"), patch.object(
+            self.mod, "collect_entries", return_value=[entry1]
+        ):
+            self.mod.install_bootloader(toplevel1)
+
+        entry2 = self._create_entry("nixos-g2", 2, kernel_data="k2-bytes", initrd_data="i2-bytes")
+        toplevel2 = self.temp_dir / "toplevel2"
+        toplevel2.mkdir(parents=True, exist_ok=True)
+        dest_k2 = self.esp_dir / entry2.kernel
+        dest_i2 = self.esp_dir / entry2.initrds[0]
+
+        # Case A: Early sync failure after publication
+        with patch.object(self.mod, "check_mountpoint"), patch.object(
+            self.mod, "collect_entries", return_value=[entry2, entry1]
+        ), patch.object(
+            self.mod, "sync_filesystem", side_effect=OSError(errno.EIO, "Sync I/O error")
+        ):
+            with self.assertRaises(OSError) as ctx:
+                self.mod.install_bootloader(toplevel2)
+            self.assertEqual(ctx.exception.errno, errno.EIO)
+
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+        self.assertIn("nixos-g2", config_path.read_text())
+        self.assertTrue(dest_k2.exists())
+        self.assertTrue(dest_i2.exists())
+
+        # Case B: NVRAM failure after publication
+        mod_nvram = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            can_touch_efi=True,
+        )
+        entry3 = self._create_entry("nixos-g3", 3, kernel_data="k3-bytes", initrd_data="i3-bytes")
+        toplevel3 = self.temp_dir / "toplevel3"
+        toplevel3.mkdir(parents=True, exist_ok=True)
+        dest_k3 = self.esp_dir / entry3.kernel
+        dest_i3 = self.esp_dir / entry3.initrds[0]
+
+        with patch.object(mod_nvram, "check_mountpoint"), patch.object(
+            mod_nvram, "collect_entries", return_value=[entry3, entry2, entry1]
+        ), patch.object(
+            mod_nvram,
+            "install_nvram_entry",
+            side_effect=RuntimeError("simulated NVRAM failure"),
+        ):
+            with self.assertRaises(RuntimeError) as ctx_nvram:
+                mod_nvram.install_bootloader(toplevel3)
+            self.assertIn("simulated NVRAM failure", str(ctx_nvram.exception))
+
+        self.assertIn("nixos-g3", config_path.read_text())
+        self.assertTrue(dest_k3.exists())
+        self.assertTrue(dest_i3.exists())
+
+    def test_cleanup_failure_reports_warning_without_replacing_primary_error(
+        self,
+    ) -> None:
+        """Verify rollback cleanup error logs warning to stderr without replacing primary error or touching pre-existing files."""
+        entry1 = self._create_entry("nixos-g1", 1, kernel_data="k1-bytes", initrd_data="i1-bytes")
+        toplevel1 = self.temp_dir / "toplevel1"
+        toplevel1.mkdir(parents=True, exist_ok=True)
+
+        with patch.object(self.mod, "check_mountpoint"), patch.object(
+            self.mod, "collect_entries", return_value=[entry1]
+        ):
+            self.mod.install_bootloader(toplevel1)
+
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+        orig_config = config_path.read_text()
+        dest_k1 = self.esp_dir / entry1.kernel
+        dest_i1 = self.esp_dir / entry1.initrds[0]
+
+        entry2 = self._create_entry("nixos-g2", 2, kernel_data="k2-bytes", initrd_data="i2-bytes")
+        toplevel2 = self.temp_dir / "toplevel2"
+        toplevel2.mkdir(parents=True, exist_ok=True)
+        dest_k2 = self.esp_dir / entry2.kernel
+        dest_i2 = self.esp_dir / entry2.initrds[0]
+
+        original_atomic_copy = self.mod.atomic_copy
+
+        def failing_copy(source: Path, destination: Path, replace: bool = False) -> None:
+            if destination == dest_i2:
+                raise OSError(errno.ENOSPC, "No space left on device")
+            original_atomic_copy(source, destination, replace=replace)
+
+        original_unlink = os.unlink
+
+        def failing_unlink(path_obj: Any, *args: Any, **kwargs: Any) -> None:
+            if Path(path_obj) == dest_k2:
+                raise OSError(errno.EPERM, "Operation not permitted")
+            original_unlink(path_obj, *args, **kwargs)
+
+        stderr_capture = io.StringIO()
+        with patch.object(self.mod, "check_mountpoint"), patch.object(
+            self.mod, "collect_entries", return_value=[entry1, entry2]
+        ), patch.object(
+            self.mod, "atomic_copy", side_effect=failing_copy
+        ), patch(
+            "os.unlink", side_effect=failing_unlink
+        ), patch("sys.stderr", stderr_capture):
+            with self.assertRaises(OSError) as ctx:
+                self.mod.install_bootloader(toplevel2)
+            self.assertEqual(ctx.exception.errno, errno.ENOSPC)
+
+        # Primary error ENOSPC was not masked
+        self.assertEqual(ctx.exception.errno, errno.ENOSPC)
+
+        # Warning was reported to stderr
+        err_output = stderr_capture.getvalue()
+        self.assertIn("warning: failed to clean up uncommitted artifact", err_output)
+        self.assertIn("Operation not permitted", err_output)
+
+        # Pre-existing published config and artifacts were not deleted
+        self.assertEqual(config_path.read_text(), orig_config)
+        self.assertTrue(dest_k1.exists())
+        self.assertTrue(dest_i1.exists())
+
+    def test_missing_referenced_file_recreated_during_attempt_is_protected(
+        self,
+    ) -> None:
+        """Verify file referenced by published config that was missing and recreated is protected from rollback."""
+        entry1 = self._create_entry("nixos-g1", 1, kernel_data="k1-bytes", initrd_data="i1-bytes")
+        toplevel1 = self.temp_dir / "toplevel1"
+        toplevel1.mkdir(parents=True, exist_ok=True)
+
+        with patch.object(self.mod, "check_mountpoint"), patch.object(
+            self.mod, "collect_entries", return_value=[entry1]
+        ):
+            self.mod.install_bootloader(toplevel1)
+
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+        orig_config = config_path.read_text()
+        dest_k1 = self.esp_dir / entry1.kernel
+        dest_i1 = self.esp_dir / entry1.initrds[0]
+
+        # Simulate kernel 1 having been deleted from ESP while still referenced in sprout.toml
+        dest_k1.unlink()
+        self.assertFalse(dest_k1.exists())
+
+        # Start new installation with gen 1 and gen 2:
+        # kernel 1 is recreated, kernel 2 is created, initrd 2 fails with ENOSPC
+        entry2 = self._create_entry("nixos-g2", 2, kernel_data="k2-bytes", initrd_data="i2-bytes")
+        toplevel2 = self.temp_dir / "toplevel2"
+        toplevel2.mkdir(parents=True, exist_ok=True)
+        dest_k2 = self.esp_dir / entry2.kernel
+        dest_i2 = self.esp_dir / entry2.initrds[0]
+
+        original_atomic_copy = self.mod.atomic_copy
+
+        def failing_copy(source: Path, destination: Path, replace: bool = False) -> None:
+            if destination == dest_i2:
+                raise OSError(errno.ENOSPC, "No space left on device")
+            original_atomic_copy(source, destination, replace=replace)
+
+        with patch.object(self.mod, "check_mountpoint"), patch.object(
+            self.mod, "collect_entries", return_value=[entry1, entry2]
+        ), patch.object(self.mod, "atomic_copy", side_effect=failing_copy):
+            with self.assertRaises(OSError) as ctx:
+                self.mod.install_bootloader(toplevel2)
+            self.assertEqual(ctx.exception.errno, errno.ENOSPC)
+
+        # Kernel 2 (not referenced by published config) was cleaned up
+        self.assertFalse(dest_k2.exists())
+
+        # Kernel 1 was protected because published sprout.toml references it
+        self.assertTrue(dest_k1.exists())
+        self.assertTrue(dest_i1.exists())
+        self.assertEqual(config_path.read_text(), orig_config)
 
 
 if __name__ == "__main__":

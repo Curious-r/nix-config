@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Sequence
@@ -973,17 +974,23 @@ def write_artifact(
     artifact: BootArtifact,
 ) -> bool:
     destination = esp_path(artifact.destination)
+    already_existed = destination.exists()
 
     if artifact.initrd_secrets is not None:
         if (
-            destination.exists()
+            already_existed
             and not artifact.critical
         ):
             # Older generations can retain an existing valid initrd when
             # secret material is no longer available.
             return True
 
-        return write_initrd_with_secrets(artifact)
+        success = write_initrd_with_secrets(artifact)
+        if success and not already_existed:
+            tx = StagedArtifactTransaction.current()
+            if tx is not None and destination.exists():
+                tx.record_created(destination)
+        return success
 
     try:
         atomic_copy(
@@ -1004,6 +1011,11 @@ def write_artifact(
             file=sys.stderr,
         )
         return False
+
+    if not already_existed:
+        tx = StagedArtifactTransaction.current()
+        if tx is not None and destination.exists():
+            tx.record_created(destination)
 
     return True
 
@@ -1113,11 +1125,19 @@ def install_drivers() -> dict[str, Path]:
     installed: dict[str, Path] = {}
 
     for name, source, destination in prepared:
+        target = esp_path(destination)
+        already_existed = target.exists()
+
         atomic_copy(
             source,
-            esp_path(destination),
+            target,
             replace=False,
         )
+
+        if not already_existed:
+            tx = StagedArtifactTransaction.current()
+            if tx is not None and target.exists():
+                tx.record_created(target)
 
         installed[name] = destination
 
@@ -1319,6 +1339,186 @@ class FixedLoaderTransaction:
                 except OSError:
                     pass
                 self._temp_dir = None
+
+
+def uefi_to_relative_path(uefi: str) -> Path:
+    clean = uefi.replace("\\", "/").strip().lstrip("/")
+    return Path(clean)
+
+
+def published_config_referenced_files() -> set[Path]:
+    config_path = esp_path(SPROUT_CONFIG)
+    if not config_path.is_file():
+        return set()
+
+    try:
+        data = tomllib.loads(config_path.read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError):
+        return set()
+
+    referenced: set[Path] = set()
+
+    drivers_table = data.get("drivers")
+    if isinstance(drivers_table, dict):
+        for driver_entry in drivers_table.values():
+            if isinstance(driver_entry, dict):
+                driver_path_str = driver_entry.get("path")
+                if isinstance(driver_path_str, str):
+                    try:
+                        referenced.add(
+                            esp_path(uefi_to_relative_path(driver_path_str))
+                        )
+                    except RuntimeError:
+                        pass
+
+    actions_table = data.get("actions")
+    if isinstance(actions_table, dict):
+        for action_entry in actions_table.values():
+            if isinstance(action_entry, dict):
+                action_path = action_entry.get("path")
+                if isinstance(action_path, str):
+                    try:
+                        referenced.add(
+                            esp_path(uefi_to_relative_path(action_path))
+                        )
+                    except RuntimeError:
+                        pass
+
+                chainload = action_entry.get("chainload")
+                if isinstance(chainload, dict):
+                    kernel_path_str = chainload.get("path")
+                    if isinstance(kernel_path_str, str):
+                        try:
+                            referenced.add(
+                                esp_path(
+                                    uefi_to_relative_path(kernel_path_str)
+                                )
+                            )
+                        except RuntimeError:
+                            pass
+
+                    initrd_str = chainload.get("linux-initrd")
+                    if isinstance(initrd_str, str):
+                        try:
+                            referenced.add(
+                                esp_path(uefi_to_relative_path(initrd_str))
+                            )
+                        except RuntimeError:
+                            pass
+
+                    chain = chainload.get("linux-initrd-chain")
+                    if isinstance(chain, list):
+                        for initrd_item in chain:
+                            if isinstance(initrd_item, str):
+                                try:
+                                    referenced.add(
+                                        esp_path(
+                                            uefi_to_relative_path(initrd_item)
+                                        )
+                                    )
+                                except RuntimeError:
+                                    pass
+
+    return referenced
+
+
+class StagedArtifactTransaction:
+    """Tracks and rolls back newly created staging artifacts on pre-publication failure."""
+
+    _active: StagedArtifactTransaction | None = None
+
+    def __init__(self) -> None:
+        self.created_files: list[Path] = []
+        self.pre_existing_files: set[Path] = set()
+        self.protected_files: set[Path] = set()
+        self._committed: bool = False
+        self._rolled_back: bool = False
+
+    @classmethod
+    def current(cls) -> StagedArtifactTransaction | None:
+        return cls._active
+
+    def record_created(self, path: Path) -> None:
+        if not self._committed and not self._rolled_back:
+            if (
+                path not in self.pre_existing_files
+                and path not in self.protected_files
+            ):
+                if path not in self.created_files:
+                    self.created_files.append(path)
+
+    def __enter__(self) -> StagedArtifactTransaction:
+        StagedArtifactTransaction._active = self
+        self._scan_existing_and_protected()
+        return self
+
+    def _scan_existing_and_protected(self) -> None:
+        self.protected_files = published_config_referenced_files()
+        try:
+            self.protected_files.update(fixed_loader_paths())
+        except (RuntimeError, OSError):
+            pass
+
+        for directory in (
+            esp_path(NIXOS_DIR),
+            esp_path(DRIVERS_DIR),
+        ):
+            if directory.exists():
+                for path in directory.rglob("*"):
+                    if path.is_file():
+                        self.pre_existing_files.add(path)
+
+    def commit(self) -> None:
+        self._committed = True
+        self.created_files.clear()
+
+    def rollback(self) -> None:
+        if self._rolled_back or self._committed:
+            return
+        self._rolled_back = True
+
+        for path in reversed(self.created_files):
+            if (
+                path in self.pre_existing_files
+                or path in self.protected_files
+            ):
+                continue
+
+            try:
+                path.unlink(missing_ok=True)
+                fsync_path(path.parent)
+            except OSError as exc:
+                print(
+                    f"warning: failed to clean up uncommitted artifact {path}: {exc}",
+                    file=sys.stderr,
+                )
+
+            try:
+                parent = path.parent
+                if parent not in (
+                    esp_path(NIXOS_DIR),
+                    esp_path(DRIVERS_DIR),
+                    esp_path(SPROUT_DIR),
+                    EFI_SYS_MOUNT_POINT,
+                ):
+                    parent.rmdir()
+            except OSError:
+                pass
+
+        self.created_files.clear()
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: Any,
+    ) -> None:
+        try:
+            if exc_type is not None and not self._committed:
+                self.rollback()
+        finally:
+            if StagedArtifactTransaction._active is self:
+                StagedArtifactTransaction._active = None
 
 
 def check_mountpoint() -> None:
@@ -1660,38 +1860,40 @@ def install_bootloader(
         exist_ok=True,
     )
 
-    entries = write_boot_files(entries)
+    with StagedArtifactTransaction() as artifact_tx:
+        entries = write_boot_files(entries)
 
-    if not entries:
-        raise RuntimeError(
-            "no valid boot entries remain; refusing to publish configuration"
-        )
+        if not entries:
+            raise RuntimeError(
+                "no valid boot entries remain; refusing to publish configuration"
+            )
 
-    default_entry = find_default_entry(entries)
+        default_entry = find_default_entry(entries)
 
-    drivers = install_drivers()
+        drivers = install_drivers()
 
-    # Install the loader before publishing the new configuration. At this
-    # point all boot artifacts needed by the new configuration already exist.
-    with FixedLoaderTransaction(fixed_loader_paths()) as transaction:
-        install_sprout_binary()
+        # Install the loader before publishing the new configuration. At this
+        # point all boot artifacts needed by the new configuration already exist.
+        with FixedLoaderTransaction(fixed_loader_paths()) as transaction:
+            install_sprout_binary()
 
-        if EFI_INSTALL_AS_REMOVABLE:
-            install_removable_loader()
+            if EFI_INSTALL_AS_REMOVABLE:
+                install_removable_loader()
 
-        configuration = generate_sprout_config(
-            entries,
-            default_entry.identifier,
-            drivers,
-        )
+            configuration = generate_sprout_config(
+                entries,
+                default_entry.identifier,
+                drivers,
+            )
 
-        # Atomically replace sprout.toml only after all referenced files are present.
-        atomic_write_text(
-            esp_path(SPROUT_CONFIG),
-            configuration,
-        )
+            # Atomically replace sprout.toml only after all referenced files are present.
+            atomic_write_text(
+                esp_path(SPROUT_CONFIG),
+                configuration,
+            )
 
-        transaction.commit()
+            transaction.commit()
+            artifact_tx.commit()
 
     sync_filesystem(EFI_SYS_MOUNT_POINT)
 
