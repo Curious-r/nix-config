@@ -1716,38 +1716,41 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     args = parser.parse_args(argv)
 
+    install_succeeded = False
     install_error: BaseException | None = None
     exit_code: int | None = None
 
     try:
-        install_bootloader(
-            Path(args.default_config),
-        )
-    except subprocess.CalledProcessError as exc:
-        command = " ".join(str(part) for part in exc.cmd)
-        print(
-            f"error: command failed: {command}",
-            file=sys.stderr,
-        )
-        install_error = exc
-        exit_code = exc.returncode if exc.returncode else 1
-    except (OSError, RuntimeError) as exc:
-        print(
-            f"error: {exc}",
-            file=sys.stderr,
-        )
-        install_error = exc
-        exit_code = 1
-
-    try:
-        sync_filesystem(EFI_SYS_MOUNT_POINT)
-    except OSError as sync_exc:
-        print(
-            f"error: {sync_exc}",
-            file=sys.stderr,
-        )
-        if install_error is None:
-            raise SystemExit(1) from sync_exc
+        try:
+            install_bootloader(
+                Path(args.default_config),
+            )
+            install_succeeded = True
+        except subprocess.CalledProcessError as exc:
+            command = " ".join(str(part) for part in exc.cmd)
+            print(
+                f"error: command failed: {command}",
+                file=sys.stderr,
+            )
+            install_error = exc
+            exit_code = exc.returncode if exc.returncode else 1
+        except (OSError, RuntimeError) as exc:
+            print(
+                f"error: {exc}",
+                file=sys.stderr,
+            )
+            install_error = exc
+            exit_code = 1
+    finally:
+        try:
+            sync_filesystem(EFI_SYS_MOUNT_POINT)
+        except OSError as sync_exc:
+            print(
+                f"error: {sync_exc}",
+                file=sys.stderr,
+            )
+            if install_succeeded:
+                raise SystemExit(1) from sync_exc
 
     if install_error is not None:
         assert exit_code is not None

@@ -3846,6 +3846,69 @@ class EspDurabilityAndSyncTest(unittest.TestCase):
             # Calling main([str(toplevel)]) returns normally without raising SystemExit
             self.mod.main([str(toplevel)])
 
+    def test_main_unexpected_exception_triggers_final_sync_and_preserves_exception(
+        self,
+    ) -> None:
+        """Verify an unexpected exception during installation triggers final sync and is propagated."""
+        toplevel = self.temp_dir / "toplevel"
+        mock_sync = Mock()
+
+        with patch.object(
+            self.mod,
+            "install_bootloader",
+            side_effect=ValueError("unexpected installation error"),
+        ), patch.object(self.mod, "sync_filesystem", mock_sync):
+            with self.assertRaises(ValueError) as ctx:
+                self.mod.main([str(toplevel)])
+
+            self.assertEqual(str(ctx.exception), "unexpected installation error")
+            mock_sync.assert_called_once_with(self.mod.EFI_SYS_MOUNT_POINT)
+
+    def test_main_unexpected_exception_with_final_sync_failure_propagates_original_and_reports_sync(
+        self,
+    ) -> None:
+        """Verify unexpected exception is preserved and not masked when final sync also fails."""
+        toplevel = self.temp_dir / "toplevel"
+        stderr_buffer = io.StringIO()
+
+        with patch.object(
+            self.mod,
+            "install_bootloader",
+            side_effect=ValueError("unexpected configuration issue"),
+        ), patch.object(
+            self.mod,
+            "sync_filesystem",
+            side_effect=OSError(errno.EIO, "Simulated final sync I/O error"),
+        ), patch(
+            "sys.stderr", stderr_buffer
+        ):
+            with self.assertRaises(ValueError) as ctx:
+                self.mod.main([str(toplevel)])
+
+            self.assertEqual(str(ctx.exception), "unexpected configuration issue")
+            self.assertIn("Simulated final sync I/O error", stderr_buffer.getvalue())
+
+    def test_main_interruption_triggers_final_sync_and_propagates_unmasked(
+        self,
+    ) -> None:
+        """Verify interruption such as KeyboardInterrupt triggers final sync and propagates unmasked."""
+        toplevel = self.temp_dir / "toplevel"
+        stderr_buffer = io.StringIO()
+
+        with patch.object(
+            self.mod, "install_bootloader", side_effect=KeyboardInterrupt()
+        ), patch.object(
+            self.mod,
+            "sync_filesystem",
+            side_effect=OSError(errno.EIO, "Simulated final sync I/O error"),
+        ), patch(
+            "sys.stderr", stderr_buffer
+        ):
+            with self.assertRaises(KeyboardInterrupt):
+                self.mod.main([str(toplevel)])
+
+            self.assertIn("Simulated final sync I/O error", stderr_buffer.getvalue())
+
 
 class SproutTomlConfigConformanceTest(unittest.TestCase):
     def setUp(self) -> None:
