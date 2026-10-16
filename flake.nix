@@ -3,8 +3,7 @@
 
   nixConfig = {
     extra-substituters = [
-      "https://mirrors.tuna.tsinghua.edu.cn/nix-channels/store"
-      "https://mirrors.sjtug.sjtu.edu.cn/nix-channels/store"
+      "https://mirrors.cernet.edu.cn/nix-channels/store?priority=10"
       "https://nix-community.cachix.org"
       "https://cache.numtide.com"
       "https://curious.cachix.org"
