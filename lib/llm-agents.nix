@@ -53,6 +53,8 @@ let
         mkUpdater
         ;
 
+      mkCodesignCheck = self.callPackage "${source}/lib/mk-codesign-check.nix" { };
+
       # Keep the same package-set fixed point expected by upstream packages.
       # The upstream `default` launcher is intentionally excluded above because
       # it eagerly walks this entire set and causes recursive evaluation in the
