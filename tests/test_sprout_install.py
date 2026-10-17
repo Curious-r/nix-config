@@ -4786,6 +4786,312 @@ class EspArtifactTransactionAndRetryTest(unittest.TestCase):
             self.mod.published_config_referenced_files()
         self.assertIn("references invalid kernel path", str(ctx5.exception))
 
+    def test_version_validation_accepts_one_and_rejects_missing_unsupported_non_integer(
+        self,
+    ) -> None:
+        """Verify published configuration version must be integer 1."""
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Valid version = 1
+        config_path.write_text("version = 1\n")
+        self.assertEqual(self.mod.published_config_referenced_files(), set())
+
+        # Missing version
+        config_path.write_text("[options]\ndefault-entry = 'foo'\n")
+        with self.assertRaises(RuntimeError) as ctx_missing:
+            self.mod.published_config_referenced_files()
+        self.assertIn("missing 'version' field", str(ctx_missing.exception))
+
+        # String version "1"
+        config_path.write_text("version = '1'\n")
+        with self.assertRaises(RuntimeError) as ctx_str:
+            self.mod.published_config_referenced_files()
+        self.assertIn("unsupported or invalid version '1'; expected 1", str(ctx_str.exception))
+
+        # Float version 1.0
+        config_path.write_text("version = 1.0\n")
+        with self.assertRaises(RuntimeError) as ctx_float:
+            self.mod.published_config_referenced_files()
+        self.assertIn("unsupported or invalid version 1.0; expected 1", str(ctx_float.exception))
+
+        # Boolean version true
+        config_path.write_text("version = true\n")
+        with self.assertRaises(RuntimeError) as ctx_bool:
+            self.mod.published_config_referenced_files()
+        self.assertIn("unsupported or invalid version True; expected 1", str(ctx_bool.exception))
+
+        # Unsupported version integer 0
+        config_path.write_text("version = 0\n")
+        with self.assertRaises(RuntimeError) as ctx_v0:
+            self.mod.published_config_referenced_files()
+        self.assertIn("unsupported or invalid version 0; expected 1", str(ctx_v0.exception))
+
+        # Unsupported version integer 2
+        config_path.write_text("version = 2\n")
+        with self.assertRaises(RuntimeError) as ctx_v2:
+            self.mod.published_config_referenced_files()
+        self.assertIn("unsupported or invalid version 2; expected 1", str(ctx_v2.exception))
+
+    def test_edera_action_paths_collected_and_protected_on_rollback(self) -> None:
+        """Verify edera action paths (xen, kernel, initrd, initrd-chain) are collected and protected."""
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+
+        config_path.write_text(
+            "version = 1\n"
+            "[actions.edera_boot.edera]\n"
+            "xen = 'EFI/edera/xen.efi'\n"
+            "kernel = 'EFI/nixos/kernel-edera.efi'\n"
+            "initrd = 'EFI/nixos/initrd-edera.img'\n"
+            "xen-options = ['console=com1']\n"
+            "kernel-options = ['quiet']\n"
+        )
+        refs = self.mod.published_config_referenced_files()
+        expected = {
+            self.esp_dir / "EFI/edera/xen.efi",
+            self.esp_dir / "EFI/nixos/kernel-edera.efi",
+            self.esp_dir / "EFI/nixos/initrd-edera.img",
+        }
+        self.assertEqual(refs, expected)
+
+        # Pre-create the edera files on ESP
+        for p in expected:
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text("existing-content")
+
+        # Verify StagedArtifactTransaction protects them if recreated during staging
+        with self.assertRaises(RuntimeError):
+            with self.mod.StagedArtifactTransaction() as tx:
+                # Attempt to record an existing published edera file as created
+                tx.record_created(self.esp_dir / "EFI/edera/xen.efi")
+                # Create and record a completely new file
+                new_file = self.esp_dir / "EFI/nixos/staged-temp.efi"
+                new_file.write_text("staged-temp-content")
+                tx.record_created(new_file)
+                raise RuntimeError("simulated staging failure")
+
+        # Rollback should delete new_file but PRESERVE existing published edera file
+        self.assertFalse(new_file.exists())
+        self.assertTrue((self.esp_dir / "EFI/edera/xen.efi").exists())
+        self.assertEqual(
+            (self.esp_dir / "EFI/edera/xen.efi").read_text(),
+            "existing-content",
+        )
+
+        # Test edera with initrd-chain
+        config_path.write_text(
+            "version = 1\n"
+            "[actions.edera_boot2.edera]\n"
+            "xen = 'EFI/xen2.efi'\n"
+            "kernel = 'EFI/kernel2.efi'\n"
+            "initrd-chain = ['EFI/initrd-base.img', 'EFI/initrd-extra.img']\n"
+        )
+        refs2 = self.mod.published_config_referenced_files()
+        expected2 = {
+            self.esp_dir / "EFI/xen2.efi",
+            self.esp_dir / "EFI/kernel2.efi",
+            self.esp_dir / "EFI/initrd-base.img",
+            self.esp_dir / "EFI/initrd-extra.img",
+        }
+        self.assertEqual(refs2, expected2)
+
+    def test_edera_and_chainload_schema_validation_aborts_safely(self) -> None:
+        """Verify invalid edera and chainload schemas fail safely with clear RuntimeError."""
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Edera missing xen
+        config_path.write_text("version = 1\n[actions.e.edera]\nkernel = 'EFI/kernel.efi'\n")
+        with self.assertRaises(RuntimeError) as ctx1:
+            self.mod.published_config_referenced_files()
+        self.assertIn("edera xen path is missing or not a string", str(ctx1.exception))
+
+        # Edera non-string xen
+        config_path.write_text("version = 1\n[actions.e.edera]\nxen = 123\nkernel = 'EFI/k.efi'\n")
+        with self.assertRaises(RuntimeError) as ctx2:
+            self.mod.published_config_referenced_files()
+        self.assertIn("edera xen path is missing or not a string", str(ctx2.exception))
+
+        # Edera missing kernel
+        config_path.write_text("version = 1\n[actions.e.edera]\nxen = 'EFI/xen.efi'\n")
+        with self.assertRaises(RuntimeError) as ctx3:
+            self.mod.published_config_referenced_files()
+        self.assertIn("edera kernel path is missing or not a string", str(ctx3.exception))
+
+        # Edera non-string kernel
+        config_path.write_text("version = 1\n[actions.e.edera]\nxen = 'EFI/xen.efi'\nkernel = ['k']\n")
+        with self.assertRaises(RuntimeError) as ctx4:
+            self.mod.published_config_referenced_files()
+        self.assertIn("edera kernel path is missing or not a string", str(ctx4.exception))
+
+        # Edera specifying both initrd and initrd-chain
+        config_path.write_text(
+            "version = 1\n[actions.e.edera]\nxen = 'EFI/x.efi'\nkernel = 'EFI/k.efi'\n"
+            "initrd = 'EFI/init.img'\ninitrd-chain = ['EFI/init2.img']\n"
+        )
+        with self.assertRaises(RuntimeError) as ctx5:
+            self.mod.published_config_referenced_files()
+        self.assertIn("cannot specify both 'initrd' and 'initrd-chain' in edera", str(ctx5.exception))
+
+        # Edera non-string initrd
+        config_path.write_text(
+            "version = 1\n[actions.e.edera]\nxen = 'EFI/x.efi'\nkernel = 'EFI/k.efi'\ninitrd = 99\n"
+        )
+        with self.assertRaises(RuntimeError) as ctx6:
+            self.mod.published_config_referenced_files()
+        self.assertIn("edera initrd path is not a string", str(ctx6.exception))
+
+        # Edera non-list initrd-chain
+        config_path.write_text(
+            "version = 1\n[actions.e.edera]\nxen = 'EFI/x.efi'\nkernel = 'EFI/k.efi'\ninitrd-chain = 'str'\n"
+        )
+        with self.assertRaises(RuntimeError) as ctx7:
+            self.mod.published_config_referenced_files()
+        self.assertIn("edera initrd chain is not a list", str(ctx7.exception))
+
+        # Edera non-string item in initrd-chain
+        config_path.write_text(
+            "version = 1\n[actions.e.edera]\nxen = 'EFI/x.efi'\nkernel = 'EFI/k.efi'\ninitrd-chain = ['EFI/init.img', 42]\n"
+        )
+        with self.assertRaises(RuntimeError) as ctx8:
+            self.mod.published_config_referenced_files()
+        self.assertIn("edera initrd chain item 1 is not a string", str(ctx8.exception))
+
+        # Edera path traversal
+        config_path.write_text(
+            "version = 1\n[actions.e.edera]\nxen = '../../xen.efi'\nkernel = 'EFI/k.efi'\n"
+        )
+        with self.assertRaises(RuntimeError) as ctx9:
+            self.mod.published_config_referenced_files()
+        self.assertIn("references invalid edera xen path", str(ctx9.exception))
+
+        # Chainload specifying both linux-initrd and linux-initrd-chain
+        config_path.write_text(
+            "version = 1\n[actions.entry1.chainload]\npath = 'EFI/kernel.efi'\n"
+            "linux-initrd = 'EFI/initrd.img'\nlinux-initrd-chain = ['EFI/chain.img']\n"
+        )
+        with self.assertRaises(RuntimeError) as ctx10:
+            self.mod.published_config_referenced_files()
+        self.assertIn("cannot specify both 'linux-initrd' and 'linux-initrd-chain'", str(ctx10.exception))
+
+    def test_dynamic_variable_substitution_and_unresolved_variable_rejection(self) -> None:
+        """Verify root [values] substitution, longest-key priority, and rejection of unresolved variables."""
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Successful resolution with longest-key priority
+        config_path.write_text(
+            "version = 1\n"
+            "[values]\n"
+            "sub = 'nixos'\n"
+            "gen = '42'\n"
+            "prefix = 'short'\n"
+            "prefix_long = 'matched_long'\n"
+            "\n"
+            "[drivers.drv]\n"
+            "path = 'EFI/Sprout/drivers/$prefix_long.efi'\n"
+            "\n"
+            "[actions.boot.chainload]\n"
+            "path = 'EFI/$sub/kernel-$gen.efi'\n"
+            "linux-initrd = 'EFI/$sub/initrd-$gen.img'\n"
+        )
+        refs = self.mod.published_config_referenced_files()
+        expected = {
+            self.esp_dir / "EFI/Sprout/drivers/matched_long.efi",
+            self.esp_dir / "EFI/nixos/kernel-42.efi",
+            self.esp_dir / "EFI/nixos/initrd-42.img",
+        }
+        self.assertEqual(refs, expected)
+
+        # Unresolved variable in driver path
+        config_path.write_text(
+            "version = 1\n"
+            "[drivers.btrfs]\n"
+            "path = 'EFI/drivers/$unresolved_driver.efi'\n"
+        )
+        with self.assertRaises(RuntimeError) as ctx_drv:
+            self.mod.published_config_referenced_files()
+        self.assertIn("contains unresolved dynamic variable '$unresolved_driver'", str(ctx_drv.exception))
+
+        # Unresolved variable in chainload path
+        config_path.write_text(
+            "version = 1\n"
+            "[actions.boot.chainload]\n"
+            "path = 'EFI/nixos/kernel-$missing_gen.efi'\n"
+        )
+        with self.assertRaises(RuntimeError) as ctx_cl:
+            self.mod.published_config_referenced_files()
+        self.assertIn("contains unresolved dynamic variable '$missing_gen'", str(ctx_cl.exception))
+
+        # Unresolved variable in edera path
+        config_path.write_text(
+            "version = 1\n"
+            "[actions.e.edera]\n"
+            "xen = 'EFI/$xen_image.efi'\n"
+            "kernel = 'EFI/kernel.efi'\n"
+        )
+        with self.assertRaises(RuntimeError) as ctx_ed:
+            self.mod.published_config_referenced_files()
+        self.assertIn("contains unresolved dynamic variable '$xen_image'", str(ctx_ed.exception))
+
+        # Invalid values table
+        config_path.write_text("version = 1\nvalues = 'not-a-table'\n")
+        with self.assertRaises(RuntimeError) as ctx_vt:
+            self.mod.published_config_referenced_files()
+        self.assertIn("invalid 'values' table", str(ctx_vt.exception))
+
+        # Invalid values table entry (non-string)
+        config_path.write_text("version = 1\n[values]\nkey = 1234\n")
+        with self.assertRaises(RuntimeError) as ctx_ve:
+            self.mod.published_config_referenced_files()
+        self.assertIn("invalid 'values' table entry 'key'", str(ctx_ve.exception))
+
+    def test_dynamic_generation_constructs_rejected_safely(self) -> None:
+        """Verify configurations using generators or extractors fail safely."""
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Non-empty generators
+        config_path.write_text(
+            "version = 1\n"
+            "[generators.matrix]\n"
+            "kernel = ['vmlinuz-1', 'vmlinuz-2']\n"
+        )
+        with self.assertRaises(RuntimeError) as ctx_gen:
+            self.mod.published_config_referenced_files()
+        self.assertIn("contains unsupported dynamic 'generators'", str(ctx_gen.exception))
+
+        # Non-empty extractors
+        config_path.write_text(
+            "version = 1\n"
+            "[extractors.scan]\n"
+            "path = 'EFI/nixos'\n"
+        )
+        with self.assertRaises(RuntimeError) as ctx_ext:
+            self.mod.published_config_referenced_files()
+        self.assertIn("contains unsupported dynamic 'extractors'", str(ctx_ext.exception))
+
+        # Empty generators and extractors tables should be accepted
+        config_path.write_text(
+            "version = 1\n"
+            "generators = {}\n"
+            "extractors = {}\n"
+        )
+        self.assertEqual(self.mod.published_config_referenced_files(), set())
+
+        # Invalid generators table type
+        config_path.write_text("version = 1\ngenerators = 'not-a-table'\n")
+        with self.assertRaises(RuntimeError) as ctx_gen_inv:
+            self.mod.published_config_referenced_files()
+        self.assertIn("invalid 'generators' table", str(ctx_gen_inv.exception))
+
+        # Invalid extractors table type
+        config_path.write_text("version = 1\nextractors = 'not-a-table'\n")
+        with self.assertRaises(RuntimeError) as ctx_ext_inv:
+            self.mod.published_config_referenced_files()
+        self.assertIn("invalid 'extractors' table", str(ctx_ext_inv.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

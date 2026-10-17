@@ -1343,7 +1343,39 @@ class FixedLoaderTransaction:
 
 def uefi_to_relative_path(uefi: str) -> Path:
     clean = uefi.replace("\\", "/").strip().lstrip("/")
+    if not clean or clean == ".":
+        raise RuntimeError(f"path {uefi!r} is not a valid relative path")
     return Path(clean)
+
+
+def stamp_values(text: str, values: dict[str, str]) -> str:
+    sorted_keys = sorted(values.keys(), key=len, reverse=True)
+    stamped = text
+    for k in sorted_keys:
+        if k:
+            stamped = stamped.replace(f"${k}", values[k])
+    return stamped
+
+
+def resolve_stamped_path(
+    raw_path: str,
+    root_values: dict[str, str],
+    config_path: Path,
+    context: str,
+    path_kind: str = "path",
+) -> Path:
+    stamped = stamp_values(raw_path, root_values)
+    var_match = re.search(r"\$[A-Za-z0-9_]+", stamped)
+    if var_match is not None:
+        raise RuntimeError(
+            f"published Sprout configuration {config_path} {context} contains unresolved dynamic variable {var_match.group(0)!r} in {raw_path!r}"
+        )
+    try:
+        return esp_path(uefi_to_relative_path(stamped))
+    except RuntimeError as exc:
+        raise RuntimeError(
+            f"published Sprout configuration {config_path} {context} references invalid {path_kind} {raw_path!r}: {exc}"
+        ) from exc
 
 
 def published_config_referenced_files() -> set[Path]:
@@ -1378,6 +1410,70 @@ def published_config_referenced_files() -> set[Path]:
             f"published Sprout configuration {config_path} root is not a table"
         )
 
+    if "version" not in data:
+        raise RuntimeError(
+            f"published Sprout configuration {config_path} is missing 'version' field"
+        )
+    version = data["version"]
+    if type(version) is not int or version != 1:
+        raise RuntimeError(
+            f"published Sprout configuration {config_path} has unsupported or invalid version {version!r}; expected 1"
+        )
+
+    generators = data.get("generators")
+    if generators is not None:
+        if not isinstance(generators, dict):
+            raise RuntimeError(
+                f"published Sprout configuration {config_path} contains invalid 'generators' table"
+            )
+        if generators:
+            raise RuntimeError(
+                f"published Sprout configuration {config_path} contains unsupported dynamic 'generators'"
+            )
+
+    extractors = data.get("extractors")
+    if extractors is not None:
+        if not isinstance(extractors, dict):
+            raise RuntimeError(
+                f"published Sprout configuration {config_path} contains invalid 'extractors' table"
+            )
+        if extractors:
+            raise RuntimeError(
+                f"published Sprout configuration {config_path} contains unsupported dynamic 'extractors'"
+            )
+
+    values_table = data.get("values")
+    root_values: dict[str, str] = {}
+    if values_table is not None:
+        if not isinstance(values_table, dict):
+            raise RuntimeError(
+                f"published Sprout configuration {config_path} contains invalid 'values' table"
+            )
+        for val_key, val_val in values_table.items():
+            if not isinstance(val_key, str) or not isinstance(val_val, str):
+                raise RuntimeError(
+                    f"published Sprout configuration {config_path} contains invalid 'values' table entry {val_key!r}"
+                )
+            root_values[val_key] = val_val
+
+    options_table = data.get("options")
+    if options_table is not None and not isinstance(options_table, dict):
+        raise RuntimeError(
+            f"published Sprout configuration {config_path} contains invalid 'options' table"
+        )
+
+    entries_table = data.get("entries")
+    if entries_table is not None and not isinstance(entries_table, dict):
+        raise RuntimeError(
+            f"published Sprout configuration {config_path} contains invalid 'entries' table"
+        )
+
+    phases_table = data.get("phases")
+    if phases_table is not None and not isinstance(phases_table, dict):
+        raise RuntimeError(
+            f"published Sprout configuration {config_path} contains invalid 'phases' table"
+        )
+
     referenced: set[Path] = set()
 
     drivers_table = data.get("drivers")
@@ -1396,14 +1492,15 @@ def published_config_referenced_files() -> set[Path]:
                 raise RuntimeError(
                     f"published Sprout configuration {config_path} driver {driver_name!r} has missing or non-string path"
                 )
-            try:
-                referenced.add(
-                    esp_path(uefi_to_relative_path(driver_path_str))
+            referenced.add(
+                resolve_stamped_path(
+                    driver_path_str,
+                    root_values,
+                    config_path,
+                    context=f"driver {driver_name!r}",
+                    path_kind="path",
                 )
-            except RuntimeError as exc:
-                raise RuntimeError(
-                    f"published Sprout configuration {config_path} driver {driver_name!r} references invalid path {driver_path_str!r}: {exc}"
-                ) from exc
+            )
 
     actions_table = data.get("actions")
     if actions_table is not None:
@@ -1422,14 +1519,15 @@ def published_config_referenced_files() -> set[Path]:
                     raise RuntimeError(
                         f"published Sprout configuration {config_path} action {action_name!r} path is not a string"
                     )
-                try:
-                    referenced.add(
-                        esp_path(uefi_to_relative_path(action_path))
+                referenced.add(
+                    resolve_stamped_path(
+                        action_path,
+                        root_values,
+                        config_path,
+                        context=f"action {action_name!r}",
+                        path_kind="path",
                     )
-                except RuntimeError as exc:
-                    raise RuntimeError(
-                        f"published Sprout configuration {config_path} action {action_name!r} references invalid path {action_path!r}: {exc}"
-                    ) from exc
+                )
 
             chainload = action_entry.get("chainload")
             if chainload is not None:
@@ -1437,22 +1535,26 @@ def published_config_referenced_files() -> set[Path]:
                     raise RuntimeError(
                         f"published Sprout configuration {config_path} action {action_name!r} contains invalid 'chainload' table"
                     )
+                if "linux-initrd" in chainload and "linux-initrd-chain" in chainload:
+                    raise RuntimeError(
+                        f"published Sprout configuration {config_path} action {action_name!r} cannot specify both 'linux-initrd' and 'linux-initrd-chain'"
+                    )
+
                 kernel_path_str = chainload.get("path")
                 if kernel_path_str is not None:
                     if not isinstance(kernel_path_str, str):
                         raise RuntimeError(
                             f"published Sprout configuration {config_path} action {action_name!r} kernel path is not a string"
                         )
-                    try:
-                        referenced.add(
-                            esp_path(
-                                uefi_to_relative_path(kernel_path_str)
-                            )
+                    referenced.add(
+                        resolve_stamped_path(
+                            kernel_path_str,
+                            root_values,
+                            config_path,
+                            context=f"action {action_name!r}",
+                            path_kind="kernel path",
                         )
-                    except RuntimeError as exc:
-                        raise RuntimeError(
-                            f"published Sprout configuration {config_path} action {action_name!r} references invalid kernel path {kernel_path_str!r}: {exc}"
-                        ) from exc
+                    )
 
                 initrd_str = chainload.get("linux-initrd")
                 if initrd_str is not None:
@@ -1460,14 +1562,15 @@ def published_config_referenced_files() -> set[Path]:
                         raise RuntimeError(
                             f"published Sprout configuration {config_path} action {action_name!r} initrd path is not a string"
                         )
-                    try:
-                        referenced.add(
-                            esp_path(uefi_to_relative_path(initrd_str))
+                    referenced.add(
+                        resolve_stamped_path(
+                            initrd_str,
+                            root_values,
+                            config_path,
+                            context=f"action {action_name!r}",
+                            path_kind="initrd path",
                         )
-                    except RuntimeError as exc:
-                        raise RuntimeError(
-                            f"published Sprout configuration {config_path} action {action_name!r} references invalid initrd path {initrd_str!r}: {exc}"
-                        ) from exc
+                    )
 
                 chain = chainload.get("linux-initrd-chain")
                 if chain is not None:
@@ -1480,16 +1583,93 @@ def published_config_referenced_files() -> set[Path]:
                             raise RuntimeError(
                                 f"published Sprout configuration {config_path} action {action_name!r} initrd chain item {idx} is not a string"
                             )
-                        try:
-                            referenced.add(
-                                esp_path(
-                                    uefi_to_relative_path(initrd_item)
-                                )
+                        referenced.add(
+                            resolve_stamped_path(
+                                initrd_item,
+                                root_values,
+                                config_path,
+                                context=f"action {action_name!r}",
+                                path_kind="initrd chain path",
                             )
-                        except RuntimeError as exc:
+                        )
+
+            edera = action_entry.get("edera")
+            if edera is not None:
+                if not isinstance(edera, dict):
+                    raise RuntimeError(
+                        f"published Sprout configuration {config_path} action {action_name!r} contains invalid 'edera' table"
+                    )
+                if "initrd" in edera and "initrd-chain" in edera:
+                    raise RuntimeError(
+                        f"published Sprout configuration {config_path} action {action_name!r} cannot specify both 'initrd' and 'initrd-chain' in edera"
+                    )
+
+                xen_path_str = edera.get("xen")
+                if xen_path_str is None or not isinstance(xen_path_str, str):
+                    raise RuntimeError(
+                        f"published Sprout configuration {config_path} action {action_name!r} edera xen path is missing or not a string"
+                    )
+                referenced.add(
+                    resolve_stamped_path(
+                        xen_path_str,
+                        root_values,
+                        config_path,
+                        context=f"action {action_name!r}",
+                        path_kind="edera xen path",
+                    )
+                )
+
+                kernel_path_str = edera.get("kernel")
+                if kernel_path_str is None or not isinstance(kernel_path_str, str):
+                    raise RuntimeError(
+                        f"published Sprout configuration {config_path} action {action_name!r} edera kernel path is missing or not a string"
+                    )
+                referenced.add(
+                    resolve_stamped_path(
+                        kernel_path_str,
+                        root_values,
+                        config_path,
+                        context=f"action {action_name!r}",
+                        path_kind="edera kernel path",
+                    )
+                )
+
+                initrd_str = edera.get("initrd")
+                if initrd_str is not None:
+                    if not isinstance(initrd_str, str):
+                        raise RuntimeError(
+                            f"published Sprout configuration {config_path} action {action_name!r} edera initrd path is not a string"
+                        )
+                    referenced.add(
+                        resolve_stamped_path(
+                            initrd_str,
+                            root_values,
+                            config_path,
+                            context=f"action {action_name!r}",
+                            path_kind="edera initrd path",
+                        )
+                    )
+
+                chain = edera.get("initrd-chain")
+                if chain is not None:
+                    if not isinstance(chain, list):
+                        raise RuntimeError(
+                            f"published Sprout configuration {config_path} action {action_name!r} edera initrd chain is not a list"
+                        )
+                    for idx, initrd_item in enumerate(chain):
+                        if not isinstance(initrd_item, str):
                             raise RuntimeError(
-                                f"published Sprout configuration {config_path} action {action_name!r} references invalid initrd chain path {initrd_item!r}: {exc}"
-                            ) from exc
+                                f"published Sprout configuration {config_path} action {action_name!r} edera initrd chain item {idx} is not a string"
+                            )
+                        referenced.add(
+                            resolve_stamped_path(
+                                initrd_item,
+                                root_values,
+                                config_path,
+                                context=f"action {action_name!r}",
+                                path_kind="edera initrd chain path",
+                            )
+                        )
 
     return referenced
 
