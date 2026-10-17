@@ -27,8 +27,10 @@
       agent = {
         enabled = true;
         button = true;
-        sidebar_side = "right";
         dock = "right";
+        threads_sidebar = {
+          position = "right";
+        };
         default_width = 600;
         default_height = 300;
         single_file_review = true;
