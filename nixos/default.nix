@@ -1,10 +1,10 @@
 let
   inherit (import ../lib/context.nix)
-    machines
     sources
     overlays
     ;
 
+  machines = import ./machines.nix;
   nixosModules = import ../modules/nixos;
   evalNixos = import "${sources.nixpkgs}/nixos/lib/eval-config.nix";
 

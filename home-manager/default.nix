@@ -1,17 +1,17 @@
 let
   inherit (import ../lib/context.nix)
-    machines
     sources
     overlays
     ;
 
   homeManagerModules = import ../modules/home-manager;
+  nixosConfigurations = import ../nixos;
 
   mkHome =
-    host: machine:
+    host: system:
     let
       pkgs = import sources.nixpkgs {
-        localSystem.system = machine.system;
+        localSystem.system = system;
       };
       homeManager = import sources.home-manager.outPath { inherit pkgs; };
     in
@@ -38,6 +38,6 @@ in
 builtins.listToAttrs (
   map (host: {
     name = "curious@${host}";
-    value = mkHome host machines.${host};
-  }) (builtins.attrNames machines)
+    value = mkHome host nixosConfigurations.${host}.pkgs.stdenv.hostPlatform.system;
+  }) (builtins.attrNames nixosConfigurations)
 )

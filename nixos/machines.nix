@@ -1,4 +1,4 @@
-# Host inventory shared by the traditional evaluator and the build matrix.
+# Host inventory for NixOS systems.
 {
   Server-IdeaPad-G480 = {
     system = "x86_64-linux";

@@ -53,8 +53,8 @@ Hostnames follow `<category>-<brand>-<model>[-<suffix>]`. The last segment only 
 
 ## CI/CD
 
-The build matrix is generated from the explicit list in `ci/jobs.nix`. NixOS hosts
-come from `lib/machines.nix`; Home Manager configurations are generated for those
+The build matrix is generated from the target entrypoints in `ci/jobs.nix`. NixOS hosts
+come from `nixos/default.nix`; Home Manager configurations are generated for those
 same hosts; Android devices are listed by `nix-on-droid/default.nix`.
 
 ### Formatting
