@@ -5092,6 +5092,311 @@ class EspArtifactTransactionAndRetryTest(unittest.TestCase):
             self.mod.published_config_referenced_files()
         self.assertIn("invalid 'extractors' table", str(ctx_ext_inv.exception))
 
+    def test_entry_scoped_values_override_root_values_and_protect_actual_paths(self) -> None:
+        """Verify entry-scoped values override root values for chainload paths and lower-priority paths are not protected."""
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+
+        config_path.write_text(
+            "version = 1\n"
+            "[values]\n"
+            "k_name = 'root-kernel.efi'\n"
+            "\n"
+            "[entries.g1]\n"
+            "title = 'NixOS 1'\n"
+            "actions = ['boot']\n"
+            "values = { k_name = 'entry-kernel.efi' }\n"
+            "\n"
+            "[actions.boot.chainload]\n"
+            "path = 'EFI/nixos/$k_name'\n"
+        )
+        refs = self.mod.published_config_referenced_files()
+        expected_entry_path = self.esp_dir / "EFI/nixos/entry-kernel.efi"
+        lower_priority_root_path = self.esp_dir / "EFI/nixos/root-kernel.efi"
+
+        self.assertIn(expected_entry_path, refs)
+        self.assertNotIn(lower_priority_root_path, refs)
+
+        # Pre-create both files on ESP
+        expected_entry_path.parent.mkdir(parents=True, exist_ok=True)
+        expected_entry_path.write_text("entry-kernel-data")
+        lower_priority_root_path.write_text("root-kernel-data")
+
+        # In a failed transaction, expected_entry_path is protected, while lower_priority_root_path is NOT
+        with self.assertRaises(RuntimeError):
+            with self.mod.StagedArtifactTransaction() as tx:
+                tx.record_created(expected_entry_path)
+                tx.record_created(lower_priority_root_path)
+                raise RuntimeError("simulated failure")
+
+        self.assertTrue(expected_entry_path.exists())
+        self.assertFalse(lower_priority_root_path.exists())
+
+        # Unresolved dynamic variable in entry-scoped values fails safely before staging
+        config_path.write_text(
+            "version = 1\n"
+            "[entries.g1]\n"
+            "title = 'NixOS 1'\n"
+            "actions = ['boot']\n"
+            "values = { k_name = '$missing_val' }\n"
+            "\n"
+            "[actions.boot.chainload]\n"
+            "path = 'EFI/nixos/$k_name'\n"
+        )
+        with self.assertRaises(RuntimeError) as ctx_unres:
+            self.mod.published_config_referenced_files()
+        self.assertIn("contains unresolved dynamic variable '$missing_val'", str(ctx_unres.exception))
+
+        # Dynamic variable in entry action reference
+        config_path.write_text(
+            "version = 1\n"
+            "[values]\n"
+            "act = 'boot'\n"
+            "\n"
+            "[entries.g1]\n"
+            "title = 'NixOS 1'\n"
+            "actions = ['$act']\n"
+            "\n"
+            "[actions.boot.chainload]\n"
+            "path = 'EFI/nixos/kernel.efi'\n"
+        )
+        refs_dyn_act = self.mod.published_config_referenced_files()
+        self.assertIn(self.esp_dir / "EFI/nixos/kernel.efi", refs_dyn_act)
+
+        # Unresolved dynamic variable in entry action reference
+        config_path.write_text(
+            "version = 1\n"
+            "[entries.g1]\n"
+            "title = 'NixOS 1'\n"
+            "actions = ['$unknown_act']\n"
+            "\n"
+            "[actions.boot.chainload]\n"
+            "path = 'EFI/nixos/kernel.efi'\n"
+        )
+        with self.assertRaises(RuntimeError) as ctx_unres_act:
+            self.mod.published_config_referenced_files()
+        self.assertIn("contains unresolved dynamic variable '$unknown_act'", str(ctx_unres_act.exception))
+
+    def test_phase_scoped_values_and_actions_handled_safely(self) -> None:
+        """Verify phase-scoped values protect actual paths and lower-priority values are not used."""
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+
+        config_path.write_text(
+            "version = 1\n"
+            "[values]\n"
+            "xen_bin = 'xen-default.efi'\n"
+            "\n"
+            "[[phases.early]]\n"
+            "actions = ['boot_hv']\n"
+            "values = { xen_bin = 'xen-phase.efi' }\n"
+            "\n"
+            "[actions.boot_hv.edera]\n"
+            "xen = 'EFI/edera/$xen_bin'\n"
+            "kernel = 'EFI/nixos/kernel.efi'\n"
+        )
+        refs = self.mod.published_config_referenced_files()
+        expected_phase_path = self.esp_dir / "EFI/edera/xen-phase.efi"
+        lower_priority_root_path = self.esp_dir / "EFI/edera/xen-default.efi"
+
+        self.assertIn(expected_phase_path, refs)
+        self.assertNotIn(lower_priority_root_path, refs)
+
+        # Unresolved dynamic variable in phase-scoped action
+        config_path.write_text(
+            "version = 1\n"
+            "[[phases.startup]]\n"
+            "actions = ['boot_hv']\n"
+            "values = { xen_bin = '$missing_xen' }\n"
+            "\n"
+            "[actions.boot_hv.edera]\n"
+            "xen = 'EFI/edera/$xen_bin'\n"
+            "kernel = 'EFI/nixos/kernel.efi'\n"
+        )
+        with self.assertRaises(RuntimeError) as ctx_phase_unres:
+            self.mod.published_config_referenced_files()
+        self.assertIn("contains unresolved dynamic variable '$missing_xen'", str(ctx_phase_unres.exception))
+
+        # Unknown phase name is rejected
+        config_path.write_text(
+            "version = 1\n"
+            "[[phases.unsupported_phase]]\n"
+            "actions = ['boot_hv']\n"
+        )
+        with self.assertRaises(RuntimeError) as ctx_unknown_phase:
+            self.mod.published_config_referenced_files()
+        self.assertIn("contains unknown phase 'unsupported_phase'", str(ctx_unknown_phase.exception))
+
+        # Phase item not a table
+        config_path.write_text(
+            "version = 1\n"
+            "[phases]\n"
+            "early = ['not-a-table']\n"
+        )
+        with self.assertRaises(RuntimeError) as ctx_phase_item_inv:
+            self.mod.published_config_referenced_files()
+        self.assertIn("is not a table", str(ctx_phase_item_inv.exception))
+
+    def test_chainload_devicetree_paths_protected_or_aborts_safely(self) -> None:
+        """Verify chainload.devicetree paths are protected and invalid configurations fail safely."""
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Valid devicetree path
+        config_path.write_text(
+            "version = 1\n"
+            "[values]\n"
+            "board = 'rockchip'\n"
+            "\n"
+            "[actions.boot.chainload]\n"
+            "path = 'EFI/nixos/kernel.efi'\n"
+            "devicetree = 'EFI/dtbs/$board/rk3588.dtb'\n"
+        )
+        refs = self.mod.published_config_referenced_files()
+        expected_dtb = self.esp_dir / "EFI/dtbs/rockchip/rk3588.dtb"
+        self.assertIn(expected_dtb, refs)
+
+        # Pre-create dtb file on ESP and verify protection during transaction rollback
+        expected_dtb.parent.mkdir(parents=True, exist_ok=True)
+        expected_dtb.write_text("dtb-content")
+        with self.assertRaises(RuntimeError):
+            with self.mod.StagedArtifactTransaction() as tx:
+                tx.record_created(expected_dtb)
+                raise RuntimeError("simulated failure")
+        self.assertTrue(expected_dtb.exists())
+
+        # Non-string devicetree path
+        config_path.write_text(
+            "version = 1\n"
+            "[actions.boot.chainload]\n"
+            "path = 'EFI/nixos/kernel.efi'\n"
+            "devicetree = 9999\n"
+        )
+        with self.assertRaises(RuntimeError) as ctx_dt_str:
+            self.mod.published_config_referenced_files()
+        self.assertIn("devicetree path is not a string", str(ctx_dt_str.exception))
+
+        # Path traversal in devicetree
+        config_path.write_text(
+            "version = 1\n"
+            "[actions.boot.chainload]\n"
+            "path = 'EFI/nixos/kernel.efi'\n"
+            "devicetree = '../../evil.dtb'\n"
+        )
+        with self.assertRaises(RuntimeError) as ctx_dt_trav:
+            self.mod.published_config_referenced_files()
+        self.assertIn("references invalid devicetree path", str(ctx_dt_trav.exception))
+
+        # Unresolved dynamic variable in devicetree
+        config_path.write_text(
+            "version = 1\n"
+            "[actions.boot.chainload]\n"
+            "path = 'EFI/nixos/kernel.efi'\n"
+            "devicetree = 'EFI/dtbs/$missing_board.dtb'\n"
+        )
+        with self.assertRaises(RuntimeError) as ctx_dt_unres:
+            self.mod.published_config_referenced_files()
+        self.assertIn("contains unresolved dynamic variable '$missing_board'", str(ctx_dt_unres.exception))
+
+    def test_options_autoconfigure_fails_closed_before_staging(self) -> None:
+        """Verify options.autoconfigure = true fails closed to prevent unprotected dynamic references."""
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # options.autoconfigure = true fails closed
+        config_path.write_text("version = 1\n[options]\nautoconfigure = true\n")
+        with self.assertRaises(RuntimeError) as ctx_ac_true:
+            self.mod.published_config_referenced_files()
+        self.assertIn("enables 'options.autoconfigure'", str(ctx_ac_true.exception))
+
+        # options.autoconfigure = false evaluates cleanly
+        config_path.write_text("version = 1\n[options]\nautoconfigure = false\n")
+        self.assertEqual(self.mod.published_config_referenced_files(), set())
+
+        # options.autoconfigure non-boolean is rejected
+        config_path.write_text("version = 1\n[options]\nautoconfigure = 'yes'\n")
+        with self.assertRaises(RuntimeError) as ctx_ac_type:
+            self.mod.published_config_referenced_files()
+        self.assertIn("'options.autoconfigure' is not a boolean", str(ctx_ac_type.exception))
+
+        # root-level autoconfigure = true fails closed
+        config_path.write_text("version = 1\nautoconfigure = true\n")
+        with self.assertRaises(RuntimeError) as ctx_ac_root:
+            self.mod.published_config_referenced_files()
+        self.assertIn("enables 'autoconfigure'", str(ctx_ac_root.exception))
+
+    def test_nested_value_resolution_and_cycle_rejection(self) -> None:
+        """Verify nested value expansion works iteratively, and cycles/length limits abort safely."""
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Multi-hop nested value expansion
+        config_path.write_text(
+            "version = 1\n"
+            "[values]\n"
+            "v_base = 'EFI'\n"
+            "v_os = '$v_base/nixos'\n"
+            "v_k = '$v_os/kernel-nested.efi'\n"
+            "\n"
+            "[actions.boot.chainload]\n"
+            "path = '$v_k'\n"
+        )
+        refs = self.mod.published_config_referenced_files()
+        self.assertIn(self.esp_dir / "EFI/nixos/kernel-nested.efi", refs)
+
+        # Nested root value overridden by entry context
+        config_path.write_text(
+            "version = 1\n"
+            "[values]\n"
+            "v_base = 'EFI'\n"
+            "v_k = '$v_base/kernel-inherited.efi'\n"
+            "\n"
+            "[entries.e1]\n"
+            "title = 'E1'\n"
+            "actions = ['boot']\n"
+            "values = { v_base = 'ESP' }\n"
+            "\n"
+            "[actions.boot.chainload]\n"
+            "path = '$v_k'\n"
+        )
+        refs_overridden = self.mod.published_config_referenced_files()
+        self.assertIn(self.esp_dir / "ESP/kernel-inherited.efi", refs_overridden)
+        self.assertNotIn(self.esp_dir / "EFI/kernel-inherited.efi", refs_overridden)
+
+        # Multi-pass resolution exceeding iteration limit bails safely
+        config_path.write_text(
+            "version = 1\n"
+            "[values]\n"
+            "x = '$y'\n"
+            "y = '$z'\n"
+            "z = 'resolved'\n"
+        )
+        with patch.object(self.mod, "CONTEXT_FINALIZE_ITERATION_LIMIT", 1):
+            with self.assertRaises(RuntimeError) as ctx_cycle:
+                self.mod.published_config_referenced_files()
+            self.assertIn("maximum number of replacement iterations reached", str(ctx_cycle.exception))
+
+        # Direct cycle / unresolvable reference bails with resolution cannot be completed
+        config_path.write_text(
+            "version = 1\n"
+            "[values]\n"
+            "cycle_a = '$cycle_b'\n"
+            "cycle_b = '$cycle_a'\n"
+        )
+        with self.assertRaises(RuntimeError) as ctx_direct:
+            self.mod.published_config_referenced_files()
+        self.assertIn("resolution cannot be completed", str(ctx_direct.exception))
+
+        # Value length blowup bails on value length limit
+        config_path.write_text(
+            "version = 1\n"
+            "[values]\n"
+            "grow = 'x$grow$grow'\n"
+        )
+        with self.assertRaises(RuntimeError) as ctx_grow:
+            self.mod.published_config_referenced_files()
+        self.assertIn("too long while finalizing", str(ctx_grow.exception))
+
 
 if __name__ == "__main__":
     unittest.main()
