@@ -1,6 +1,8 @@
-{ ... }:
+{ pkgs, ... }:
 {
   nix = {
+    package = pkgs.lixPackageSets.lix_2_96.lix;
+
     substituters = [
       "https://cache.nixos.org"
       # Nix community's cache server
