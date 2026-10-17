@@ -26,8 +26,7 @@ let
           overlays
           nixosModules
           ;
-      }
-      // machine.specialArgs;
+      };
       modules = [
         { nixpkgs.flake.source = sources.nixpkgs.outPath; }
         {
