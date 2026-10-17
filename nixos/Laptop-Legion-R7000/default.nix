@@ -7,7 +7,6 @@
     ../common/core
     ../common/optional/nix/substituters/mainland.nix
     # ../common/optional/nix/substituters/g480.nix
-    ../common/optional/disko/primary/efi-btrfs.nix
     ../common/optional/preservation/curious/desktop.nix
     ../common/optional/boot/plymouth.nix
     ../common/optional/kmscon.nix

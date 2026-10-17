@@ -1,9 +1,10 @@
 { ... }:
 {
+  imports = [
+    ../common/optional/disko/primary/efi-btrfs.nix
+  ];
+
   hardware.facter.reportPath = ./facter.json;
 
-  disko.primary = {
-    diskId = "ata-TOSHIBA_SLC_128GB_SN201601176";
-    swapSize = "8G";
-  };
+  disko.devices.disk.primary.device = "/dev/disk/by-id/ata-TOSHIBA_SLC_128GB_SN201601176";
 }
