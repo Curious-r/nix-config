@@ -31,6 +31,7 @@
     ../common/optional/solaar.nix
     ../common/optional/openrazer.nix
     ../common/optional/users/users/curious/openrazer.nix
+    ../common/optional/security/fido-remote-agent.nix
 
     ./boot.nix
     ./users.nix

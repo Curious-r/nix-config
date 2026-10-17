@@ -83,12 +83,6 @@
     udev.packages = [
       pkgs.libfido2
     ];
-
-    # 开启 fido-remote-agent 服务，在有远程鉴权需求时接管 fido 密钥。
-    fido-remote-agent = {
-      enable = true;
-      rpIdAllow = [ "pam://gen1.remote.curious.host" ];
-    };
   };
 
   # 在 nixos-rebuild 中允许目标主机支持来自远程的 run0 提权激活。

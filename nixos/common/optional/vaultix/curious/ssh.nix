@@ -1,4 +1,18 @@
-{ ... }:
+{ config, lib, ... }:
+let
+  nixosRoot = ../../../..;
+  dirEntries = builtins.readDir nixosRoot;
+  isRemoteServer =
+    name: type:
+    type == "directory"
+    && name != "common"
+    && name != config.networking.hostName
+    && builtins.pathExists (nixosRoot + "/${name}/default.nix");
+
+  remoteServers = builtins.filter (name: isRemoteServer name dirEntries.${name}) (
+    builtins.attrNames dirEntries
+  );
+in
 {
   # ==========================================
   # 默认通用密钥对
@@ -65,14 +79,17 @@
         User curious
         IdentityFile ~/.ssh/id_ed25519_github
 
+      # ==========================================
+      # 集群受管服务器：定向注入 pam-fido-remote 隔离套接字
+      # ==========================================
+      ${lib.concatMapStrings (host: ''
+        Host ${host} ${host}.local
+          RemoteForward /run/fido-remote/%r/agent.sock ''${XDG_RUNTIME_DIR}/fido-remote/${host}.sock
+
+      '') remoteServers}
       # 默认全局配置：显式指定默认使用通用私钥。
       Host *
         IdentityFile ''${HOME}/.ssh/id_ed25519
-
-        # pam-fido-remote 转发规则
-        # 远程路径：使用 %r 标记，动态替换为远程服务器的登录用户名。
-        # 本地路径：使用 SSH 客户端环境变量，动态获取当前执行用户的 XDG_RUNTIME_DIR。
-        RemoteForward /run/fido-remote/%r/agent.sock ''${XDG_RUNTIME_DIR}/fido-remote/agent.sock
     '';
     trim = true;
   };
