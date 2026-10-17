@@ -1,11 +1,19 @@
-{ ... }:
+{ nixosModules, pkgs, ... }:
 {
-  # Use the systemd-boot EFI boot loader.
+  imports = [ nixosModules.sprout ];
+
   boot = {
     loader = {
-      systemd-boot.enable = true;
-      systemd-boot.consoleMode = "auto";
+      systemd-boot.enable = false;
       efi.canTouchEfiVariables = true;
+      timeout = 5;
+
+      sprout = {
+        enable = true;
+        package = pkgs.curious.sprout;
+        configurationLimit = 3;
+        efiInstallAsRemovable = false;
+      };
     };
     # 用于为其他架构构建系统。
     binfmt.emulatedSystems = [ "aarch64-linux" ];
