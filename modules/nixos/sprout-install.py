@@ -1348,76 +1348,148 @@ def uefi_to_relative_path(uefi: str) -> Path:
 
 def published_config_referenced_files() -> set[Path]:
     config_path = esp_path(SPROUT_CONFIG)
-    if not config_path.is_file():
-        return set()
 
     try:
-        data = tomllib.loads(config_path.read_text(encoding="utf-8"))
-    except (OSError, tomllib.TOMLDecodeError):
+        content = config_path.read_text(encoding="utf-8")
+    except FileNotFoundError as exc:
+        if config_path.is_symlink():
+            raise RuntimeError(
+                f"published Sprout configuration {config_path} is a broken symlink"
+            ) from exc
         return set()
+    except OSError as exc:
+        raise RuntimeError(
+            f"failed to read published Sprout configuration {config_path}: {exc}"
+        ) from exc
+    except UnicodeDecodeError as exc:
+        raise RuntimeError(
+            f"published Sprout configuration {config_path} is not valid UTF-8: {exc}"
+        ) from exc
+
+    try:
+        data = tomllib.loads(content)
+    except tomllib.TOMLDecodeError as exc:
+        raise RuntimeError(
+            f"failed to parse published Sprout configuration {config_path}: {exc}"
+        ) from exc
+
+    if not isinstance(data, dict):
+        raise RuntimeError(
+            f"published Sprout configuration {config_path} root is not a table"
+        )
 
     referenced: set[Path] = set()
 
     drivers_table = data.get("drivers")
-    if isinstance(drivers_table, dict):
-        for driver_entry in drivers_table.values():
-            if isinstance(driver_entry, dict):
-                driver_path_str = driver_entry.get("path")
-                if isinstance(driver_path_str, str):
-                    try:
-                        referenced.add(
-                            esp_path(uefi_to_relative_path(driver_path_str))
-                        )
-                    except RuntimeError:
-                        pass
+    if drivers_table is not None:
+        if not isinstance(drivers_table, dict):
+            raise RuntimeError(
+                f"published Sprout configuration {config_path} contains invalid 'drivers' table"
+            )
+        for driver_name, driver_entry in drivers_table.items():
+            if not isinstance(driver_entry, dict):
+                raise RuntimeError(
+                    f"published Sprout configuration {config_path} contains invalid driver entry {driver_name!r}"
+                )
+            driver_path_str = driver_entry.get("path")
+            if not isinstance(driver_path_str, str):
+                raise RuntimeError(
+                    f"published Sprout configuration {config_path} driver {driver_name!r} has missing or non-string path"
+                )
+            try:
+                referenced.add(
+                    esp_path(uefi_to_relative_path(driver_path_str))
+                )
+            except RuntimeError as exc:
+                raise RuntimeError(
+                    f"published Sprout configuration {config_path} driver {driver_name!r} references invalid path {driver_path_str!r}: {exc}"
+                ) from exc
 
     actions_table = data.get("actions")
-    if isinstance(actions_table, dict):
-        for action_entry in actions_table.values():
-            if isinstance(action_entry, dict):
-                action_path = action_entry.get("path")
-                if isinstance(action_path, str):
+    if actions_table is not None:
+        if not isinstance(actions_table, dict):
+            raise RuntimeError(
+                f"published Sprout configuration {config_path} contains invalid 'actions' table"
+            )
+        for action_name, action_entry in actions_table.items():
+            if not isinstance(action_entry, dict):
+                raise RuntimeError(
+                    f"published Sprout configuration {config_path} contains invalid action entry {action_name!r}"
+                )
+            action_path = action_entry.get("path")
+            if action_path is not None:
+                if not isinstance(action_path, str):
+                    raise RuntimeError(
+                        f"published Sprout configuration {config_path} action {action_name!r} path is not a string"
+                    )
+                try:
+                    referenced.add(
+                        esp_path(uefi_to_relative_path(action_path))
+                    )
+                except RuntimeError as exc:
+                    raise RuntimeError(
+                        f"published Sprout configuration {config_path} action {action_name!r} references invalid path {action_path!r}: {exc}"
+                    ) from exc
+
+            chainload = action_entry.get("chainload")
+            if chainload is not None:
+                if not isinstance(chainload, dict):
+                    raise RuntimeError(
+                        f"published Sprout configuration {config_path} action {action_name!r} contains invalid 'chainload' table"
+                    )
+                kernel_path_str = chainload.get("path")
+                if kernel_path_str is not None:
+                    if not isinstance(kernel_path_str, str):
+                        raise RuntimeError(
+                            f"published Sprout configuration {config_path} action {action_name!r} kernel path is not a string"
+                        )
                     try:
                         referenced.add(
-                            esp_path(uefi_to_relative_path(action_path))
+                            esp_path(
+                                uefi_to_relative_path(kernel_path_str)
+                            )
                         )
-                    except RuntimeError:
-                        pass
+                    except RuntimeError as exc:
+                        raise RuntimeError(
+                            f"published Sprout configuration {config_path} action {action_name!r} references invalid kernel path {kernel_path_str!r}: {exc}"
+                        ) from exc
 
-                chainload = action_entry.get("chainload")
-                if isinstance(chainload, dict):
-                    kernel_path_str = chainload.get("path")
-                    if isinstance(kernel_path_str, str):
+                initrd_str = chainload.get("linux-initrd")
+                if initrd_str is not None:
+                    if not isinstance(initrd_str, str):
+                        raise RuntimeError(
+                            f"published Sprout configuration {config_path} action {action_name!r} initrd path is not a string"
+                        )
+                    try:
+                        referenced.add(
+                            esp_path(uefi_to_relative_path(initrd_str))
+                        )
+                    except RuntimeError as exc:
+                        raise RuntimeError(
+                            f"published Sprout configuration {config_path} action {action_name!r} references invalid initrd path {initrd_str!r}: {exc}"
+                        ) from exc
+
+                chain = chainload.get("linux-initrd-chain")
+                if chain is not None:
+                    if not isinstance(chain, list):
+                        raise RuntimeError(
+                            f"published Sprout configuration {config_path} action {action_name!r} initrd chain is not a list"
+                        )
+                    for idx, initrd_item in enumerate(chain):
+                        if not isinstance(initrd_item, str):
+                            raise RuntimeError(
+                                f"published Sprout configuration {config_path} action {action_name!r} initrd chain item {idx} is not a string"
+                            )
                         try:
                             referenced.add(
                                 esp_path(
-                                    uefi_to_relative_path(kernel_path_str)
+                                    uefi_to_relative_path(initrd_item)
                                 )
                             )
-                        except RuntimeError:
-                            pass
-
-                    initrd_str = chainload.get("linux-initrd")
-                    if isinstance(initrd_str, str):
-                        try:
-                            referenced.add(
-                                esp_path(uefi_to_relative_path(initrd_str))
-                            )
-                        except RuntimeError:
-                            pass
-
-                    chain = chainload.get("linux-initrd-chain")
-                    if isinstance(chain, list):
-                        for initrd_item in chain:
-                            if isinstance(initrd_item, str):
-                                try:
-                                    referenced.add(
-                                        esp_path(
-                                            uefi_to_relative_path(initrd_item)
-                                        )
-                                    )
-                                except RuntimeError:
-                                    pass
+                        except RuntimeError as exc:
+                            raise RuntimeError(
+                                f"published Sprout configuration {config_path} action {action_name!r} references invalid initrd chain path {initrd_item!r}: {exc}"
+                            ) from exc
 
     return referenced
 
@@ -1448,8 +1520,15 @@ class StagedArtifactTransaction:
                     self.created_files.append(path)
 
     def __enter__(self) -> StagedArtifactTransaction:
+        if StagedArtifactTransaction._active is not None:
+            raise RuntimeError("a StagedArtifactTransaction is already active")
+        try:
+            self._scan_existing_and_protected()
+        except BaseException:
+            if StagedArtifactTransaction._active is self:
+                StagedArtifactTransaction._active = None
+            raise
         StagedArtifactTransaction._active = self
-        self._scan_existing_and_protected()
         return self
 
     def _scan_existing_and_protected(self) -> None:

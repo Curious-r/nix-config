@@ -757,7 +757,7 @@ class SproutInstallRegressionTest(unittest.TestCase):
 
         # Case 2: Update install (sprout.toml already exists). Must not be replaced on failure.
         config_path.parent.mkdir(parents=True, exist_ok=True)
-        config_path.write_text("pre-existing-valid-config")
+        config_path.write_text("version = 1\n# pre-existing-valid-config\n")
 
         # Also test with a helper launch failure (nonexistent executable)
         missing_secrets = self.temp_dir / "missing-secrets.sh"
@@ -786,7 +786,7 @@ class SproutInstallRegressionTest(unittest.TestCase):
 
         self.assertEqual(
             config_path.read_text(),
-            "pre-existing-valid-config",
+            "version = 1\n# pre-existing-valid-config\n",
             "Existing sprout.toml must remain untouched on failure",
         )
 
@@ -796,7 +796,7 @@ class SproutInstallRegressionTest(unittest.TestCase):
         """Verify that if all entries are pruned, the installer refuses publication and leaves existing configuration unchanged."""
         config_path = self.esp_dir / self.mod.SPROUT_CONFIG
         config_path.parent.mkdir(parents=True, exist_ok=True)
-        config_path.write_text("previous-published-sprout-configuration")
+        config_path.write_text("version = 1\n# previous-published-sprout-configuration\n")
 
         # Entry 1: older generation whose helper exits 1
         bad_secrets = self.temp_dir / "bad-secrets.sh"
@@ -855,7 +855,7 @@ class SproutInstallRegressionTest(unittest.TestCase):
 
         self.assertEqual(
             config_path.read_text(),
-            "previous-published-sprout-configuration",
+            "version = 1\n# previous-published-sprout-configuration\n",
             "Existing configuration must be left unchanged when all entries are pruned",
         )
 
@@ -1049,7 +1049,7 @@ class SproutInstallRegressionTest(unittest.TestCase):
         # 2. Existing sprout.toml must remain untouched
         config_path = self.esp_dir / self.mod.SPROUT_CONFIG
         config_path.parent.mkdir(parents=True, exist_ok=True)
-        config_path.write_text("pre-existing-config")
+        config_path.write_text("version = 1\n# pre-existing-config\n")
 
         dest_k = self.mod.NIXOS_DIR / "k.efi"
         dest_i = self.mod.NIXOS_DIR / "i.img"
@@ -1073,7 +1073,7 @@ class SproutInstallRegressionTest(unittest.TestCase):
                 self.mod.install_bootloader(self.temp_dir)
             self.assertIn("missing initrd on ESP", str(ctx2.exception))
 
-        self.assertEqual(config_path.read_text(), "pre-existing-config")
+        self.assertEqual(config_path.read_text(), "version = 1\n# pre-existing-config\n")
         self.assertFalse((self.temp_dir / "EFI").exists())
 
     def test_missing_extra_initrd_older_generation_pruned(self) -> None:
@@ -4632,6 +4632,159 @@ class EspArtifactTransactionAndRetryTest(unittest.TestCase):
         self.assertTrue(dest_k1.exists())
         self.assertTrue(dest_i1.exists())
         self.assertEqual(config_path.read_text(), orig_config)
+
+    def test_no_existing_sprout_toml_produces_empty_reference_set_and_installs_successfully(
+        self,
+    ) -> None:
+        """Verify absence of previous sprout.toml produces empty reference set and allows clean installation."""
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+        self.assertFalse(config_path.exists())
+
+        refs = self.mod.published_config_referenced_files()
+        self.assertEqual(refs, set())
+
+        entry = self._create_entry("nixos-g1", 1, kernel_data="k1-bytes")
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+
+        with patch.object(self.mod, "check_mountpoint"), patch.object(
+            self.mod, "collect_entries", return_value=[entry]
+        ):
+            self.mod.install_bootloader(toplevel)
+
+        self.assertTrue(config_path.exists())
+        self.assertIn("nixos-g1", config_path.read_text())
+
+    def test_existing_malformed_toml_aborts_before_artifact_staging(self) -> None:
+        """Verify malformed sprout.toml raises RuntimeError and aborts installation before staging artifacts."""
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("invalid [toml content {{{")
+
+        with self.assertRaises(RuntimeError) as ctx:
+            self.mod.published_config_referenced_files()
+        self.assertIn("failed to parse published Sprout configuration", str(ctx.exception))
+
+        entry = self._create_entry("nixos-g1", 1, kernel_data="k1-bytes")
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+
+        mock_write_boot_files = Mock()
+        with patch.object(self.mod, "check_mountpoint"), patch.object(
+            self.mod, "collect_entries", return_value=[entry]
+        ), patch.object(self.mod, "write_boot_files", mock_write_boot_files):
+            with self.assertRaises(RuntimeError) as ctx2:
+                self.mod.install_bootloader(toplevel)
+            self.assertIn("failed to parse published Sprout configuration", str(ctx2.exception))
+
+        mock_write_boot_files.assert_not_called()
+        self.assertEqual(list((self.esp_dir / self.mod.NIXOS_DIR).glob("*.efi")), [])
+        self.assertIsNone(self.mod.StagedArtifactTransaction.current())
+
+    def test_existing_unreadable_configuration_aborts_safely(self) -> None:
+        """Verify unreadable or invalid configuration file fails safely without staging artifacts."""
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Case A: Permission denied / read error
+        config_path.write_text("version = 1\n")
+        with patch.object(
+            Path, "read_text", side_effect=OSError(errno.EACCES, "Permission denied")
+        ):
+            with self.assertRaises(RuntimeError) as ctx_perm:
+                self.mod.published_config_referenced_files()
+            self.assertIn("failed to read published Sprout configuration", str(ctx_perm.exception))
+            self.assertIn("Permission denied", str(ctx_perm.exception))
+
+        # Case B: Configuration path is a directory instead of a regular file
+        config_path.unlink()
+        config_path.mkdir(parents=True)
+        with self.assertRaises(RuntimeError) as ctx_dir:
+            self.mod.published_config_referenced_files()
+        self.assertIn("failed to read published Sprout configuration", str(ctx_dir.exception))
+        config_path.rmdir()
+
+        # Case C: Configuration is not valid UTF-8
+        config_path.write_bytes(b"\x80\x81\x82")
+        with self.assertRaises(RuntimeError) as ctx_utf8:
+            self.mod.published_config_referenced_files()
+        self.assertIn("not valid UTF-8", str(ctx_utf8.exception))
+
+        # Case D: install_bootloader aborts before staging
+        entry = self._create_entry("nixos-g1", 1, kernel_data="k1-bytes")
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+
+        mock_write_boot_files = Mock()
+        with patch.object(self.mod, "check_mountpoint"), patch.object(
+            self.mod, "collect_entries", return_value=[entry]
+        ), patch.object(self.mod, "write_boot_files", mock_write_boot_files):
+            with self.assertRaises(RuntimeError) as ctx_install:
+                self.mod.install_bootloader(toplevel)
+            self.assertIn("not valid UTF-8", str(ctx_install.exception))
+
+        mock_write_boot_files.assert_not_called()
+        self.assertIsNone(self.mod.StagedArtifactTransaction.current())
+
+    def test_transaction_entry_failure_does_not_leave_stale_active_reference(
+        self,
+    ) -> None:
+        """Verify exception during StagedArtifactTransaction.__enter__ does not leave a stale active reference."""
+        self.assertIsNone(self.mod.StagedArtifactTransaction.current())
+
+        with patch.object(
+            self.mod,
+            "published_config_referenced_files",
+            side_effect=RuntimeError("simulated config inspection error"),
+        ):
+            tx = self.mod.StagedArtifactTransaction()
+            with self.assertRaises(RuntimeError) as ctx:
+                with tx:
+                    pass
+            self.assertIn("simulated config inspection error", str(ctx.exception))
+
+        self.assertIsNone(self.mod.StagedArtifactTransaction.current())
+
+        # Verify a subsequent transaction can enter cleanly without "already active" error
+        with self.mod.StagedArtifactTransaction() as second_tx:
+            self.assertIs(self.mod.StagedArtifactTransaction.current(), second_tx)
+
+        self.assertIsNone(self.mod.StagedArtifactTransaction.current())
+
+    def test_invalid_schema_in_existing_sprout_toml_aborts_safely(self) -> None:
+        """Verify invalid table structures or unsafe paths in existing sprout.toml fail safely."""
+        config_path = self.esp_dir / self.mod.SPROUT_CONFIG
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Invalid drivers table
+        config_path.write_text("version = 1\ndrivers = 'not-a-table'\n")
+        with self.assertRaises(RuntimeError) as ctx1:
+            self.mod.published_config_referenced_files()
+        self.assertIn("invalid 'drivers' table", str(ctx1.exception))
+
+        # Invalid driver entry
+        config_path.write_text("version = 1\n[drivers.btrfs]\npath = 12345\n")
+        with self.assertRaises(RuntimeError) as ctx2:
+            self.mod.published_config_referenced_files()
+        self.assertIn("missing or non-string path", str(ctx2.exception))
+
+        # Invalid actions table
+        config_path.write_text("version = 1\nactions = 999\n")
+        with self.assertRaises(RuntimeError) as ctx3:
+            self.mod.published_config_referenced_files()
+        self.assertIn("invalid 'actions' table", str(ctx3.exception))
+
+        # Invalid action chainload table
+        config_path.write_text("version = 1\n[actions.entry1]\nchainload = 'not-a-table'\n")
+        with self.assertRaises(RuntimeError) as ctx4:
+            self.mod.published_config_referenced_files()
+        self.assertIn("invalid 'chainload' table", str(ctx4.exception))
+
+        # Unsafe relative path in chainload (attempting path traversal)
+        config_path.write_text("version = 1\n[actions.entry1.chainload]\npath = '../../etc/passwd'\n")
+        with self.assertRaises(RuntimeError) as ctx5:
+            self.mod.published_config_referenced_files()
+        self.assertIn("references invalid kernel path", str(ctx5.exception))
 
 
 if __name__ == "__main__":
