@@ -1,5 +1,7 @@
-{ ... }:
+{ lib, ... }:
 {
+  nixpkgs.hostPlatform = lib.mkDefault "aarch64-linux";
+
   imports = [
     ../common/optional/disko/primary/efi-btrfs.nix
   ];

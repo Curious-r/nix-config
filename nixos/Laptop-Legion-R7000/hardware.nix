@@ -1,5 +1,11 @@
-{ sources, ... }:
 {
+  lib,
+  sources,
+  ...
+}:
+{
+  nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
+
   imports = [
     ../common/optional/disko/primary/efi-btrfs.nix
     # Hardware configuration from the community collection.

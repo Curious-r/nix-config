@@ -4,22 +4,22 @@ let
     overlays
     ;
 
-  machines = import ./machines.nix;
   nixosModules = import ../modules/nixos;
   evalNixos = import "${sources.nixpkgs}/nixos/lib/eval-config.nix";
 
+  isHostDir =
+    name: type:
+    type == "directory" && name != "common" && builtins.pathExists (./. + "/${name}/default.nix");
+
+  dirEntries = builtins.readDir ./.;
+  hostNames = builtins.filter (name: isHostDir name dirEntries.${name}) (
+    builtins.attrNames dirEntries
+  );
+
   mkSystem =
-    name: machine:
-    let
-      pkgs = import sources.nixpkgs {
-        localSystem.system = machine.system;
-        overlays = builtins.attrValues overlays;
-        config.allowUnfree = true;
-      };
-    in
+    name:
     evalNixos {
-      inherit pkgs;
-      system = machine.system;
+      system = null;
       specialArgs = {
         inherit
           sources
@@ -28,15 +28,19 @@ let
           ;
       };
       modules = [
-        { nixpkgs.flake.source = sources.nixpkgs.outPath; }
         {
-          # The host package set is constructed once above. NixOS asserts that
-          # legacy nixpkgs.config must not be merged into such an instance.
-          nixpkgs.config = pkgs.lib.mkForce { };
+          nixpkgs.overlays = builtins.attrValues overlays;
+          nixpkgs.config.allowUnfree = true;
+          nixpkgs.flake.source = sources.nixpkgs.outPath;
         }
         ./common/core
-        machine.module or (./. + "/${name}")
+        (./. + "/${name}")
       ];
     };
 in
-builtins.mapAttrs mkSystem machines
+builtins.listToAttrs (
+  map (name: {
+    inherit name;
+    value = mkSystem name;
+  }) hostNames
+)
