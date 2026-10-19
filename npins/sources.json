@@ -9,9 +9,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "a57bbac765240bb7d0e363590f6ebddc127daf6e",
-      "url": "https://github.com/Curious-r/nix-packages/archive/a57bbac765240bb7d0e363590f6ebddc127daf6e.tar.gz",
-      "hash": "sha256-6YVQKd/apQH/RdKd8mpnxftUUUADSdj2ZKFND/E2kq8="
+      "revision": "a4885bccea5fe31fa89d9939913c9582d6b60bd3",
+      "url": "https://github.com/Curious-r/nix-packages/archive/a4885bccea5fe31fa89d9939913c9582d6b60bd3.tar.gz",
+      "hash": "sha256-LhQVbe3U/3NTkTtbkRTOsriWIKEnJGVHkYwIStdwNzY="
     },
     "disko": {
       "type": "Git",
@@ -35,9 +35,9 @@
       },
       "branch": "master",
       "submodules": false,
-      "revision": "0e3198d0be58fc624ec0dc42279d4dd3c99928a3",
-      "url": "https://github.com/AvengeMedia/dms-plugin-registry/archive/0e3198d0be58fc624ec0dc42279d4dd3c99928a3.tar.gz",
-      "hash": "sha256-1VT7rPJuzuJVAKaynATTw35j8gjbFNJkHOe1SIqZhkw="
+      "revision": "23148f5743192192c8cef2740cae89db50e319d5",
+      "url": "https://github.com/AvengeMedia/dms-plugin-registry/archive/23148f5743192192c8cef2740cae89db50e319d5.tar.gz",
+      "hash": "sha256-/woWQKCquHA65OYpYI0eP4jJvo76fCaCdgUyr5PYWAs="
     },
     "home-manager": {
       "type": "Git",
@@ -77,9 +77,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "c250766160603f5ef582adecb4f453b009f63365",
-      "url": "https://github.com/numtide/llm-agents.nix/archive/c250766160603f5ef582adecb4f453b009f63365.tar.gz",
-      "hash": "sha256-IFe04Zpq0aJ/sLYPBABcW7EZlqky4Bb46wubC8A50cs="
+      "revision": "84a9f135716cbcdc1fa58ab3c52b85f9a1a0cd0f",
+      "url": "https://github.com/numtide/llm-agents.nix/archive/84a9f135716cbcdc1fa58ab3c52b85f9a1a0cd0f.tar.gz",
+      "hash": "sha256-jXmORmL8tbeyDo7/FiPk68P+UBctz/vph2x8XMHg1uM="
     },
     "nix-on-droid": {
       "type": "Git",
@@ -116,9 +116,9 @@
       },
       "branch": "nixos-unstable",
       "submodules": false,
-      "revision": "55bfb4d7437bd4e09ab7cba58a43bd68eb310044",
-      "url": "https://github.com/nixos/nixpkgs/archive/55bfb4d7437bd4e09ab7cba58a43bd68eb310044.tar.gz",
-      "hash": "sha256-jBYGPi4udQ9uo4KQp9m2J0546nJVQitG15gvZSaVVAs="
+      "revision": "fe13242281a67641c0102cdb1087f0ebe586c7df",
+      "url": "https://github.com/nixos/nixpkgs/archive/fe13242281a67641c0102cdb1087f0ebe586c7df.tar.gz",
+      "hash": "sha256-zp8ToDMnqZcu4o4IH9pdwXFXGp7yLm/M0dEnNWnyd7I="
     },
     "pam-fido-remote": {
       "type": "GitRelease",
