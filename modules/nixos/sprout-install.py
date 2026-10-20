@@ -2164,13 +2164,24 @@ def parse_nvram_entry(line: str) -> NvramEntry | None:
 
     label = raw_label.strip()
 
+    loader_path: str | None = None
     file_match = re.search(r"File\((.*?)\)", raw_device, re.IGNORECASE)
     if file_match:
         loader_path = file_match.group(1).strip()
     elif raw_device.strip().startswith(("\\", "/")):
         loader_path = raw_device.strip()
     else:
-        loader_path = None
+        hd_match = re.search(r"HD\([^)]*\)[/](.*)$", raw_device, re.IGNORECASE)
+        if hd_match:
+            candidate = hd_match.group(1).strip()
+            if not re.match(r"^[A-Za-z0-9_]+\(", candidate):
+                if candidate.startswith(("/\\", "//")):
+                    candidate = candidate[1:]
+                loader_path = candidate if candidate else None
+        else:
+            hd_match_bs = re.search(r"HD\([^)]*\)(\\.*)$", raw_device, re.IGNORECASE)
+            if hd_match_bs:
+                loader_path = hd_match_bs.group(1).strip()
 
     return NvramEntry(label=label, loader_path=loader_path)
 

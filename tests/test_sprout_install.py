@@ -3161,6 +3161,25 @@ class NvramEntryTest(unittest.TestCase):
             mock_run.assert_not_called()
             mock_get_esp.assert_not_called()
 
+    def test_direct_hd_path_without_file_wrapper_recognized_as_matching_entry(
+        self,
+    ) -> None:
+        """Verify efibootmgr -v output with direct HD(...)/\\path format is recognized without re-installing."""
+        efibootmgr_output = (
+            "BootCurrent: 0001\n"
+            "Timeout: 5 seconds\n"
+            "BootOrder: 0003,0001\n"
+            "Boot0003* NixOS Sprout\tHD(1,GPT,d85a1112-70b9-450f-a496-e137887532a2,0x800,0x100000)/\\EFI\\Sprout\\sprout.efi\n"
+        )
+        with patch.object(self.mod, "check_efivars"), patch.object(
+            self.mod, "capture", return_value=efibootmgr_output
+        ), patch.object(self.mod, "get_esp_device") as mock_get_esp, patch.object(
+            self.mod, "run"
+        ) as mock_run:
+            self.mod.install_nvram_entry()
+            mock_run.assert_not_called()
+            mock_get_esp.assert_not_called()
+
     def test_case_insensitive_matching_for_label_and_path(self) -> None:
         """Verify case-insensitive matching recognizes mixed-case label and loader path."""
         efibootmgr_output = (
@@ -3336,6 +3355,24 @@ class NvramEntryTest(unittest.TestCase):
         assert e4 is not None
         self.assertEqual(e4.label, "CD-ROM Drive")
         self.assertIsNone(e4.loader_path)
+
+        # Direct EFI path following HD(...) without File(...)
+        e5 = self.mod.parse_nvram_entry(
+            "Boot0003* NixOS Sprout\tHD(1,GPT,d85a1112-70b9-450f-a496-e137887532a2,0x800,0x100000)/\\EFI\\Sprout\\sprout.efi"
+        )
+        self.assertIsNotNone(e5)
+        assert e5 is not None
+        self.assertEqual(e5.label, "NixOS Sprout")
+        self.assertEqual(e5.loader_path, r"\EFI\Sprout\sprout.efi")
+
+        # Non-file device path following HD(...)
+        e6 = self.mod.parse_nvram_entry(
+            "Boot0004* Hard Drive\tHD(1,GPT,1234,0x800,0x100000)/VenHw(1234)"
+        )
+        self.assertIsNotNone(e6)
+        assert e6 is not None
+        self.assertEqual(e6.label, "Hard Drive")
+        self.assertIsNone(e6.loader_path)
 
 
 class EspMountpointAndDeviceTest(unittest.TestCase):
