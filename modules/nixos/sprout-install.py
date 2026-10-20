@@ -2197,9 +2197,6 @@ class NvramStatus(Enum):
     CONFLICT = "conflict"
 
 
-NvramInspectionStatus = NvramStatus
-
-
 def inspect_nvram_entry(raise_on_conflict: bool = True) -> NvramStatus:
     check_efivars()
 
@@ -2244,14 +2241,8 @@ def inspect_nvram_entry(raise_on_conflict: bool = True) -> NvramStatus:
     return NvramStatus.ABSENT
 
 
-inspect_nvram = inspect_nvram_entry
-
-
 def preflight_nvram() -> None:
     inspect_nvram_entry(raise_on_conflict=True)
-
-
-check_nvram_preflight = preflight_nvram
 
 
 def install_nvram_entry() -> None:
