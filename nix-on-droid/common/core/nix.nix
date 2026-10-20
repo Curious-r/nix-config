@@ -1,7 +1,7 @@
 { pkgs, ... }:
 {
   nix = {
-    package = pkgs.lixPackageSets.lix_2_96.lix;
+    package = pkgs.lixPackageSets.latest.lix;
 
     substituters = [
       "https://cache.nixos.org"

@@ -1,7 +1,7 @@
 { pkgs, lib, ... }:
 {
   nix = {
-    package = lib.mkDefault pkgs.lixPackageSets.lix_2_96.lix;
+    package = lib.mkDefault pkgs.lixPackageSets.latest.lix;
     settings = {
 
       substituters = [

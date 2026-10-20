@@ -33,7 +33,7 @@ in
     # Keep legacy nix commands consistent with the generated flake registry.
     nixPath = lib.mapAttrsToList (key: value: "${key}=${value.to.path}") config.nix.registry;
 
-    package = pkgs.lixPackageSets.lix_2_96.lix;
+    package = pkgs.lixPackageSets.latest.lix;
 
     settings = {
       # See https://jackson.dev/post/nix-reasonable-defaults/.
