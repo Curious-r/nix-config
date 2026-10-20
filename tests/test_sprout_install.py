@@ -2458,6 +2458,10 @@ class SproutInstallRegressionTest(unittest.TestCase):
         with patch.object(mod, "check_mountpoint"), patch.object(
             mod, "collect_entries", return_value=[entry]
         ), patch.object(
+            mod, "check_efivars"
+        ), patch.object(
+            mod, "capture", return_value=""
+        ), patch.object(
             mod,
             "install_nvram_entry",
             side_effect=RuntimeError("simulated efibootmgr error"),
@@ -2527,6 +2531,10 @@ class SproutInstallRegressionTest(unittest.TestCase):
         with patch.object(mod, "check_mountpoint"), patch.object(
             mod, "collect_entries", return_value=[entry]
         ), patch.object(
+            mod, "check_efivars"
+        ), patch.object(
+            mod, "capture", return_value=""
+        ), patch.object(
             mod,
             "install_nvram_entry",
             side_effect=RuntimeError("simulated efibootmgr error"),
@@ -2542,6 +2550,10 @@ class SproutInstallRegressionTest(unittest.TestCase):
         # Second run: Retry succeeds
         with patch.object(mod, "check_mountpoint"), patch.object(
             mod, "collect_entries", return_value=[entry]
+        ), patch.object(
+            mod, "check_efivars"
+        ), patch.object(
+            mod, "capture", return_value=""
         ), patch.object(mod, "install_nvram_entry", return_value=None):
             mod.install_bootloader(toplevel)
 
@@ -3334,6 +3346,144 @@ class NvramEntryTest(unittest.TestCase):
             self.mod.install_nvram_entry()
             mock_run.assert_not_called()
 
+    def test_inspection_accepts_matching_entry(self) -> None:
+        """Verify inspection accepts an entry matching label and loader path."""
+        efibootmgr_output = (
+            "Boot0001* NixOS Sprout\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\Sprout\\sprout.efi)\n"
+        )
+        with patch.object(self.mod, "check_efivars"), patch.object(
+            self.mod, "capture", return_value=efibootmgr_output
+        ), patch.object(self.mod, "run") as mock_run:
+            status = self.mod.inspect_nvram_entry(raise_on_conflict=False)
+            self.assertEqual(status, self.mod.NvramStatus.MATCHING)
+            self.assertEqual(self.mod.inspect_nvram_entry(), self.mod.NvramStatus.MATCHING)
+            self.mod.preflight_nvram()
+            mock_run.assert_not_called()
+
+    def test_inspection_reports_absent_when_no_matching_label(self) -> None:
+        """Verify inspection reports absent without performing any firmware mutation when label is not present."""
+        efibootmgr_output = (
+            "Boot0000* Windows Boot Manager\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\Microsoft\\Boot\\bootmgfw.efi)\n"
+            "Boot0002  UEFI OS\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\BOOT\\BOOTX64.EFI)\n"
+        )
+        with patch.object(self.mod, "check_efivars"), patch.object(
+            self.mod, "capture", return_value=efibootmgr_output
+        ), patch.object(self.mod, "run") as mock_run:
+            status = self.mod.inspect_nvram_entry(raise_on_conflict=False)
+            self.assertEqual(status, self.mod.NvramStatus.ABSENT)
+            self.assertEqual(self.mod.inspect_nvram_entry(), self.mod.NvramStatus.ABSENT)
+            self.mod.preflight_nvram()
+            mock_run.assert_not_called()
+
+    def test_inspection_rejects_same_label_different_path(self) -> None:
+        """Verify inspection rejects same-label entry pointing to a different path."""
+        efibootmgr_output = (
+            "Boot0001* NixOS Sprout\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\systemd\\systemd-bootx64.efi)\n"
+        )
+        with patch.object(self.mod, "check_efivars"), patch.object(
+            self.mod, "capture", return_value=efibootmgr_output
+        ), patch.object(self.mod, "run") as mock_run:
+            status = self.mod.inspect_nvram_entry(raise_on_conflict=False)
+            self.assertEqual(status, self.mod.NvramStatus.CONFLICT)
+
+            with self.assertRaises(RuntimeError) as ctx:
+                self.mod.inspect_nvram_entry()
+            self.assertIn(
+                "an existing UEFI entry named 'NixOS Sprout' does not point to \\EFI\\Sprout\\sprout.efi",
+                str(ctx.exception),
+            )
+
+            with self.assertRaises(RuntimeError) as ctx_preflight:
+                self.mod.preflight_nvram()
+            self.assertIn(
+                "an existing UEFI entry named 'NixOS Sprout' does not point to \\EFI\\Sprout\\sprout.efi",
+                str(ctx_preflight.exception),
+            )
+            mock_run.assert_not_called()
+
+    def test_inspection_rejects_same_label_unparseable_path(self) -> None:
+        """Verify inspection rejects same-label entry whose loader path cannot be parsed."""
+        efibootmgr_output = (
+            "Boot0001* NixOS Sprout\tHD(1,GPT,1234,0x800,0x100000)/VenHw(1234)\n"
+        )
+        with patch.object(self.mod, "check_efivars"), patch.object(
+            self.mod, "capture", return_value=efibootmgr_output
+        ), patch.object(self.mod, "run") as mock_run:
+            status = self.mod.inspect_nvram_entry(raise_on_conflict=False)
+            self.assertEqual(status, self.mod.NvramStatus.CONFLICT)
+
+            with self.assertRaises(RuntimeError) as ctx:
+                self.mod.preflight_nvram()
+            self.assertIn(
+                "an existing UEFI entry named 'NixOS Sprout' does not point to \\EFI\\Sprout\\sprout.efi",
+                str(ctx.exception),
+            )
+            mock_run.assert_not_called()
+
+    def test_inspection_accepts_multiple_same_label_matching_entries(self) -> None:
+        """Verify inspection accepts when multiple same-label entries all point to the expected loader."""
+        efibootmgr_output = (
+            "Boot0001* NixOS Sprout\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\Sprout\\sprout.efi)\n"
+            "Boot0002* NixOS Sprout\tHD(1,GPT,1234,0x800,0x100000)/\\EFI\\Sprout\\sprout.efi\n"
+            "Boot0003* NixOS Sprout\tHD(1,GPT,1234,0x800,0x100000)\\EFI\\Sprout\\sprout.efi\n"
+        )
+        with patch.object(self.mod, "check_efivars"), patch.object(
+            self.mod, "capture", return_value=efibootmgr_output
+        ), patch.object(self.mod, "run") as mock_run:
+            self.assertEqual(
+                self.mod.inspect_nvram_entry(raise_on_conflict=False),
+                self.mod.NvramStatus.MATCHING,
+            )
+            self.assertEqual(
+                self.mod.inspect_nvram_entry(),
+                self.mod.NvramStatus.MATCHING,
+            )
+            self.mod.preflight_nvram()
+            mock_run.assert_not_called()
+
+    def test_inspection_rejects_mixture_of_matching_and_conflicting_entries_regardless_of_order(
+        self,
+    ) -> None:
+        """Verify inspection reports conflict when matching and conflicting/unparseable entries are mixed in any order."""
+        variants = [
+            # Matching first, conflicting path second
+            (
+                "Boot0001* NixOS Sprout\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\Sprout\\sprout.efi)\n"
+                "Boot0002* NixOS Sprout\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\other\\loader.efi)\n"
+            ),
+            # Conflicting path first, matching second
+            (
+                "Boot0001* NixOS Sprout\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\other\\loader.efi)\n"
+                "Boot0002* NixOS Sprout\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\Sprout\\sprout.efi)\n"
+            ),
+            # Matching first, unparseable second
+            (
+                "Boot0001* NixOS Sprout\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\Sprout\\sprout.efi)\n"
+                "Boot0002* NixOS Sprout\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\Sprout\\sprout.efi)\n"
+                "Boot0003* NixOS Sprout\tHD(1,GPT,1234,0x800,0x100000)\\VenHw(1234)\n"
+            ),
+            # Unparseable first, matching second
+            (
+                "Boot0001* NixOS Sprout\tHD(1,GPT,1234,0x800,0x100000)/VenHw(1234)\n"
+                "Boot0002* NixOS Sprout\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\Sprout\\sprout.efi)\n"
+            ),
+        ]
+        for output in variants:
+            with patch.object(self.mod, "check_efivars"), patch.object(
+                self.mod, "capture", return_value=output
+            ), patch.object(self.mod, "run") as mock_run:
+                self.assertEqual(
+                    self.mod.inspect_nvram_entry(raise_on_conflict=False),
+                    self.mod.NvramStatus.CONFLICT,
+                )
+                with self.assertRaises(RuntimeError) as ctx:
+                    self.mod.preflight_nvram()
+                self.assertIn(
+                    "an existing UEFI entry named 'NixOS Sprout' does not point to \\EFI\\Sprout\\sprout.efi",
+                    str(ctx.exception),
+                )
+                mock_run.assert_not_called()
+
     def test_parse_nvram_entry_variants(self) -> None:
         """Verify parse_nvram_entry handles spaces, tabs, trailing data, and non-boot lines."""
         # Non-boot lines
@@ -3419,6 +3569,212 @@ class NvramEntryTest(unittest.TestCase):
         assert e9 is not None
         self.assertEqual(e9.label, "Hard Drive")
         self.assertIsNone(e9.loader_path)
+
+
+class NvramPreflightIntegrationTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp_dir_obj = tempfile.TemporaryDirectory()
+        self.temp_dir = Path(self.temp_dir_obj.name).resolve()
+        self.esp_dir = self.temp_dir / "esp"
+        self.esp_dir.mkdir(parents=True, exist_ok=True)
+        self.sprout_source = self.temp_dir / "sprout-src.efi"
+        self.sprout_source.write_text("dummy-sprout-binary")
+
+    def tearDown(self) -> None:
+        self.temp_dir_obj.cleanup()
+
+    def _create_entry(self, mod: Any, identifier: str, gen: int) -> Any:
+        kernel = self.temp_dir / f"k{gen}.efi"
+        kernel.write_text(f"kernel-{gen}")
+        initrd = self.temp_dir / f"i{gen}.img"
+        initrd.write_text(f"initrd-{gen}")
+
+        dest_k = mod.artifact_path("kernel", kernel)
+        dest_i = mod.artifact_path("initrd", initrd)
+
+        return mod.BootEntry(
+            identifier=identifier,
+            title=f"Generation {gen}",
+            sort_key=f"{gen:020d}",
+            kernel=dest_k,
+            initrds=(dest_i,),
+            options=("init=/init",),
+            artifacts=(
+                mod.BootArtifact(
+                    destination=dest_k,
+                    source=kernel,
+                    initrd_secrets=None,
+                    generation=gen,
+                    critical=True,
+                ),
+                mod.BootArtifact(
+                    destination=dest_i,
+                    source=initrd,
+                    initrd_secrets=None,
+                    generation=gen,
+                    critical=True,
+                ),
+            ),
+            critical=True,
+        )
+
+    def test_preflight_conflict_aborts_before_any_esp_mutation(self) -> None:
+        """Verify preflight conflict with CAN_TOUCH_EFI_VARIABLES aborts before any directory creation or ESP file write."""
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            can_touch_efi=True,
+        )
+        pre_existing = self.esp_dir / "pre_existing.txt"
+        pre_existing.write_text("keep-this-unmodified")
+
+        entry = self._create_entry(mod, "nixos-g1", 1)
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+
+        conflicting_output = (
+            "Boot0001* NixOS Sprout\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\other\\loader.efi)\n"
+        )
+
+        mock_gc = Mock()
+        mock_run = Mock()
+
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ), patch.object(
+            mod, "check_efivars"
+        ), patch.object(
+            mod, "capture", return_value=conflicting_output
+        ), patch.object(
+            mod, "run", mock_run
+        ), patch.object(
+            mod, "garbage_collect", mock_gc
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod.install_bootloader(toplevel)
+            self.assertIn(
+                "an existing UEFI entry named 'NixOS Sprout' does not point to \\EFI\\Sprout\\sprout.efi",
+                str(ctx.exception),
+            )
+
+        # Pre-existing file is untouched
+        self.assertEqual(pre_existing.read_text(), "keep-this-unmodified")
+
+        # No Sprout directories or files were created
+        self.assertFalse((self.esp_dir / "EFI").exists())
+        self.assertFalse((self.esp_dir / "sprout.toml").exists())
+
+        # No NVRAM mutations or garbage collection occurred
+        mock_run.assert_not_called()
+        mock_gc.assert_not_called()
+
+    def test_preflight_efivars_unavailable_aborts_before_esp_mutation(self) -> None:
+        """Verify failure to inspect EFI variables during preflight aborts before creating ESP directories or files."""
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            can_touch_efi=True,
+        )
+        entry = self._create_entry(mod, "nixos-g1", 1)
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ), patch.object(
+            mod,
+            "check_efivars",
+            side_effect=RuntimeError("EFI variables are unavailable at /sys/firmware/efi/efivars"),
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod.install_bootloader(toplevel)
+            self.assertIn("EFI variables are unavailable", str(ctx.exception))
+
+        self.assertFalse((self.esp_dir / "EFI").exists())
+        self.assertFalse((self.esp_dir / "sprout.toml").exists())
+
+    def test_preflight_skipped_when_can_touch_efi_disabled(self) -> None:
+        """Verify preflight is skipped when CAN_TOUCH_EFI_VARIABLES is false and removable loader installs normally."""
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            can_touch_efi=False,
+            removable=True,
+        )
+        entry = self._create_entry(mod, "nixos-g1", 1)
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+
+        mock_check_efivars = Mock()
+        mock_capture = Mock()
+
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ), patch.object(
+            mod, "check_efivars", mock_check_efivars
+        ), patch.object(
+            mod, "capture", mock_capture
+        ):
+            mod.install_bootloader(toplevel)
+
+        # Preflight must NOT have run efivars or capture
+        mock_check_efivars.assert_not_called()
+        mock_capture.assert_not_called()
+
+        # Removable loader and config are installed
+        removable_path = self.esp_dir / "EFI" / "BOOT" / mod.removable_loader_name()
+        self.assertTrue(removable_path.exists())
+        self.assertTrue((self.esp_dir / mod.SPROUT_CONFIG).exists())
+
+    def test_nvram_reinspection_at_actual_install_stage_catches_new_conflict(self) -> None:
+        """Verify installer re-inspects NVRAM at install stage and aborts without creating entry if state changed."""
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            can_touch_efi=True,
+        )
+        entry = self._create_entry(mod, "nixos-g1", 1)
+        toplevel = self.temp_dir / "toplevel"
+        toplevel.mkdir(parents=True, exist_ok=True)
+
+        obsolete_driver = self.esp_dir / mod.DRIVERS_DIR / "obsolete.efi"
+        obsolete_driver.parent.mkdir(parents=True, exist_ok=True)
+        obsolete_driver.write_text("obsolete-content")
+
+        preflight_output = "Boot0000* Windows Boot Manager\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\Microsoft\\Boot\\bootmgfw.efi)\n"
+        install_output = (
+            "Boot0000* Windows Boot Manager\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\Microsoft\\Boot\\bootmgfw.efi)\n"
+            "Boot0001* NixOS Sprout\tHD(1,GPT,1234,0x800,0x100000)/File(\\EFI\\other\\loader.efi)\n"
+        )
+
+        mock_run = Mock()
+
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ), patch.object(
+            mod, "check_efivars"
+        ), patch.object(
+            mod, "capture", side_effect=[preflight_output, install_output]
+        ), patch.object(
+            mod, "run", mock_run
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod.install_bootloader(toplevel)
+            self.assertIn(
+                "an existing UEFI entry named 'NixOS Sprout' does not point to \\EFI\\Sprout\\sprout.efi",
+                str(ctx.exception),
+            )
+
+        # Fresh inspection detected conflict and aborted: efibootmgr -c must NOT be called
+        mock_run.assert_not_called()
+
+        # Files already published remain intact
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        self.assertTrue(config_path.exists())
+        self.assertIn("nixos-g1", config_path.read_text())
+
+        # Garbage collection was skipped due to error
+        self.assertTrue(obsolete_driver.exists())
 
 
 class EspMountpointAndDeviceTest(unittest.TestCase):
@@ -3805,6 +4161,10 @@ class EspDurabilityAndSyncTest(unittest.TestCase):
 
         with patch.object(mod, "check_mountpoint"), patch.object(
             mod, "collect_entries", return_value=[entry]
+        ), patch.object(
+            mod, "check_efivars"
+        ), patch.object(
+            mod, "capture", return_value=""
         ), patch.object(
             mod,
             "sync_filesystem",
@@ -4588,6 +4948,10 @@ class EspArtifactTransactionAndRetryTest(unittest.TestCase):
 
         with patch.object(mod_nvram, "check_mountpoint"), patch.object(
             mod_nvram, "collect_entries", return_value=[entry3, entry2, entry1]
+        ), patch.object(
+            mod_nvram, "check_efivars"
+        ), patch.object(
+            mod_nvram, "capture", return_value=""
         ), patch.object(
             mod_nvram,
             "install_nvram_entry",

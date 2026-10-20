@@ -14,6 +14,7 @@ import sys
 import tempfile
 import tomllib
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -2190,7 +2191,16 @@ def parse_nvram_entry(line: str) -> NvramEntry | None:
     return NvramEntry(label=label, loader_path=loader_path)
 
 
-def install_nvram_entry() -> None:
+class NvramStatus(Enum):
+    ABSENT = "absent"
+    MATCHING = "matching"
+    CONFLICT = "conflict"
+
+
+NvramInspectionStatus = NvramStatus
+
+
+def inspect_nvram_entry(raise_on_conflict: bool = True) -> NvramStatus:
     check_efivars()
 
     existing = capture(
@@ -2203,8 +2213,8 @@ def install_nvram_entry() -> None:
     normalized_target_label = normalize_label(FIRMWARE_ENTRY_LABEL)
     normalized_target_loader = normalize_efi_path(FIRMWARE_LOADER_PATH)
 
-    label_seen = False
-    matching_loader = False
+    matching_seen = False
+    conflict_seen = False
 
     for line in existing.splitlines():
         entry = parse_nvram_entry(line)
@@ -2212,23 +2222,42 @@ def install_nvram_entry() -> None:
             continue
 
         if normalize_label(entry.label) == normalized_target_label:
-            label_seen = True
-
             if (
                 entry.loader_path is not None
                 and normalize_efi_path(entry.loader_path) == normalized_target_loader
             ):
-                matching_loader = True
-                break
+                matching_seen = True
+            else:
+                conflict_seen = True
 
-    if matching_loader:
+    if conflict_seen:
+        if raise_on_conflict:
+            raise RuntimeError(
+                f"an existing UEFI entry named {FIRMWARE_ENTRY_LABEL!r} "
+                f"does not point to {FIRMWARE_LOADER_PATH}"
+            )
+        return NvramStatus.CONFLICT
+
+    if matching_seen:
+        return NvramStatus.MATCHING
+
+    return NvramStatus.ABSENT
+
+
+inspect_nvram = inspect_nvram_entry
+
+
+def preflight_nvram() -> None:
+    inspect_nvram_entry(raise_on_conflict=True)
+
+
+check_nvram_preflight = preflight_nvram
+
+
+def install_nvram_entry() -> None:
+    status = inspect_nvram_entry(raise_on_conflict=True)
+    if status == NvramStatus.MATCHING:
         return
-
-    if label_seen:
-        raise RuntimeError(
-            f"an existing UEFI entry named {FIRMWARE_ENTRY_LABEL!r} "
-            f"does not point to {FIRMWARE_LOADER_PATH}"
-        )
 
     disk, partition = get_esp_device()
 
@@ -2317,6 +2346,9 @@ def install_bootloader(
     )
 
     check_unique_identifiers(entries)
+
+    if CAN_TOUCH_EFI_VARIABLES:
+        preflight_nvram()
 
     esp_path(SPROUT_DIR).mkdir(
         parents=True,
