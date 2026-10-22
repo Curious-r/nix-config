@@ -9,9 +9,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "a4885bccea5fe31fa89d9939913c9582d6b60bd3",
-      "url": "https://github.com/Curious-r/nix-packages/archive/a4885bccea5fe31fa89d9939913c9582d6b60bd3.tar.gz",
-      "hash": "sha256-LhQVbe3U/3NTkTtbkRTOsriWIKEnJGVHkYwIStdwNzY="
+      "revision": "3e458cb89dd4c659f2ad9b3139654fd861215468",
+      "url": "https://github.com/Curious-r/nix-packages/archive/3e458cb89dd4c659f2ad9b3139654fd861215468.tar.gz",
+      "hash": "sha256-W9BG+Y/ZO9YVsGJsB785hfxvwBzoM7itbX0YX7BYuoc="
     },
     "disko": {
       "type": "Git",
@@ -22,9 +22,9 @@
       },
       "branch": "master",
       "submodules": false,
-      "revision": "fb50c22daa522e9a155ff18f9730ec6013e3fc7d",
-      "url": "https://github.com/nix-community/disko/archive/fb50c22daa522e9a155ff18f9730ec6013e3fc7d.tar.gz",
-      "hash": "sha256-r3C+5Gk2ex6Q2ZX3tgTbOHyKBYLYD+bmunnvebErqZA="
+      "revision": "cedd626e11b635470fa6f9fdb8ad79b0075dd7f9",
+      "url": "https://github.com/nix-community/disko/archive/cedd626e11b635470fa6f9fdb8ad79b0075dd7f9.tar.gz",
+      "hash": "sha256-3hSJlv8mUVnZPMWK2+CM7a9O+nR6Z4mCh27NfLCmTPc="
     },
     "dms-plugin-registry": {
       "type": "Git",
@@ -35,9 +35,9 @@
       },
       "branch": "master",
       "submodules": false,
-      "revision": "e7c2733ad43fc1594bccaccd99a0daadfbf5ebd7",
-      "url": "https://github.com/AvengeMedia/dms-plugin-registry/archive/e7c2733ad43fc1594bccaccd99a0daadfbf5ebd7.tar.gz",
-      "hash": "sha256-cUHpiuw/o/xbU4V0aUds28EzqKOv28cqT1y3ckCNGgg="
+      "revision": "8b16f347dce5c4c0f8644c6c378d0dfe06d99ce9",
+      "url": "https://github.com/AvengeMedia/dms-plugin-registry/archive/8b16f347dce5c4c0f8644c6c378d0dfe06d99ce9.tar.gz",
+      "hash": "sha256-DtpOPUXbCejCFxYDmCsDCfe6Dx5OKgmveNHLyKa2iSM="
     },
     "home-manager": {
       "type": "Git",
@@ -48,9 +48,9 @@
       },
       "branch": "master",
       "submodules": false,
-      "revision": "ec80131710bffcdf3b8498cf41f3a0579833b023",
-      "url": "https://github.com/nix-community/home-manager/archive/ec80131710bffcdf3b8498cf41f3a0579833b023.tar.gz",
-      "hash": "sha256-TyoYH983Nsc++1scw0SoOEKshPSJWJDxK7tTmuZ974M="
+      "revision": "cb7de2c7e589afe7531d4832c71ad4df144624ea",
+      "url": "https://github.com/nix-community/home-manager/archive/cb7de2c7e589afe7531d4832c71ad4df144624ea.tar.gz",
+      "hash": "sha256-chUrnAqBhBLvXBUsLFxFYBIl8c0GWp06wdjmAMS8l+U="
     },
     "lanzaboote": {
       "type": "GitRelease",
@@ -77,9 +77,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "06419f6a482c5a4d38d703f4b88b128740d3124e",
-      "url": "https://github.com/numtide/llm-agents.nix/archive/06419f6a482c5a4d38d703f4b88b128740d3124e.tar.gz",
-      "hash": "sha256-vGjr+2nzejufjFvsqgGhvEEO6yN+fRj6ukKUItAULZ8="
+      "revision": "24cf271f40105749bb82ad318013c372183ef28e",
+      "url": "https://github.com/numtide/llm-agents.nix/archive/24cf271f40105749bb82ad318013c372183ef28e.tar.gz",
+      "hash": "sha256-O8JsXXPl26uxJ2nITotVnq7FAubqzsK4pWhZuh78bDA="
     },
     "nix-on-droid": {
       "type": "Git",
