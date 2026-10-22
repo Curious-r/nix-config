@@ -11,7 +11,7 @@
       sprout = {
         enable = true;
         package = pkgs.curious.sprout;
-        configurationLimit = 3;
+        configurationLimit = 20;
         efiInstallAsRemovable = false;
       };
     };
