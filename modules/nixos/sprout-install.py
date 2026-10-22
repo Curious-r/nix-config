@@ -37,6 +37,25 @@ FIRMWARE_ENTRY_LABEL = @firmwareEntryLabel@
 
 DRIVERS: dict[str, str] = json.loads(r'''@drivers@''')
 
+SETTINGS_FILE = Path("@settingsFile@")
+
+
+def load_custom_settings() -> dict[str, Any]:
+    if not SETTINGS_FILE.is_file():
+        return {}
+    try:
+        content = SETTINGS_FILE.read_text(encoding="utf-8")
+        data = json.loads(content)
+    except Exception as exc:
+        raise RuntimeError(
+            f"failed to read custom settings from {SETTINGS_FILE}: {exc}"
+        ) from exc
+    if not isinstance(data, dict):
+        raise RuntimeError(
+            f"settings file {SETTINGS_FILE} did not contain a JSON object"
+        )
+    return data
+
 
 SPROUT_DIR = Path("EFI/Sprout")
 NIXOS_DIR = SPROUT_DIR / "nixos"
@@ -1149,7 +1168,117 @@ def generate_sprout_config(
     entries: Sequence[BootEntry],
     default_entry: str,
     drivers: dict[str, Path],
+    settings: dict[str, Any] | None = None,
 ) -> str:
+    if settings is None:
+        settings = load_custom_settings()
+
+    for key in settings:
+        if key not in ("options", "entries", "actions"):
+            raise RuntimeError(f"unsupported custom settings section: {key!r}")
+
+    options_cfg = settings.get("options", {})
+    if not isinstance(options_cfg, dict):
+        raise RuntimeError("custom settings 'options' must be a table")
+    for opt_key in options_cfg:
+        if opt_key != "menu-style":
+            raise RuntimeError(
+                f"unsupported or module-owned option in custom settings: {opt_key!r}"
+            )
+    menu_style = options_cfg.get("menu-style")
+    if menu_style is not None and menu_style not in ("simple", "basic"):
+        raise RuntimeError(f"invalid custom settings menu-style: {menu_style!r}")
+
+    custom_entries = settings.get("entries", {})
+    if not isinstance(custom_entries, dict):
+        raise RuntimeError("custom settings 'entries' must be a table")
+
+    custom_actions = settings.get("actions", {})
+    if not isinstance(custom_actions, dict):
+        raise RuntimeError("custom settings 'actions' must be a table")
+
+    generated_entry_ids = {entry.identifier for entry in entries}
+    generated_action_ids = set(generated_entry_ids)
+
+    for entry_id, entry_dict in custom_entries.items():
+        if not entry_id:
+            raise RuntimeError("custom entry identifier cannot be empty")
+        if entry_id.startswith("nixos-"):
+            raise RuntimeError(
+                f"custom entry identifier {entry_id!r} uses reserved 'nixos-' prefix"
+            )
+        if entry_id in generated_entry_ids:
+            raise RuntimeError(
+                f"custom entry identifier {entry_id!r} collides with generated NixOS entry"
+            )
+        if not isinstance(entry_dict, dict):
+            raise RuntimeError(f"custom entry {entry_id!r} must be a table")
+        if "title" not in entry_dict or not isinstance(entry_dict["title"], str):
+            raise RuntimeError(f"custom entry {entry_id!r} requires 'title' string")
+        acts = entry_dict.get("actions")
+        if not isinstance(acts, list) or not acts:
+            raise RuntimeError(
+                f"custom entry {entry_id!r} must have a non-empty 'actions' list"
+            )
+        for act in acts:
+            if not isinstance(act, str) or not act:
+                raise RuntimeError(
+                    f"custom entry {entry_id!r} contains invalid action reference {act!r}"
+                )
+            if act not in custom_actions:
+                raise RuntimeError(
+                    f"custom entry {entry_id!r} references unknown custom action {act!r}"
+                )
+
+    for action_id, action_dict in custom_actions.items():
+        if not action_id:
+            raise RuntimeError("custom action identifier cannot be empty")
+        if action_id.startswith("nixos-"):
+            raise RuntimeError(
+                f"custom action identifier {action_id!r} uses reserved 'nixos-' prefix"
+            )
+        if action_id in generated_action_ids:
+            raise RuntimeError(
+                f"custom action identifier {action_id!r} collides with generated NixOS action"
+            )
+        if not isinstance(action_dict, dict):
+            raise RuntimeError(f"custom action {action_id!r} must be a table")
+
+        variants = [k for k in ("chainload", "print", "edera") if k in action_dict]
+        if len(variants) != 1:
+            raise RuntimeError(
+                f"custom action {action_id!r} must define exactly one variant (chainload, print, or edera); found {variants}"
+            )
+        for k in action_dict:
+            if k not in ("chainload", "print", "edera"):
+                raise RuntimeError(f"custom action {action_id!r} has unknown field: {k!r}")
+
+        variant = variants[0]
+        vdata = action_dict[variant]
+        if not isinstance(vdata, dict):
+            raise RuntimeError(f"custom action {action_id!r} variant {variant!r} must be a table")
+
+        if variant == "chainload":
+            if "path" not in vdata or not isinstance(vdata["path"], str):
+                raise RuntimeError(f"custom action {action_id!r} chainload requires 'path' string")
+            if vdata.get("linux-initrd") is not None and vdata.get("linux-initrd-chain"):
+                raise RuntimeError(
+                    f"custom action {action_id!r} specifies both 'linux-initrd' and 'linux-initrd-chain'"
+                )
+        elif variant == "print":
+            text = vdata.get("text", "")
+            if not isinstance(text, str):
+                raise RuntimeError(f"custom action {action_id!r} print 'text' must be a string")
+        elif variant == "edera":
+            if "xen" not in vdata or not isinstance(vdata["xen"], str):
+                raise RuntimeError(f"custom action {action_id!r} edera requires 'xen' string")
+            if "kernel" not in vdata or not isinstance(vdata["kernel"], str):
+                raise RuntimeError(f"custom action {action_id!r} edera requires 'kernel' string")
+            if vdata.get("initrd") is not None and vdata.get("initrd-chain"):
+                raise RuntimeError(
+                    f"custom action {action_id!r} specifies both 'initrd' and 'initrd-chain'"
+                )
+
     lines: list[str] = [
         "version = 1",
         "",
@@ -1157,6 +1286,9 @@ def generate_sprout_config(
         f"default-entry = {quote_toml(default_entry)}",
         f"menu-timeout = {TIMEOUT}",
     ]
+
+    if menu_style is not None:
+        lines.append(f"menu-style = {quote_toml(menu_style)}")
 
     for name, path in sorted(drivers.items()):
         lines.extend(
@@ -1177,6 +1309,22 @@ def generate_sprout_config(
                 f"sort-key = {quote_toml(entry.sort_key)}",
             ]
         )
+
+    for entry_id, entry_data in sorted(custom_entries.items()):
+        lines.extend(
+            [
+                "",
+                f"[entries.{quote_toml(entry_id)}]",
+                f"title = {quote_toml(entry_data['title'])}",
+                f"actions = {array_toml(entry_data['actions'])}",
+            ]
+        )
+        if entry_data.get("sort-key") is not None:
+            lines.append(f"sort-key = {quote_toml(entry_data['sort-key'])}")
+        if entry_data.get("values"):
+            lines.append(f"[entries.{quote_toml(entry_id)}.values]")
+            for vk, vv in sorted(entry_data["values"].items()):
+                lines.append(f"{quote_toml(vk)} = {quote_toml(vv)}")
 
     for entry in entries:
         lines.extend(
@@ -1206,6 +1354,40 @@ def generate_sprout_config(
                     [uefi_path(path) for path in entry.initrds]
                 )
             )
+
+    for action_id, action_data in sorted(custom_actions.items()):
+        lines.extend(
+            [
+                "",
+                f"[actions.{quote_toml(action_id)}]",
+            ]
+        )
+        if "chainload" in action_data:
+            cl = action_data["chainload"]
+            lines.append(f"chainload.path = {quote_toml(cl['path'])}")
+            if cl.get("options"):
+                lines.append(f"chainload.options = {array_toml(cl['options'])}")
+            if cl.get("linux-initrd"):
+                lines.append(f"chainload.linux-initrd = {quote_toml(cl['linux-initrd'])}")
+            elif cl.get("linux-initrd-chain"):
+                lines.append(
+                    f"chainload.linux-initrd-chain = {array_toml(cl['linux-initrd-chain'])}"
+                )
+        elif "print" in action_data:
+            pr = action_data["print"]
+            lines.append(f"print.text = {quote_toml(pr.get('text', ''))}")
+        elif "edera" in action_data:
+            ed = action_data["edera"]
+            lines.append(f"edera.xen = {quote_toml(ed['xen'])}")
+            lines.append(f"edera.kernel = {quote_toml(ed['kernel'])}")
+            if ed.get("initrd"):
+                lines.append(f"edera.initrd = {quote_toml(ed['initrd'])}")
+            elif ed.get("initrd-chain"):
+                lines.append(f"edera.initrd-chain = {array_toml(ed['initrd-chain'])}")
+            if ed.get("kernel-options"):
+                lines.append(f"edera.kernel-options = {array_toml(ed['kernel-options'])}")
+            if ed.get("xen-options"):
+                lines.append(f"edera.xen-options = {array_toml(ed['xen-options'])}")
 
     lines.append("")
 
@@ -1429,6 +1611,18 @@ def published_config_referenced_files() -> set[Path]:
             f"published Sprout configuration {config_path} is not valid UTF-8: {exc}"
         ) from exc
 
+    return parse_and_validate_sprout_config(
+        content,
+        config_path,
+        check_files_exist=False,
+    )
+
+
+def parse_and_validate_sprout_config(
+    content: str,
+    config_path: Path,
+    check_files_exist: bool = False,
+) -> set[Path]:
     try:
         data = tomllib.loads(content)
     except tomllib.TOMLDecodeError as exc:
@@ -1695,6 +1889,26 @@ def published_config_referenced_files() -> set[Path]:
     for action_name, context_values, context_desc in action_invocations:
         action_entry = actions_table_dict[action_name]
 
+        recognized_variants = [
+            k for k in ("chainload", "print", "edera") if k in action_entry
+        ]
+        if len(recognized_variants) > 1:
+            raise RuntimeError(
+                f"published Sprout configuration {config_path} {context_desc} specifies multiple action variants: {recognized_variants}"
+            )
+
+        print_entry = action_entry.get("print")
+        if print_entry is not None:
+            if not isinstance(print_entry, dict):
+                raise RuntimeError(
+                    f"published Sprout configuration {config_path} {context_desc} contains invalid 'print' table"
+                )
+            print_text = print_entry.get("text", "")
+            if not isinstance(print_text, str):
+                raise RuntimeError(
+                    f"published Sprout configuration {config_path} {context_desc} print 'text' is not a string"
+                )
+
         action_path = action_entry.get("path")
         if action_path is not None:
             if not isinstance(action_path, str):
@@ -1868,6 +2082,13 @@ def published_config_referenced_files() -> set[Path]:
                             path_kind="edera initrd chain path",
                         )
                     )
+
+    if check_files_exist:
+        for ref_path in sorted(referenced):
+            if not ref_path.is_file():
+                raise RuntimeError(
+                    f"published Sprout configuration {config_path} references missing file {ref_path}"
+                )
 
     return referenced
 
@@ -2290,6 +2511,11 @@ def garbage_collect(
             except RuntimeError:
                 pass
 
+    try:
+        keep.update(published_config_referenced_files())
+    except Exception:
+        pass
+
     for directory in (
         esp_path(NIXOS_DIR),
         esp_path(DRIVERS_DIR),
@@ -2378,6 +2604,12 @@ def install_bootloader(
                 entries,
                 default_entry.identifier,
                 drivers,
+            )
+
+            parse_and_validate_sprout_config(
+                configuration,
+                esp_path(SPROUT_CONFIG),
+                check_files_exist=True,
             )
 
             # Atomically replace sprout.toml only after all referenced files are present.

@@ -16,6 +16,65 @@ let
   cfg = config.boot.loader.sprout;
   efi = config.boot.loader.efi;
 
+  normalizedSettings = {
+    options = lib.filterAttrs (_k: v: v != null) cfg.settings.options;
+    entries = lib.mapAttrs (
+      _name: entry:
+      {
+        inherit (entry) title actions values;
+      }
+      // (lib.optionalAttrs (entry.sort-key != null) {
+        inherit (entry) sort-key;
+      })
+    ) cfg.settings.entries;
+    actions = lib.mapAttrs (
+      _name: action:
+      if action.chainload != null then
+        {
+          chainload = {
+            inherit (action.chainload) path;
+          }
+          // (lib.optionalAttrs (action.chainload.options != [ ]) {
+            inherit (action.chainload) options;
+          })
+          // (lib.optionalAttrs (action.chainload.linux-initrd != null) {
+            inherit (action.chainload) linux-initrd;
+          })
+          // (lib.optionalAttrs (action.chainload.linux-initrd-chain != [ ]) {
+            inherit (action.chainload) linux-initrd-chain;
+          });
+        }
+      else if action.print != null then
+        {
+          print = {
+            inherit (action.print) text;
+          };
+        }
+      else if action.edera != null then
+        {
+          edera = {
+            inherit (action.edera) xen kernel;
+          }
+          // (lib.optionalAttrs (action.edera.initrd != null) {
+            inherit (action.edera) initrd;
+          })
+          // (lib.optionalAttrs (action.edera.initrd-chain != [ ]) {
+            inherit (action.edera) initrd-chain;
+          })
+          // (lib.optionalAttrs (action.edera.kernel-options != [ ]) {
+            inherit (action.edera) kernel-options;
+          })
+          // (lib.optionalAttrs (action.edera.xen-options != [ ]) {
+            inherit (action.edera) xen-options;
+          });
+        }
+      else
+        { }
+    ) cfg.settings.actions;
+  };
+
+  settingsJsonFile = pkgs.writeText "sprout-settings.json" (builtins.toJSON normalizedSettings);
+
   sproutInstaller = pkgs.replaceVarsWith {
     name = "sprout-install";
     src = ./sprout-install.py;
@@ -59,6 +118,8 @@ let
       firmwareEntryLabel = builtins.toJSON cfg.firmwareEntryLabel;
 
       drivers = builtins.toJSON (lib.mapAttrs (_name: path: toString path) cfg.drivers);
+
+      settingsFile = settingsJsonFile;
     };
   };
 
@@ -125,6 +186,219 @@ in
         filename under `EFI/Sprout/drivers/`.
       '';
     };
+
+    settings = mkOption {
+      type = types.submodule {
+        options = {
+          options = mkOption {
+            type = types.submodule {
+              options = {
+                menu-style = mkOption {
+                  type = types.nullOr (
+                    types.enum [
+                      "simple"
+                      "basic"
+                    ]
+                  );
+                  default = null;
+                  description = ''
+                    Sprout menu style: "simple" or "basic".
+                  '';
+                };
+              };
+            };
+            default = { };
+            description = ''
+              Static Sprout menu options.
+            '';
+          };
+
+          entries = mkOption {
+            type = types.attrsOf (
+              types.submodule (
+                { name, ... }: {
+                  options = {
+                    title = mkOption {
+                      type = types.str;
+                      description = ''
+                        The entry title.
+                      '';
+                    };
+
+                    actions = mkOption {
+                      type = types.listOf types.str;
+                      description = ''
+                        List of action identifiers. Must be non-empty.
+                      '';
+                    };
+
+                    sort-key = mkOption {
+                      type = types.nullOr types.str;
+                      default = null;
+                      description = ''
+                        Optional sort key for ordering the entry.
+                      '';
+                    };
+
+                    values = mkOption {
+                      type = types.attrsOf types.str;
+                      default = { };
+                      description = ''
+                        Entry-specific values table.
+                      '';
+                    };
+                  };
+                }
+              )
+            );
+            default = { };
+            description = ''
+              Static Sprout boot entries.
+            '';
+          };
+
+          actions = mkOption {
+            type = types.attrsOf (
+              types.submodule (
+                { name, ... }: {
+                  options = {
+                    chainload = mkOption {
+                      type = types.nullOr (
+                        types.submodule {
+                          options = {
+                            path = mkOption {
+                              type = types.str;
+                              description = ''
+                                Path to the EFI binary to chainload.
+                              '';
+                            };
+
+                            options = mkOption {
+                              type = types.listOf types.str;
+                              default = [ ];
+                              description = ''
+                                Command-line arguments passed to the chainloaded EFI binary.
+                              '';
+                            };
+
+                            linux-initrd = mkOption {
+                              type = types.nullOr types.str;
+                              default = null;
+                              description = ''
+                                Path to a single Linux initrd. Mutually exclusive with `linux-initrd-chain`.
+                              '';
+                            };
+
+                            linux-initrd-chain = mkOption {
+                              type = types.listOf types.str;
+                              default = [ ];
+                              description = ''
+                                List of paths to Linux initrds. Mutually exclusive with `linux-initrd`.
+                              '';
+                            };
+                          };
+                        }
+                      );
+                      default = null;
+                      description = ''
+                        Chainload action variant.
+                      '';
+                    };
+
+                    print = mkOption {
+                      type = types.nullOr (
+                        types.submodule {
+                          options = {
+                            text = mkOption {
+                              type = types.str;
+                              default = "";
+                              description = ''
+                                Text to print to the console.
+                              '';
+                            };
+                          };
+                        }
+                      );
+                      default = null;
+                      description = ''
+                        Print action variant.
+                      '';
+                    };
+
+                    edera = mkOption {
+                      type = types.nullOr (
+                        types.submodule {
+                          options = {
+                            xen = mkOption {
+                              type = types.str;
+                              description = ''
+                                Path to the Xen hypervisor binary.
+                              '';
+                            };
+
+                            kernel = mkOption {
+                              type = types.str;
+                              description = ''
+                                Path to the kernel binary.
+                              '';
+                            };
+
+                            initrd = mkOption {
+                              type = types.nullOr types.str;
+                              default = null;
+                              description = ''
+                                Path to a single initrd. Mutually exclusive with `initrd-chain`.
+                              '';
+                            };
+
+                            initrd-chain = mkOption {
+                              type = types.listOf types.str;
+                              default = [ ];
+                              description = ''
+                                List of paths to initrds. Mutually exclusive with `initrd`.
+                              '';
+                            };
+
+                            kernel-options = mkOption {
+                              type = types.listOf types.str;
+                              default = [ ];
+                              description = ''
+                                Command-line arguments passed to the kernel.
+                              '';
+                            };
+
+                            xen-options = mkOption {
+                              type = types.listOf types.str;
+                              default = [ ];
+                              description = ''
+                                Command-line arguments passed to Xen.
+                              '';
+                            };
+                          };
+                        }
+                      );
+                      default = null;
+                      description = ''
+                        Edera action variant.
+                      '';
+                    };
+                  };
+                }
+              )
+            );
+            default = { };
+            description = ''
+              Static Sprout action definitions.
+            '';
+          };
+        };
+      };
+      default = { };
+      description = ''
+        Static Sprout configuration settings. Exposes a closed, typed subset of Sprout's
+        configuration schema for static menu options, additional entries, and actions.
+      '';
+    };
   };
 
   config = mkIf cfg.enable {
@@ -172,6 +446,96 @@ in
         message = ''
           boot.loader.timeout must be non-null and non-negative. Sprout does not
           support null / an indefinitely displayed boot menu.
+        '';
+      }
+
+      {
+        assertion = !lib.hasAttr "" cfg.settings.entries;
+
+        message = ''
+          boot.loader.sprout.settings.entries cannot contain an empty entry name.
+        '';
+      }
+
+      {
+        assertion = !lib.hasAttr "" cfg.settings.actions;
+
+        message = ''
+          boot.loader.sprout.settings.actions cannot contain an empty action name.
+        '';
+      }
+
+      {
+        assertion = lib.all (name: !lib.hasPrefix "nixos-" name) (lib.attrNames cfg.settings.entries);
+
+        message = ''
+          boot.loader.sprout.settings.entries cannot use reserved 'nixos-' prefix.
+        '';
+      }
+
+      {
+        assertion = lib.all (name: !lib.hasPrefix "nixos-" name) (lib.attrNames cfg.settings.actions);
+
+        message = ''
+          boot.loader.sprout.settings.actions cannot use reserved 'nixos-' prefix.
+        '';
+      }
+
+      {
+        assertion = lib.all (entry: entry.actions != [ ]) (lib.attrValues cfg.settings.entries);
+
+        message = ''
+          boot.loader.sprout.settings.entries.<name>.actions must be non-empty.
+        '';
+      }
+
+      {
+        assertion = lib.all (entry: lib.all (act: lib.hasAttr act cfg.settings.actions) entry.actions) (
+          lib.attrValues cfg.settings.entries
+        );
+
+        message = ''
+          All actions referenced by boot.loader.sprout.settings.entries must exist in boot.loader.sprout.settings.actions.
+        '';
+      }
+
+      {
+        assertion = lib.all (
+          action:
+          let
+            variants =
+              (if action.chainload != null then 1 else 0)
+              + (if action.print != null then 1 else 0)
+              + (if action.edera != null then 1 else 0);
+          in
+          variants == 1
+        ) (lib.attrValues cfg.settings.actions);
+
+        message = ''
+          Each action in boot.loader.sprout.settings.actions must define exactly one variant (chainload, print, or edera).
+        '';
+      }
+
+      {
+        assertion = lib.all (
+          action:
+          action.chainload == null
+          || action.chainload.linux-initrd == null
+          || action.chainload.linux-initrd-chain == [ ]
+        ) (lib.attrValues cfg.settings.actions);
+
+        message = ''
+          boot.loader.sprout.settings.actions.<name>.chainload cannot specify both 'linux-initrd' and 'linux-initrd-chain'.
+        '';
+      }
+
+      {
+        assertion = lib.all (
+          action: action.edera == null || action.edera.initrd == null || action.edera.initrd-chain == [ ]
+        ) (lib.attrValues cfg.settings.actions);
+
+        message = ''
+          boot.loader.sprout.settings.actions.<name>.edera cannot specify both 'initrd' and 'initrd-chain'.
         '';
       }
     ];

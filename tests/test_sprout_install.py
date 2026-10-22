@@ -27,6 +27,7 @@ def load_sprout_installer(
     can_touch_efi: bool = False,
     removable: bool = False,
     entry_label: str = "NixOS Sprout",
+    settings: dict[str, Any] | None = None,
 ) -> ModuleType:
     src_file = (
         Path(__file__).resolve().parent.parent
@@ -37,6 +38,13 @@ def load_sprout_installer(
     code = src_file.read_text(encoding="utf-8")
 
     bin_path = sprout_binary or (esp_mount / "EFI" / "Sprout" / "sprout.efi")
+
+    temp_settings = tempfile.NamedTemporaryFile(
+        delete=False, suffix=".json", mode="w", encoding="utf-8"
+    )
+    json.dump(settings or {}, temp_settings)
+    temp_settings.close()
+    settings_file = Path(temp_settings.name)
 
     replacements = {
         "@python3@": sys.executable,
@@ -51,6 +59,7 @@ def load_sprout_installer(
         "@efiInstallAsRemovable@": "1" if removable else "0",
         "@firmwareEntryLabel@": json.dumps(entry_label),
         "@drivers@": json.dumps(drivers or {}),
+        "@settingsFile@": str(settings_file),
     }
 
     for key, value in replacements.items():
@@ -5843,6 +5852,516 @@ class EspArtifactTransactionAndRetryTest(unittest.TestCase):
         with self.assertRaises(RuntimeError) as ctx_grow:
             self.mod.published_config_referenced_files()
         self.assertIn("too long while finalizing", str(ctx_grow.exception))
+
+
+class SproutStaticSettingsTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp_dir_obj = tempfile.TemporaryDirectory()
+        self.temp_dir = Path(self.temp_dir_obj.name).resolve()
+        self.esp_dir = self.temp_dir / "esp"
+        self.esp_dir.mkdir(parents=True, exist_ok=True)
+
+        self.old_cwd = Path.cwd()
+        os.chdir(self.temp_dir)
+
+        self.driver_src = self.temp_dir / "btrfs-driver.efi"
+        self.driver_src.write_text("driver-initial")
+
+        self.sprout_source = self.temp_dir / "source-sprout.efi"
+        self.sprout_source.write_text("sprout-bin")
+
+        self.drivers_config = {
+            "btrfs": str(self.driver_src),
+        }
+
+    def tearDown(self) -> None:
+        os.chdir(self.old_cwd)
+        self.temp_dir_obj.cleanup()
+
+    def _create_sample_entry(
+        self,
+        mod: ModuleType,
+        identifier: str = "nixos-g1",
+        generation: int = 1,
+        title: str = "NixOS generation 1",
+    ) -> Any:
+        k = self.temp_dir / f"kernel-{identifier}.efi"
+        k.write_text("kernel-bytes")
+        dest_k = mod.NIXOS_DIR / f"{identifier}-kernel.efi"
+        art_k = mod.BootArtifact(dest_k, k, None, generation, True)
+        return mod.BootEntry(
+            identifier=identifier,
+            title=title,
+            sort_key=identifier,
+            kernel=dest_k,
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(art_k,),
+            critical=True,
+        )
+
+    def test_final_toml_contains_generated_and_custom_entries_and_actions(self) -> None:
+        """Verify published sprout.toml includes both NixOS entries and custom entries/actions with options."""
+        shell_efi = self.esp_dir / "EFI" / "tools" / "Shell.efi"
+        shell_efi.parent.mkdir(parents=True, exist_ok=True)
+        shell_efi.write_text("shell-binary")
+
+        settings = {
+            "options": {
+                "menu-style": "simple",
+            },
+            "entries": {
+                "uefi-shell": {
+                    "title": "UEFI Shell",
+                    "actions": ["uefi-shell"],
+                    "sort-key": "z-shell",
+                    "values": {"theme": "dark"},
+                },
+            },
+            "actions": {
+                "uefi-shell": {
+                    "chainload": {
+                        "path": r"\EFI\tools\Shell.efi",
+                        "options": ["-nomap"],
+                    },
+                },
+            },
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            timeout=10,
+            settings=settings,
+        )
+
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        self.assertTrue(config_path.is_file())
+        data = tomllib.loads(config_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(data["version"], 1)
+        # Module-owned options
+        self.assertEqual(data["options"]["default-entry"], "nixos-g1")
+        self.assertEqual(data["options"]["menu-timeout"], 10)
+        # Custom option
+        self.assertEqual(data["options"]["menu-style"], "simple")
+        # Drivers
+        self.assertIn("btrfs", data["drivers"])
+        # Entries
+        self.assertIn("nixos-g1", data["entries"])
+        self.assertIn("uefi-shell", data["entries"])
+        self.assertEqual(data["entries"]["uefi-shell"]["title"], "UEFI Shell")
+        self.assertEqual(data["entries"]["uefi-shell"]["actions"], ["uefi-shell"])
+        self.assertEqual(data["entries"]["uefi-shell"]["sort-key"], "z-shell")
+        self.assertEqual(data["entries"]["uefi-shell"]["values"]["theme"], "dark")
+        # Actions
+        self.assertIn("nixos-g1", data["actions"])
+        self.assertIn("uefi-shell", data["actions"])
+        self.assertEqual(
+            data["actions"]["uefi-shell"]["chainload"]["path"],
+            r"\EFI\tools\Shell.efi",
+        )
+        self.assertEqual(
+            data["actions"]["uefi-shell"]["chainload"]["options"],
+            ["-nomap"],
+        )
+
+    def test_toml_roundtrip_with_quotes_backslashes_and_non_ascii(self) -> None:
+        """Verify arbitrary strings including quotes, backslashes, and Unicode roundtrip through tomllib."""
+        special_file = self.esp_dir / "EFI" / "special.efi"
+        special_file.parent.mkdir(parents=True, exist_ok=True)
+        special_file.write_text("special")
+
+        settings = {
+            "entries": {
+                "custom-entry": {
+                    "title": 'Special "Title" \\ with newline \n and 中文',
+                    "actions": ["custom-action"],
+                    "values": {
+                        'key "with" quotes': "value \\ with backslash and 日本語",
+                    },
+                },
+            },
+            "actions": {
+                "custom-action": {
+                    "chainload": {
+                        "path": r"\EFI\special.efi",
+                        "options": ['init="quoted arg"', "label=测试"],
+                    },
+                },
+            },
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+        )
+
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        data = tomllib.loads(config_path.read_text(encoding="utf-8"))
+
+        entry_data = data["entries"]["custom-entry"]
+        self.assertEqual(
+            entry_data["title"],
+            'Special "Title" \\ with newline \n and 中文',
+        )
+        self.assertEqual(
+            entry_data["values"]['key "with" quotes'],
+            "value \\ with backslash and 日本語",
+        )
+        cl_data = data["actions"]["custom-action"]["chainload"]
+        self.assertEqual(
+            cl_data["options"],
+            ['init="quoted arg"', "label=测试"],
+        )
+
+    def test_custom_action_variants_serialization(self) -> None:
+        """Verify chainload, print, and edera action variants serialize correctly."""
+        xen_file = self.esp_dir / "EFI" / "xen.efi"
+        xen_file.parent.mkdir(parents=True, exist_ok=True)
+        xen_file.write_text("xen")
+        kernel_file = self.esp_dir / "EFI" / "vmlinuz.efi"
+        kernel_file.write_text("kernel")
+        initrd_file = self.esp_dir / "EFI" / "initrd.img"
+        initrd_file.write_text("initrd")
+
+        settings = {
+            "entries": {
+                "chain-entry": {
+                    "title": "Chainload Entry",
+                    "actions": ["act-chain"],
+                },
+                "print-entry": {
+                    "title": "Print Entry",
+                    "actions": ["act-print"],
+                },
+                "edera-entry": {
+                    "title": "Edera Entry",
+                    "actions": ["act-edera"],
+                },
+            },
+            "actions": {
+                "act-chain": {
+                    "chainload": {
+                        "path": r"\EFI\vmlinuz.efi",
+                        "linux-initrd": r"\EFI\initrd.img",
+                    },
+                },
+                "act-print": {
+                    "print": {
+                        "text": "Hello from Sprout Bootloader!",
+                    },
+                },
+                "act-edera": {
+                    "edera": {
+                        "xen": r"\EFI\xen.efi",
+                        "kernel": r"\EFI\vmlinuz.efi",
+                        "kernel-options": ["console=tty0"],
+                        "xen-options": ["dom0_mem=512M"],
+                    },
+                },
+            },
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+        )
+
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        data = tomllib.loads(config_path.read_text(encoding="utf-8"))
+
+        act_chain = data["actions"]["act-chain"]["chainload"]
+        self.assertEqual(act_chain["path"], r"\EFI\vmlinuz.efi")
+        self.assertEqual(act_chain["linux-initrd"], r"\EFI\initrd.img")
+        self.assertNotIn("linux-initrd-chain", act_chain)
+
+        act_print = data["actions"]["act-print"]["print"]
+        self.assertEqual(act_print["text"], "Hello from Sprout Bootloader!")
+
+        act_edera = data["actions"]["act-edera"]["edera"]
+        self.assertEqual(act_edera["xen"], r"\EFI\xen.efi")
+        self.assertEqual(act_edera["kernel"], r"\EFI\vmlinuz.efi")
+        self.assertEqual(act_edera["kernel-options"], ["console=tty0"])
+        self.assertEqual(act_edera["xen-options"], ["dom0_mem=512M"])
+        self.assertNotIn("initrd", act_edera)
+        self.assertNotIn("initrd-chain", act_edera)
+
+    def test_unknown_referenced_action_fails_before_publication(self) -> None:
+        """Verify custom entry referencing unknown action fails before publication."""
+        settings = {
+            "entries": {
+                "broken-entry": {
+                    "title": "Broken",
+                    "actions": ["missing-action"],
+                },
+            },
+            "actions": {},
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+        )
+
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod.install_bootloader(self.temp_dir)
+            self.assertIn("references unknown custom action 'missing-action'", str(ctx.exception))
+
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        self.assertFalse(config_path.exists())
+
+    def test_path_traversal_fails_before_publication(self) -> None:
+        """Verify custom action path traversal escape fails before publication."""
+        settings = {
+            "entries": {
+                "traversal-entry": {
+                    "title": "Escape",
+                    "actions": ["act-escape"],
+                },
+            },
+            "actions": {
+                "act-escape": {
+                    "chainload": {
+                        "path": r"..\..\etc\shadow",
+                    },
+                },
+            },
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+        )
+
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod.install_bootloader(self.temp_dir)
+            self.assertIn("references invalid kernel path", str(ctx.exception))
+
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        self.assertFalse(config_path.exists())
+
+    def test_unresolved_dynamic_variable_fails_before_publication(self) -> None:
+        """Verify custom action with unresolved dynamic variable fails before publication."""
+        settings = {
+            "entries": {
+                "unres-entry": {
+                    "title": "Unresolved",
+                    "actions": ["act-unres"],
+                },
+            },
+            "actions": {
+                "act-unres": {
+                    "chainload": {
+                        "path": r"\EFI\$missing_var\kernel.efi",
+                    },
+                },
+            },
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+        )
+
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod.install_bootloader(self.temp_dir)
+            self.assertIn("contains unresolved dynamic variable '$missing_var'", str(ctx.exception))
+
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        self.assertFalse(config_path.exists())
+
+    def test_missing_referenced_file_fails_before_publication(self) -> None:
+        """Verify action referencing missing file on ESP fails before publication."""
+        # Note: We do NOT create EFI/nonexistent.efi on the ESP
+        settings = {
+            "entries": {
+                "missing-file-entry": {
+                    "title": "Missing File",
+                    "actions": ["act-missing"],
+                },
+            },
+            "actions": {
+                "act-missing": {
+                    "chainload": {
+                        "path": r"\EFI\nonexistent.efi",
+                    },
+                },
+            },
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+        )
+
+        # Write a previous published configuration
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("version = 1\n# previous-config\n")
+
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod.install_bootloader(self.temp_dir)
+            self.assertIn("references missing file", str(ctx.exception))
+
+        # Previous config must be preserved
+        self.assertEqual(config_path.read_text(), "version = 1\n# previous-config\n")
+
+    def test_name_collision_preserves_previous_config_and_artifacts(self) -> None:
+        """Verify generated NixOS entry name collision fails before publication and preserves previous config."""
+        settings = {
+            "entries": {
+                "nixos-g1": {
+                    "title": "Colliding Entry",
+                    "actions": ["act-collide"],
+                },
+            },
+            "actions": {
+                "act-collide": {
+                    "print": {"text": "hello"},
+                },
+            },
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+        )
+
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("version = 1\n# previous-valid-config\n")
+
+        entry = self._create_sample_entry(mod, identifier="nixos-g1")
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod.install_bootloader(self.temp_dir)
+            self.assertTrue(
+                "collides with generated NixOS entry" in str(ctx.exception)
+                or "reserved 'nixos-' prefix" in str(ctx.exception)
+            )
+
+        self.assertEqual(config_path.read_text(), "version = 1\n# previous-valid-config\n")
+
+    def test_gc_preserves_custom_referenced_files_in_managed_directory(self) -> None:
+        """Verify garbage collection preserves custom-referenced files in managed directory and deletes stale artifacts."""
+        custom_kernel = self.esp_dir / "EFI" / "Sprout" / "nixos" / "custom-kernel.efi"
+        custom_kernel.parent.mkdir(parents=True, exist_ok=True)
+        custom_kernel.write_text("custom-kernel-content")
+
+        stale_file = self.esp_dir / "EFI" / "Sprout" / "nixos" / "stale-artifact.efi"
+        stale_file.write_text("stale-artifact-content")
+
+        settings = {
+            "entries": {
+                "custom-entry": {
+                    "title": "Custom Managed",
+                    "actions": ["act-custom"],
+                },
+            },
+            "actions": {
+                "act-custom": {
+                    "chainload": {
+                        "path": r"\EFI\Sprout\nixos\custom-kernel.efi",
+                    },
+                },
+            },
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+        )
+
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        # Custom referenced file must STILL exist
+        self.assertTrue(custom_kernel.is_file(), "Custom referenced file must be preserved by GC")
+        # Stale unreferenced file must be removed
+        self.assertFalse(stale_file.exists(), "Unreferenced stale artifact must be removed by GC")
+
+    def test_empty_settings_preserves_existing_behavior(self) -> None:
+        """Verify installation with empty settings preserves existing behavior without menu-style."""
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings={},
+        )
+
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        self.assertTrue(config_path.is_file())
+        data = tomllib.loads(config_path.read_text(encoding="utf-8"))
+
+        self.assertNotIn("menu-style", data["options"])
+        self.assertEqual(data["options"]["default-entry"], "nixos-g1")
+        self.assertIn("nixos-g1", data["entries"])
+        self.assertIn("nixos-g1", data["actions"])
+        self.assertEqual(len(data["entries"]), 1)
+        self.assertEqual(len(data["actions"]), 1)
 
 
 if __name__ == "__main__":
