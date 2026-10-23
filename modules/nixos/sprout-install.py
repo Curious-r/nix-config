@@ -68,7 +68,7 @@ EXTRA_FILES_DIR = SPROUT_DIR / "extra-files"
 SPROUT_BINARY = SPROUT_DIR / "sprout.efi"
 SPROUT_CONFIG = Path("sprout.toml")
 
-EXTRA_FILE_NAME_RE: re.Pattern[str] = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+EXTRA_FILE_NAME_RE: re.Pattern[str] = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 RESERVED_VALUE_PREFIX: str = "sprout_extra_file_"
 
 
@@ -1184,7 +1184,7 @@ def install_extra_files(
     # before copying any custom files.
     prepared: list[tuple[str, Path, Path, Path, str]] = []
     for name, source_str in sorted(raw_files.items()):
-        if not isinstance(name, str) or not EXTRA_FILE_NAME_RE.match(name):
+        if not isinstance(name, str) or not EXTRA_FILE_NAME_RE.fullmatch(name):
             raise RuntimeError(
                 f"invalid extra file name {name!r}: must match [A-Za-z_][A-Za-z0-9_]*"
             )

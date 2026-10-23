@@ -6891,7 +6891,15 @@ class SproutExtraFilesTest(unittest.TestCase):
         src = self.temp_dir / "file.efi"
         src.write_bytes(b"test")
 
-        invalid_names = ["1bad", "bad-name", "bad name", "bad.name", "", "bad@name"]
+        invalid_names = [
+            "1bad",
+            "bad-name",
+            "bad name",
+            "bad.name",
+            "",
+            "bad@name",
+            "memtest\n",
+        ]
         for bad_name in invalid_names:
             mod = load_sprout_installer(
                 self.esp_dir,
@@ -6908,6 +6916,41 @@ class SproutExtraFilesTest(unittest.TestCase):
                 self.assertIn("invalid extra file name", str(ctx.exception))
 
             self.assertEqual(config_path.read_text(), "version = 1\n# previous-config\n")
+
+    def test_trailing_newline_name_rejected_without_installing_files(self) -> None:
+        """Verify extra file name with trailing newline is rejected before publication and installs no files."""
+        config_path = self.esp_dir / "sprout.toml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("version = 1\n# previous-config\n")
+
+        src = self.temp_dir / "memtest.efi"
+        src.write_bytes(b"memtest-binary")
+
+        extra_dir = self.esp_dir / "EFI" / "Sprout" / "extra-files"
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            extra_files={"memtest\n": str(src)},
+        )
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod.install_bootloader(self.temp_dir)
+            self.assertIn("invalid extra file name", str(ctx.exception))
+            self.assertIn("must match [A-Za-z_][A-Za-z0-9_]*", str(ctx.exception))
+
+        # Check prior sprout.toml preserved
+        self.assertEqual(config_path.read_text(), "version = 1\n# previous-config\n")
+
+        # Verify no file was installed inside or outside the managed extra-files directory
+        if extra_dir.exists():
+            self.assertEqual(list(extra_dir.rglob("*")), [])
+        matching_files = list(self.esp_dir.rglob("*memtest*"))
+        self.assertEqual(matching_files, [])
 
     def test_missing_and_directory_sources_fail_closed(self) -> None:
         """Verify missing source and directory source fail closed before publication."""
