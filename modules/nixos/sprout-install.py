@@ -1274,7 +1274,7 @@ def generate_sprout_config(
         settings = load_custom_settings()
 
     for key in settings:
-        if key not in ("options", "entries", "actions"):
+        if key not in ("options", "entries", "actions", "phases"):
             raise RuntimeError(f"unsupported custom settings section: {key!r}")
 
     options_cfg = settings.get("options", {})
@@ -1387,6 +1387,61 @@ def generate_sprout_config(
                     f"custom action {action_id!r} specifies both 'initrd' and 'initrd-chain'"
                 )
 
+    custom_phases = settings.get("phases")
+    if custom_phases is not None:
+        if not isinstance(custom_phases, dict):
+            raise RuntimeError("custom settings 'phases' must be a table")
+        valid_phase_names = {"early", "startup", "late"}
+        for phase_name in custom_phases:
+            if phase_name not in valid_phase_names:
+                raise RuntimeError(
+                    f"unsupported custom settings phase: {phase_name!r}"
+                )
+        for phase_name, phase_items in custom_phases.items():
+            if not isinstance(phase_items, list):
+                raise RuntimeError(
+                    f"custom phase {phase_name!r} must be a list of phase configurations"
+                )
+            for item_idx, item in enumerate(phase_items):
+                if not isinstance(item, dict):
+                    raise RuntimeError(
+                        f"custom phase {phase_name!r} item {item_idx} must be a table"
+                    )
+                for item_key in item:
+                    if item_key not in ("actions", "values"):
+                        raise RuntimeError(
+                            f"custom phase {phase_name!r} item {item_idx} has unknown field: {item_key!r}"
+                        )
+                acts = item.get("actions")
+                if not isinstance(acts, list) or not acts:
+                    raise RuntimeError(
+                        f"custom phase {phase_name!r} item {item_idx} must have a non-empty 'actions' list"
+                    )
+                for act in acts:
+                    if not isinstance(act, str) or not act:
+                        raise RuntimeError(
+                            f"custom phase {phase_name!r} item {item_idx} contains invalid action reference {act!r}"
+                        )
+                    if act not in custom_actions:
+                        raise RuntimeError(
+                            f"custom phase {phase_name!r} item {item_idx} references unknown custom action {act!r}"
+                        )
+                vals = item.get("values")
+                if vals is not None:
+                    if not isinstance(vals, dict):
+                        raise RuntimeError(
+                            f"custom phase {phase_name!r} item {item_idx} 'values' must be a table"
+                        )
+                    for vk, vv in vals.items():
+                        if not isinstance(vk, str) or not isinstance(vv, str):
+                            raise RuntimeError(
+                                f"custom phase {phase_name!r} item {item_idx} contains invalid 'values' table entry {vk!r}"
+                            )
+                        if vk.startswith(RESERVED_VALUE_PREFIX):
+                            raise RuntimeError(
+                                f"custom phase {phase_name!r} item {item_idx} value {vk!r} uses reserved {RESERVED_VALUE_PREFIX!r} prefix"
+                            )
+
     lines: list[str] = [
         "version = 1",
         "",
@@ -1408,6 +1463,21 @@ def generate_sprout_config(
         for name, dest in sorted(extra_files.items()):
             val_name = f"{RESERVED_VALUE_PREFIX}{name}"
             lines.append(f"{quote_toml(val_name)} = {quote_toml(uefi_path(dest))}")
+
+    if custom_phases:
+        for phase_name in ("early", "startup", "late"):
+            for item in custom_phases.get(phase_name, []):
+                lines.extend(
+                    [
+                        "",
+                        f"[[phases.{phase_name}]]",
+                        f"actions = {array_toml(item['actions'])}",
+                    ]
+                )
+                if item.get("values"):
+                    lines.append(f"[phases.{phase_name}.values]")
+                    for vk, vv in sorted(item["values"].items()):
+                        lines.append(f"{quote_toml(vk)} = {quote_toml(vv)}")
 
     for name, path in sorted(drivers.items()):
         lines.extend(
@@ -1894,6 +1964,11 @@ def parse_and_validate_sprout_config(
                     raise RuntimeError(
                         f"published Sprout configuration {config_path} phase {phase_name!r} item {item_idx} is not a table"
                     )
+                for k in phase_item:
+                    if k not in ("actions", "values"):
+                        raise RuntimeError(
+                            f"published Sprout configuration {config_path} phase {phase_name!r} item {item_idx} contains unknown field {k!r}"
+                        )
                 phase_values_raw = phase_item.get("values")
                 phase_item_values: dict[str, str] = {}
                 if phase_values_raw is not None:
@@ -1915,10 +1990,10 @@ def parse_and_validate_sprout_config(
                     {**raw_root_values, **phase_item_values},
                     f"phase {phase_name!r} item {item_idx} 'values'",
                 )
-                phase_actions = phase_item.get("actions", [])
-                if not isinstance(phase_actions, list):
+                phase_actions = phase_item.get("actions")
+                if not isinstance(phase_actions, list) or not phase_actions:
                     raise RuntimeError(
-                        f"published Sprout configuration {config_path} phase {phase_name!r} item {item_idx} 'actions' is not a list"
+                        f"published Sprout configuration {config_path} phase {phase_name!r} item {item_idx} 'actions' must be a non-empty list"
                     )
                 for act_idx, act_raw in enumerate(phase_actions):
                     if not isinstance(act_raw, str):

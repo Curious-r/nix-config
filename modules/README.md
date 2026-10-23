@@ -51,3 +51,49 @@ boot.loader.sprout.settings = {
 ```
 
 Extra files are staged transactionally with automatic rollback on pre-publication failure and cleaned up by garbage collection when no longer declared.
+
+#### Boot Phases (`boot.loader.sprout.settings.phases`)
+
+The `boot.loader.sprout.settings.phases` option configures actions executed during Sprout's static boot phases:
+
+- **`early`**: Runs before filesystem drivers load.
+- **`startup`**: Runs after drivers load and before the boot menu is displayed.
+- **`late`**: Runs after a menu entry is selected and before its entry actions execute.
+
+Each phase accepts an ordered list of items:
+
+- `actions`: A required non-empty list of action names defined in `boot.loader.sprout.settings.actions`.
+- `values`: An optional attribute set of phase-local string values for variable expansion in action definitions (e.g. `$variable`).
+
+```nix
+boot.loader.sprout.settings = {
+  actions = {
+    announce = {
+      print.text = "$message";
+    };
+  };
+
+  phases = {
+    early = [
+      {
+        actions = [ "announce" ];
+        values.message = "Initializing boot environment...";
+      }
+    ];
+
+    startup = [
+      {
+        actions = [ "announce" ];
+        values.message = "Preparing boot menu...";
+      }
+    ];
+
+    late = [
+      {
+        actions = [ "announce" ];
+        values.message = "Starting selected operating system...";
+      }
+    ];
+  };
+};
+```

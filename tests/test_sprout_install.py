@@ -7240,6 +7240,347 @@ class SproutExtraFilesTest(unittest.TestCase):
             self.assertIn("uses reserved 'sprout_extra_file_' prefix", str(ctx.exception))
 
 
+class SproutStaticPhasesTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp_dir_obj = tempfile.TemporaryDirectory()
+        self.temp_dir = Path(self.temp_dir_obj.name).resolve()
+        self.esp_dir = self.temp_dir / "esp"
+        self.esp_dir.mkdir(parents=True, exist_ok=True)
+
+        self.old_cwd = Path.cwd()
+        os.chdir(self.temp_dir)
+
+        self.driver_src = self.temp_dir / "btrfs-driver.efi"
+        self.driver_src.write_text("driver-initial")
+
+        self.sprout_source = self.temp_dir / "source-sprout.efi"
+        self.sprout_source.write_text("sprout-bin")
+
+        self.drivers_config = {
+            "btrfs": str(self.driver_src),
+        }
+
+    def tearDown(self) -> None:
+        os.chdir(self.old_cwd)
+        self.temp_dir_obj.cleanup()
+
+    def _create_sample_entry(
+        self,
+        mod: ModuleType,
+        identifier: str = "nixos-g1",
+        generation: int = 1,
+        title: str = "NixOS generation 1",
+    ) -> Any:
+        k = self.temp_dir / f"kernel-{identifier}.efi"
+        k.write_text("kernel-bytes")
+        dest_k = mod.NIXOS_DIR / f"{identifier}-kernel.efi"
+        art_k = mod.BootArtifact(dest_k, k, None, generation, True)
+        return mod.BootEntry(
+            identifier=identifier,
+            title=title,
+            sort_key=identifier,
+            kernel=dest_k,
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(art_k,),
+            critical=True,
+        )
+
+    def test_phases_toml_serialization_and_order_preservation(self) -> None:
+        """Verify static boot phases are serialized to TOML preserving exact order of phases, items, and actions."""
+        settings = {
+            "actions": {
+                "act-early-1": {"print": {"text": "early 1: $msg"}},
+                "act-early-2": {"print": {"text": "early 2"}},
+                "act-startup": {"print": {"text": "startup: $info"}},
+                "act-late": {"print": {"text": "late 1"}},
+            },
+            "phases": {
+                "early": [
+                    {
+                        "actions": ["act-early-1"],
+                        "values": {"msg": "hello from early"},
+                    },
+                    {
+                        "actions": ["act-early-2", "act-early-1"],
+                        "values": {"msg": "hello again"},
+                    },
+                ],
+                "startup": [
+                    {
+                        "actions": ["act-startup"],
+                        "values": {"info": "startup details"},
+                    },
+                ],
+                "late": [
+                    {
+                        "actions": ["act-late"],
+                    },
+                ],
+            },
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+        )
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        self.assertTrue(config_path.is_file())
+        raw_toml = config_path.read_text(encoding="utf-8")
+        data = tomllib.loads(raw_toml)
+
+        # Verify parsed structure
+        self.assertIn("phases", data)
+        self.assertEqual(list(data["phases"].keys()), ["early", "startup", "late"])
+
+        early_items = data["phases"]["early"]
+        self.assertEqual(len(early_items), 2)
+        self.assertEqual(early_items[0]["actions"], ["act-early-1"])
+        self.assertEqual(early_items[0]["values"], {"msg": "hello from early"})
+        self.assertEqual(early_items[1]["actions"], ["act-early-2", "act-early-1"])
+        self.assertEqual(early_items[1]["values"], {"msg": "hello again"})
+
+        startup_items = data["phases"]["startup"]
+        self.assertEqual(len(startup_items), 1)
+        self.assertEqual(startup_items[0]["actions"], ["act-startup"])
+        self.assertEqual(startup_items[0]["values"], {"info": "startup details"})
+
+        late_items = data["phases"]["late"]
+        self.assertEqual(len(late_items), 1)
+        self.assertEqual(late_items[0]["actions"], ["act-late"])
+
+        # Verify exact order in TOML text
+        pos_early_1 = raw_toml.index('[[phases.early]]\nactions = ["act-early-1"]')
+        pos_early_2 = raw_toml.index('[[phases.early]]\nactions = ["act-early-2", "act-early-1"]')
+        pos_startup = raw_toml.index('[[phases.startup]]\nactions = ["act-startup"]')
+        pos_late = raw_toml.index('[[phases.late]]\nactions = ["act-late"]')
+        self.assertTrue(pos_early_1 < pos_early_2 < pos_startup < pos_late)
+
+    def test_empty_phases_omits_phases_table(self) -> None:
+        """Verify empty phases configuration omits the phases table entirely, matching default output."""
+        mod_none = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings={},
+        )
+        entry = self._create_sample_entry(mod_none)
+        with patch.object(mod_none, "check_mountpoint"), patch.object(
+            mod_none, "collect_entries", return_value=[entry]
+        ):
+            mod_none.install_bootloader(self.temp_dir)
+        config_none = (self.esp_dir / mod_none.SPROUT_CONFIG).read_text(encoding="utf-8")
+        self.assertNotIn("phases", config_none)
+
+        # Now test with empty phases dict and empty phase lists
+        mod_empty = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings={"phases": {"early": [], "startup": [], "late": []}},
+        )
+        with patch.object(mod_empty, "check_mountpoint"), patch.object(
+            mod_empty, "collect_entries", return_value=[entry]
+        ):
+            mod_empty.install_bootloader(self.temp_dir)
+        config_empty = (self.esp_dir / mod_empty.SPROUT_CONFIG).read_text(encoding="utf-8")
+        self.assertEqual(config_none, config_empty)
+        self.assertNotIn("phases", config_empty)
+
+    def test_phase_local_values_expansion_and_reference_tracking(self) -> None:
+        """Verify phase-local values expand variables in action paths and the referenced file is protected by GC."""
+        # Create splash binary on ESP
+        splash_dir = self.esp_dir / "EFI" / "splashes"
+        splash_dir.mkdir(parents=True, exist_ok=True)
+        splash_file = splash_dir / "boot-logo.efi"
+        splash_file.write_text("boot-logo-bin")
+
+        settings = {
+            "actions": {
+                "show-logo": {
+                    "chainload": {
+                        "path": r"\EFI\splashes\$logo_name.efi",
+                    },
+                },
+            },
+            "phases": {
+                "early": [
+                    {
+                        "actions": ["show-logo"],
+                        "values": {"logo_name": "boot-logo"},
+                    },
+                ],
+            },
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+        )
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        # Verify file is retained on ESP
+        self.assertTrue(splash_file.is_file())
+
+        # Verify referenced set from parse_and_validate_sprout_config
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        ref_paths = mod.parse_and_validate_sprout_config(
+            config_path.read_text(encoding="utf-8"),
+            config_path,
+            check_files_exist=True,
+        )
+        self.assertIn(splash_file.resolve(), ref_paths)
+
+    def test_phase_action_referencing_extra_efi_file(self) -> None:
+        """Verify phase actions can reference extra EFI files via $sprout_extra_file_<name>."""
+        helper_src = self.temp_dir / "helper.efi"
+        helper_src.write_text("helper-efi-bin")
+
+        settings = {
+            "actions": {
+                "run-helper": {
+                    "chainload": {
+                        "path": "$sprout_extra_file_helper",
+                    },
+                },
+            },
+            "phases": {
+                "startup": [
+                    {
+                        "actions": ["run-helper"],
+                    },
+                ],
+            },
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+            extra_files={"helper": str(helper_src)},
+        )
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        self.assertTrue(config_path.is_file())
+        ref_paths = mod.parse_and_validate_sprout_config(
+            config_path.read_text(encoding="utf-8"),
+            config_path,
+            check_files_exist=True,
+        )
+
+        extra_dir = self.esp_dir / "EFI" / "Sprout" / "extra-files"
+        installed_files = list(extra_dir.glob("helper-*.efi"))
+        self.assertEqual(len(installed_files), 1)
+        self.assertIn(installed_files[0].resolve(), ref_paths)
+
+    def test_invalid_phase_settings_fail_before_publication(self) -> None:
+        """Verify invalid phase configurations fail before publication, leaving prior config and files unchanged."""
+        config_path = self.esp_dir / "sprout.toml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        prior_content = "version = 1\n# prior-valid-config\n"
+        config_path.write_text(prior_content, encoding="utf-8")
+
+        test_cases: list[tuple[dict[str, Any], str]] = [
+            # Unknown phase action
+            (
+                {
+                    "actions": {"act1": {"print": {"text": "hi"}}},
+                    "phases": {"early": [{"actions": ["non-existent-action"]}]},
+                },
+                "references unknown custom action",
+            ),
+            # Empty actions list
+            (
+                {
+                    "actions": {"act1": {"print": {"text": "hi"}}},
+                    "phases": {"early": [{"actions": []}]},
+                },
+                "must have a non-empty 'actions' list",
+            ),
+            # Reserved value prefix
+            (
+                {
+                    "actions": {"act1": {"print": {"text": "hi"}}},
+                    "phases": {
+                        "early": [
+                            {
+                                "actions": ["act1"],
+                                "values": {"sprout_extra_file_foo": "bar"},
+                            }
+                        ]
+                    },
+                },
+                "uses reserved 'sprout_extra_file_' prefix",
+            ),
+            # Unsupported phase name
+            (
+                {
+                    "actions": {"act1": {"print": {"text": "hi"}}},
+                    "phases": {"nonexistent": [{"actions": ["act1"]}]},
+                },
+                "unsupported custom settings phase",
+            ),
+            # Unknown field in phase item
+            (
+                {
+                    "actions": {"act1": {"print": {"text": "hi"}}},
+                    "phases": {"startup": [{"actions": ["act1"], "unknown_prop": True}]},
+                },
+                "has unknown field",
+            ),
+            # Non-existent chainload target
+            (
+                {
+                    "actions": {
+                        "missing-cl": {
+                            "chainload": {"path": r"\EFI\nonexistent\target.efi"}
+                        }
+                    },
+                    "phases": {"late": [{"actions": ["missing-cl"]}]},
+                },
+                "references missing file",
+            ),
+        ]
+
+        for invalid_settings, expected_err in test_cases:
+            mod = load_sprout_installer(
+                self.esp_dir,
+                sprout_binary=self.sprout_source,
+                drivers=self.drivers_config,
+                settings=invalid_settings,
+            )
+            entry = self._create_sample_entry(mod)
+            with patch.object(mod, "check_mountpoint"), patch.object(
+                mod, "collect_entries", return_value=[entry]
+            ):
+                with self.assertRaises(RuntimeError) as ctx:
+                    mod.install_bootloader(self.temp_dir)
+                self.assertIn(expected_err, str(ctx.exception))
+
+            # Ensure prior config was preserved
+            self.assertEqual(config_path.read_text(encoding="utf-8"), prior_content)
+
+
 if __name__ == "__main__":
     unittest.main()
 

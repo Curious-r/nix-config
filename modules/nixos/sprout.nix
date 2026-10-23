@@ -71,7 +71,21 @@ let
       else
         { }
     ) cfg.settings.actions;
-  };
+  }
+  // (lib.optionalAttrs
+    (
+      cfg.settings.phases.early != [ ]
+      || cfg.settings.phases.startup != [ ]
+      || cfg.settings.phases.late != [ ]
+    )
+    {
+      phases = {
+        early = map (item: { inherit (item) actions values; }) cfg.settings.phases.early;
+        startup = map (item: { inherit (item) actions values; }) cfg.settings.phases.startup;
+        late = map (item: { inherit (item) actions values; }) cfg.settings.phases.late;
+      };
+    }
+  );
 
   settingsJsonFile = pkgs.writeText "sprout-settings.json" (builtins.toJSON normalizedSettings);
 
@@ -414,12 +428,103 @@ in
               Static Sprout action definitions.
             '';
           };
+
+          phases = mkOption {
+            type = types.submodule {
+              options = {
+                early = mkOption {
+                  type = types.listOf (
+                    types.submodule {
+                      options = {
+                        actions = mkOption {
+                          type = types.listOf types.str;
+                          description = ''
+                            List of action identifiers. Must be non-empty.
+                          '';
+                        };
+
+                        values = mkOption {
+                          type = types.attrsOf types.str;
+                          default = { };
+                          description = ''
+                            Phase-local string values.
+                          '';
+                        };
+                      };
+                    }
+                  );
+                  default = [ ];
+                  description = ''
+                    Actions to run before drivers load.
+                  '';
+                };
+
+                startup = mkOption {
+                  type = types.listOf (
+                    types.submodule {
+                      options = {
+                        actions = mkOption {
+                          type = types.listOf types.str;
+                          description = ''
+                            List of action identifiers. Must be non-empty.
+                          '';
+                        };
+
+                        values = mkOption {
+                          type = types.attrsOf types.str;
+                          default = { };
+                          description = ''
+                            Phase-local string values.
+                          '';
+                        };
+                      };
+                    }
+                  );
+                  default = [ ];
+                  description = ''
+                    Actions to run after drivers load and before the boot menu is built.
+                  '';
+                };
+
+                late = mkOption {
+                  type = types.listOf (
+                    types.submodule {
+                      options = {
+                        actions = mkOption {
+                          type = types.listOf types.str;
+                          description = ''
+                            List of action identifiers. Must be non-empty.
+                          '';
+                        };
+
+                        values = mkOption {
+                          type = types.attrsOf types.str;
+                          default = { };
+                          description = ''
+                            Phase-local string values.
+                          '';
+                        };
+                      };
+                    }
+                  );
+                  default = [ ];
+                  description = ''
+                    Actions to run after an entry is selected and before its actions run.
+                  '';
+                };
+              };
+            };
+            default = { };
+            description = ''
+              Static Sprout boot phases.
+            '';
+          };
         };
       };
       default = { };
       description = ''
         Static Sprout configuration settings. Exposes a closed, typed subset of Sprout's
-        configuration schema for static menu options, additional entries, and actions.
+        configuration schema for static menu options, additional entries, actions, and phases.
       '';
     };
   };
@@ -579,6 +684,60 @@ in
 
         message = ''
           boot.loader.sprout.settings.entries.<name>.values cannot use reserved 'sprout_extra_file_' prefix.
+        '';
+      }
+
+      {
+        assertion =
+          lib.all (phaseName: lib.all (item: item.actions != [ ]) cfg.settings.phases.${phaseName})
+            [
+              "early"
+              "startup"
+              "late"
+            ];
+
+        message = ''
+          Each item in boot.loader.sprout.settings.phases must have a non-empty 'actions' list.
+        '';
+      }
+
+      {
+        assertion =
+          lib.all
+            (
+              phaseName:
+              lib.all (
+                item: lib.all (act: lib.hasAttr act cfg.settings.actions) item.actions
+              ) cfg.settings.phases.${phaseName}
+            )
+            [
+              "early"
+              "startup"
+              "late"
+            ];
+
+        message = ''
+          All actions referenced by boot.loader.sprout.settings.phases must exist in boot.loader.sprout.settings.actions.
+        '';
+      }
+
+      {
+        assertion =
+          lib.all
+            (
+              phaseName:
+              lib.all (
+                item: lib.all (key: !lib.hasPrefix "sprout_extra_file_" key) (lib.attrNames item.values)
+              ) cfg.settings.phases.${phaseName}
+            )
+            [
+              "early"
+              "startup"
+              "late"
+            ];
+
+        message = ''
+          boot.loader.sprout.settings.phases.<name>.*.values cannot use reserved 'sprout_extra_file_' prefix.
         '';
       }
     ];

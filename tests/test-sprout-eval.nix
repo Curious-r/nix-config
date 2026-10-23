@@ -837,6 +837,154 @@ let
     assert toplevelEval.success == false;
     assert failedAssertions != [ ];
     true;
+
+  # 43. Sprout enabled: all three phase lists default to empty.
+  case43 = eval [ { boot.loader.sprout.enable = true; } ];
+  testCase43 =
+    assert case43.config.boot.loader.sprout.settings.phases.early == [ ];
+    assert case43.config.boot.loader.sprout.settings.phases.startup == [ ];
+    assert case43.config.boot.loader.sprout.settings.phases.late == [ ];
+    true;
+
+  # 44. A valid early, startup, and late configuration evaluates successfully.
+  case44 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.sprout.settings = {
+        actions.act-early.print.text = "$msg_early";
+        actions.act-startup.print.text = "$msg_startup";
+        actions.act-late.print.text = "$msg_late";
+        phases = {
+          early = [
+            {
+              actions = [ "act-early" ];
+              values.msg_early = "Hello early";
+            }
+          ];
+          startup = [
+            {
+              actions = [ "act-startup" ];
+              values.msg_startup = "Hello startup";
+            }
+          ];
+          late = [
+            {
+              actions = [ "act-late" ];
+              values.msg_late = "Hello late";
+            }
+          ];
+        };
+      };
+    }
+  ];
+  testCase44 =
+    assert (builtins.tryEval case44.config.system.build.toplevel).success == true;
+    assert (builtins.length case44.config.boot.loader.sprout.settings.phases.early) == 1;
+    assert (builtins.length case44.config.boot.loader.sprout.settings.phases.startup) == 1;
+    assert (builtins.length case44.config.boot.loader.sprout.settings.phases.late) == 1;
+    true;
+
+  # 45. Empty action lists are rejected by assertions.
+  case45 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.sprout.settings.phases.early = [
+        {
+          actions = [ ];
+        }
+      ];
+    }
+  ];
+  testCase45 =
+    let
+      toplevelEval = builtins.tryEval case45.config.system.build.toplevel;
+      failedAssertions = builtins.filter (
+        x:
+        !x.assertion
+        && pkgs.lib.hasInfix "Each item in boot.loader.sprout.settings.phases must have a non-empty 'actions' list" x.message
+      ) case45.config.assertions;
+    in
+    assert toplevelEval.success == false;
+    assert failedAssertions != [ ];
+    true;
+
+  # 46. Unknown action references are rejected by assertions.
+  case46 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.sprout.settings.phases.startup = [
+        {
+          actions = [ "unknown-action" ];
+        }
+      ];
+    }
+  ];
+  testCase46 =
+    let
+      toplevelEval = builtins.tryEval case46.config.system.build.toplevel;
+      failedAssertions = builtins.filter (
+        x:
+        !x.assertion
+        && pkgs.lib.hasInfix "All actions referenced by boot.loader.sprout.settings.phases must exist in boot.loader.sprout.settings.actions" x.message
+      ) case46.config.assertions;
+    in
+    assert toplevelEval.success == false;
+    assert failedAssertions != [ ];
+    true;
+
+  # 47. Phase-local values using reserved 'sprout_extra_file_' prefix are rejected by assertions.
+  case47 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.sprout.settings.actions.act1.print.text = "hi";
+      boot.loader.sprout.settings.phases.late = [
+        {
+          actions = [ "act1" ];
+          values.sprout_extra_file_foo = "override";
+        }
+      ];
+    }
+  ];
+  testCase47 =
+    let
+      toplevelEval = builtins.tryEval case47.config.system.build.toplevel;
+      failedAssertions = builtins.filter (
+        x: !x.assertion && pkgs.lib.hasInfix "cannot use reserved 'sprout_extra_file_' prefix" x.message
+      ) case47.config.assertions;
+    in
+    assert toplevelEval.success == false;
+    assert failedAssertions != [ ];
+    true;
+
+  # 48. Unknown phase names and unknown phase-item fields are rejected.
+  case48a =
+    builtins.tryEval
+      (eval [
+        {
+          boot.loader.sprout.enable = true;
+          boot.loader.sprout.settings.phases.unknown = [ ];
+        }
+      ]).config.system.build.toplevel;
+
+  case48b =
+    builtins.tryEval
+      (eval [
+        {
+          boot.loader.sprout.enable = true;
+          boot.loader.sprout.settings.actions.act1.print.text = "hi";
+          boot.loader.sprout.settings.phases.early = [
+            {
+              actions = [ "act1" ];
+              unknownField = "bad";
+            }
+          ];
+        }
+      ]).config.system.build.toplevel;
+
+  testCase48 =
+    assert case48a.success == false;
+    assert case48b.success == false;
+    true;
 in
 assert testCase1;
 assert testCase2;
@@ -880,6 +1028,12 @@ assert testCase39;
 assert testCase40;
 assert testCase41;
 assert testCase42;
+assert testCase43;
+assert testCase44;
+assert testCase45;
+assert testCase46;
+assert testCase47;
+assert testCase48;
 {
   inherit
     testCase1
@@ -924,5 +1078,11 @@ assert testCase42;
     testCase40
     testCase41
     testCase42
+    testCase43
+    testCase44
+    testCase45
+    testCase46
+    testCase47
+    testCase48
     ;
 }
