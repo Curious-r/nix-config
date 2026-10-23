@@ -755,6 +755,88 @@ let
     assert toplevelEval.success == false;
     assert failedAssertions != [ ];
     true;
+
+  # 38. Sprout enabled: extraFiles defaults to an empty attribute set.
+  case38 = eval [ { boot.loader.sprout.enable = true; } ];
+  testCase38 =
+    assert case38.config.boot.loader.sprout.extraFiles == { };
+    true;
+
+  # 39. Valid logical name and source path evaluate successfully.
+  dummyEfi = pkgs.writeText "memtest.efi" "dummy-efi-content";
+  case39 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.sprout.extraFiles.memtest = dummyEfi;
+    }
+  ];
+  testCase39 =
+    assert case39.config.boot.loader.sprout.extraFiles.memtest == dummyEfi;
+    assert (builtins.tryEval case39.config.system.build.toplevel).success == true;
+    true;
+
+  # 40. Invalid logical name starting with digit is rejected.
+  case40 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.sprout.extraFiles."1bad" = dummyEfi;
+    }
+  ];
+  testCase40 =
+    let
+      toplevelEval = builtins.tryEval case40.config.system.build.toplevel;
+      failedAssertions = builtins.filter (
+        x:
+        !x.assertion
+        && pkgs.lib.hasInfix "boot.loader.sprout.extraFiles attribute names must match" x.message
+      ) case40.config.assertions;
+    in
+    assert toplevelEval.success == false;
+    assert failedAssertions != [ ];
+    true;
+
+  # 41. Invalid logical name containing dash is rejected.
+  case41 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.sprout.extraFiles."bad-name" = dummyEfi;
+    }
+  ];
+  testCase41 =
+    let
+      toplevelEval = builtins.tryEval case41.config.system.build.toplevel;
+      failedAssertions = builtins.filter (
+        x:
+        !x.assertion
+        && pkgs.lib.hasInfix "boot.loader.sprout.extraFiles attribute names must match" x.message
+      ) case41.config.assertions;
+    in
+    assert toplevelEval.success == false;
+    assert failedAssertions != [ ];
+    true;
+
+  # 42. Entry-specific values cannot override reserved 'sprout_extra_file_' prefix.
+  case42 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.sprout.settings.entries.custom = {
+        title = "Custom";
+        actions = [ "act1" ];
+        values.sprout_extra_file_memtest = "/override";
+      };
+      boot.loader.sprout.settings.actions.act1.print.text = "hello";
+    }
+  ];
+  testCase42 =
+    let
+      toplevelEval = builtins.tryEval case42.config.system.build.toplevel;
+      failedAssertions = builtins.filter (
+        x: !x.assertion && pkgs.lib.hasInfix "cannot use reserved 'sprout_extra_file_' prefix" x.message
+      ) case42.config.assertions;
+    in
+    assert toplevelEval.success == false;
+    assert failedAssertions != [ ];
+    true;
 in
 assert testCase1;
 assert testCase2;
@@ -793,6 +875,11 @@ assert testCase34;
 assert testCase35;
 assert testCase36;
 assert testCase37;
+assert testCase38;
+assert testCase39;
+assert testCase40;
+assert testCase41;
+assert testCase42;
 {
   inherit
     testCase1
@@ -832,5 +919,10 @@ assert testCase37;
     testCase35
     testCase36
     testCase37
+    testCase38
+    testCase39
+    testCase40
+    testCase41
+    testCase42
     ;
 }

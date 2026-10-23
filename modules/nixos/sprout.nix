@@ -119,6 +119,8 @@ let
 
       drivers = builtins.toJSON (lib.mapAttrs (_name: path: toString path) cfg.drivers);
 
+      extraFiles = builtins.toJSON (lib.mapAttrs (_name: path: toString path) cfg.extraFiles);
+
       settingsFile = settingsJsonFile;
     };
   };
@@ -184,6 +186,27 @@ in
 
         Each attribute name becomes the Sprout driver name and the installed
         filename under `EFI/Sprout/drivers/`.
+      '';
+    };
+
+    extraFiles = mkOption {
+      type = types.attrsOf types.path;
+      default = { };
+      example = lib.literalExpression ''
+        {
+          memtest = pkgs.memtest86plus + "/memtest.efi";
+        }
+      '';
+      description = ''
+        Custom EFI files to install for Sprout.
+
+        Each attribute name is a stable logical identifier matching
+        `[A-Za-z_][A-Za-z0-9_]*`. The attribute value must be an individual
+        file path, not a package directory.
+
+        Each file is installed under a deterministic content-addressed path
+        in `EFI/Sprout/extra-files/` and exposed in `sprout.toml` through a
+        root value named `sprout_extra_file_<name>`.
       '';
     };
 
@@ -536,6 +559,26 @@ in
 
         message = ''
           boot.loader.sprout.settings.actions.<name>.edera cannot specify both 'initrd' and 'initrd-chain'.
+        '';
+      }
+
+      {
+        assertion = lib.all (name: builtins.match "[A-Za-z_][A-Za-z0-9_]*" name != null) (
+          lib.attrNames cfg.extraFiles
+        );
+
+        message = ''
+          boot.loader.sprout.extraFiles attribute names must match [A-Za-z_][A-Za-z0-9_]*.
+        '';
+      }
+
+      {
+        assertion = lib.all (
+          entry: lib.all (key: !lib.hasPrefix "sprout_extra_file_" key) (lib.attrNames entry.values)
+        ) (lib.attrValues cfg.settings.entries);
+
+        message = ''
+          boot.loader.sprout.settings.entries.<name>.values cannot use reserved 'sprout_extra_file_' prefix.
         '';
       }
     ];

@@ -29,6 +29,7 @@ def load_sprout_installer(
     entry_label: str = "NixOS Sprout",
     settings: dict[str, Any] | None = None,
     settings_file: Path | None = None,
+    extra_files: dict[str, str | Path] | None = None,
 ) -> ModuleType:
     src_file = (
         Path(__file__).resolve().parent.parent
@@ -63,6 +64,9 @@ def load_sprout_installer(
         "@efiInstallAsRemovable@": "1" if removable else "0",
         "@firmwareEntryLabel@": json.dumps(entry_label),
         "@drivers@": json.dumps(drivers or {}),
+        "@extraFiles@": json.dumps(
+            {k: str(v) for k, v in (extra_files or {}).items()}
+        ),
         "@settingsFile@": str(effective_settings_file),
     }
 
@@ -6677,6 +6681,520 @@ class SproutStaticSettingsTest(unittest.TestCase):
             self.assertIn("must define exactly one variant", str(ctx_inst.exception))
 
         self.assertEqual(config_path.read_text(), "version = 1\n# previous-config\n")
+
+
+class SproutExtraFilesTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp_dir_obj = tempfile.TemporaryDirectory()
+        self.temp_dir = Path(self.temp_dir_obj.name).resolve()
+        self.esp_dir = self.temp_dir / "esp"
+        self.esp_dir.mkdir(parents=True, exist_ok=True)
+
+        self.old_cwd = Path.cwd()
+        os.chdir(self.temp_dir)
+
+        self.driver_src = self.temp_dir / "btrfs-driver.efi"
+        self.driver_src.write_text("driver-initial")
+
+        self.sprout_source = self.temp_dir / "source-sprout.efi"
+        self.sprout_source.write_text("sprout-bin")
+
+        self.drivers_config = {
+            "btrfs": str(self.driver_src),
+        }
+
+    def tearDown(self) -> None:
+        os.chdir(self.old_cwd)
+        self.temp_dir_obj.cleanup()
+
+    def _create_sample_entry(
+        self,
+        mod: ModuleType,
+        identifier: str = "nixos-g1",
+        generation: int = 1,
+        title: str = "NixOS generation 1",
+    ) -> Any:
+        k = self.temp_dir / f"kernel-{identifier}.efi"
+        k.write_text("kernel-bytes")
+        dest_k = mod.NIXOS_DIR / f"{identifier}-kernel.efi"
+        art_k = mod.BootArtifact(dest_k, k, None, generation, True)
+        return mod.BootEntry(
+            identifier=identifier,
+            title=title,
+            sort_key=identifier,
+            kernel=dest_k,
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(art_k,),
+            critical=True,
+        )
+
+    def test_valid_file_installed_content_addressed(self) -> None:
+        """Verify valid source file is copied to dedicated directory with expected content-addressed name."""
+        memtest_src = self.temp_dir / "memtest.efi"
+        memtest_bytes = b"memtest-binary-data"
+        memtest_src.write_bytes(memtest_bytes)
+        expected_digest = hashlib.sha256(memtest_bytes).hexdigest()
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            extra_files={"memtest": str(memtest_src)},
+        )
+
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        expected_dest = (
+            self.esp_dir
+            / "EFI"
+            / "Sprout"
+            / "extra-files"
+            / f"memtest-{expected_digest}.efi"
+        )
+        self.assertTrue(expected_dest.is_file())
+        self.assertEqual(expected_dest.read_bytes(), memtest_bytes)
+
+    def test_generated_config_root_value_and_action_expansion(self) -> None:
+        """Verify generated config includes correct root value and custom action paths expand to copied file."""
+        memtest_src = self.temp_dir / "memtest.efi"
+        memtest_bytes = b"memtest-binary-data"
+        memtest_src.write_bytes(memtest_bytes)
+        expected_digest = hashlib.sha256(memtest_bytes).hexdigest()
+
+        settings = {
+            "entries": {
+                "boot-memtest": {
+                    "title": "Memtest86+",
+                    "actions": ["run-memtest"],
+                },
+            },
+            "actions": {
+                "run-memtest": {
+                    "chainload": {
+                        "path": "$sprout_extra_file_memtest",
+                    },
+                },
+            },
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+            extra_files={"memtest": str(memtest_src)},
+        )
+
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        config_path = self.esp_dir / "sprout.toml"
+        self.assertTrue(config_path.is_file())
+        config_text = config_path.read_text()
+
+        self.assertIn("[values]", config_text)
+        expected_uefi = f"\\EFI\\Sprout\\extra-files\\memtest-{expected_digest}.efi"
+        self.assertIn(f'"sprout_extra_file_memtest" = {mod.quote_toml(expected_uefi)}', config_text)
+
+        # Validate that parse_and_validate_sprout_config resolves and checks the file
+        referenced = mod.parse_and_validate_sprout_config(
+            config_text, config_path, check_files_exist=True
+        )
+        expected_esp_file = (
+            self.esp_dir
+            / "EFI"
+            / "Sprout"
+            / "extra-files"
+            / f"memtest-{expected_digest}.efi"
+        )
+        self.assertIn(expected_esp_file, referenced)
+
+    def test_empty_extra_files_preserves_existing_behavior(self) -> None:
+        """Verify empty extraFiles does not emit [values] table and preserves normal installation."""
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            extra_files={},
+        )
+
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        config_path = self.esp_dir / "sprout.toml"
+        self.assertTrue(config_path.is_file())
+        config_text = config_path.read_text()
+        self.assertNotIn("[values]", config_text)
+
+    def test_multiple_extra_files_installed_deterministically(self) -> None:
+        """Verify multiple files are supported, installed, and serialized in deterministic order."""
+        src_c = self.temp_dir / "file_c.bin"
+        src_c.write_bytes(b"content-c")
+        digest_c = hashlib.sha256(b"content-c").hexdigest()
+
+        src_a = self.temp_dir / "file_a.efi"
+        src_a.write_bytes(b"content-a")
+        digest_a = hashlib.sha256(b"content-a").hexdigest()
+
+        src_b = self.temp_dir / "file_b.img"
+        src_b.write_bytes(b"content-b")
+        digest_b = hashlib.sha256(b"content-b").hexdigest()
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            extra_files={
+                "c_file": str(src_c),
+                "a_file": str(src_a),
+                "b_file": str(src_b),
+            },
+        )
+
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        dest_a = self.esp_dir / "EFI" / "Sprout" / "extra-files" / f"a_file-{digest_a}.efi"
+        dest_b = self.esp_dir / "EFI" / "Sprout" / "extra-files" / f"b_file-{digest_b}.img"
+        dest_c = self.esp_dir / "EFI" / "Sprout" / "extra-files" / f"c_file-{digest_c}.bin"
+
+        self.assertTrue(dest_a.is_file())
+        self.assertTrue(dest_b.is_file())
+        self.assertTrue(dest_c.is_file())
+
+        config_text = (self.esp_dir / "sprout.toml").read_text()
+        pos_a = config_text.index('"sprout_extra_file_a_file"')
+        pos_b = config_text.index('"sprout_extra_file_b_file"')
+        pos_c = config_text.index('"sprout_extra_file_c_file"')
+        self.assertTrue(pos_a < pos_b < pos_c)
+
+    def test_invalid_names_fail_closed(self) -> None:
+        """Verify invalid extra file names are rejected before publication."""
+        config_path = self.esp_dir / "sprout.toml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("version = 1\n# previous-config\n")
+
+        src = self.temp_dir / "file.efi"
+        src.write_bytes(b"test")
+
+        invalid_names = ["1bad", "bad-name", "bad name", "bad.name", "", "bad@name"]
+        for bad_name in invalid_names:
+            mod = load_sprout_installer(
+                self.esp_dir,
+                sprout_binary=self.sprout_source,
+                drivers=self.drivers_config,
+                extra_files={bad_name: str(src)},
+            )
+            entry = self._create_sample_entry(mod)
+            with patch.object(mod, "check_mountpoint"), patch.object(
+                mod, "collect_entries", return_value=[entry]
+            ):
+                with self.assertRaises(RuntimeError) as ctx:
+                    mod.install_bootloader(self.temp_dir)
+                self.assertIn("invalid extra file name", str(ctx.exception))
+
+            self.assertEqual(config_path.read_text(), "version = 1\n# previous-config\n")
+
+    def test_missing_and_directory_sources_fail_closed(self) -> None:
+        """Verify missing source and directory source fail closed before publication."""
+        config_path = self.esp_dir / "sprout.toml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("version = 1\n# previous-config\n")
+
+        # Missing source
+        mod_missing = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            extra_files={"memtest": str(self.temp_dir / "nonexistent.efi")},
+        )
+        entry = self._create_sample_entry(mod_missing)
+        with patch.object(mod_missing, "check_mountpoint"), patch.object(
+            mod_missing, "collect_entries", return_value=[entry]
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod_missing.install_bootloader(self.temp_dir)
+            self.assertIn("source does not exist", str(ctx.exception))
+        self.assertEqual(config_path.read_text(), "version = 1\n# previous-config\n")
+
+        # Directory source
+        dir_src = self.temp_dir / "a_directory"
+        dir_src.mkdir(parents=True, exist_ok=True)
+        mod_dir = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            extra_files={"memtest": str(dir_src)},
+        )
+        with patch.object(mod_dir, "check_mountpoint"), patch.object(
+            mod_dir, "collect_entries", return_value=[entry]
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod_dir.install_bootloader(self.temp_dir)
+            self.assertIn("source is not a regular file", str(ctx.exception))
+        self.assertEqual(config_path.read_text(), "version = 1\n# previous-config\n")
+
+    def test_unreadable_source_fails_closed(self) -> None:
+        """Verify unreadable source file fails closed and reports source path."""
+        config_path = self.esp_dir / "sprout.toml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("version = 1\n# previous-config\n")
+
+        unreadable_src = self.temp_dir / "unreadable.efi"
+        unreadable_src.write_bytes(b"content")
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            extra_files={"memtest": str(unreadable_src)},
+        )
+        entry = self._create_sample_entry(mod)
+
+        orig_open = Path.open
+
+        def selective_open(path_obj: Path, *args: Any, **kwargs: Any) -> Any:
+            if path_obj.resolve() == unreadable_src.resolve():
+                raise PermissionError("Simulated permission denied")
+            return orig_open(path_obj, *args, **kwargs)
+
+        with patch.object(Path, "open", autospec=True, side_effect=selective_open):
+            with patch.object(mod, "check_mountpoint"), patch.object(
+                mod, "collect_entries", return_value=[entry]
+            ):
+                with self.assertRaises(RuntimeError) as ctx:
+                    mod.install_bootloader(self.temp_dir)
+                self.assertIn("failed to read extra file", str(ctx.exception))
+                self.assertIn(str(unreadable_src), str(ctx.exception))
+
+        self.assertEqual(config_path.read_text(), "version = 1\n# previous-config\n")
+
+    def test_traversal_names_cannot_escape_dedicated_directory(self) -> None:
+        """Verify path traversal in names is rejected and cannot escape dedicated directory."""
+        config_path = self.esp_dir / "sprout.toml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("version = 1\n# previous-config\n")
+
+        src = self.temp_dir / "file.efi"
+        src.write_bytes(b"test")
+
+        for escape_name in ["../../escape", "foo/bar", "foo\\bar", "../escape"]:
+            mod = load_sprout_installer(
+                self.esp_dir,
+                sprout_binary=self.sprout_source,
+                drivers=self.drivers_config,
+                extra_files={escape_name: str(src)},
+            )
+            entry = self._create_sample_entry(mod)
+            with patch.object(mod, "check_mountpoint"), patch.object(
+                mod, "collect_entries", return_value=[entry]
+            ):
+                with self.assertRaises(RuntimeError) as ctx:
+                    mod.install_bootloader(self.temp_dir)
+                self.assertIn("invalid extra file name", str(ctx.exception))
+
+        self.assertEqual(config_path.read_text(), "version = 1\n# previous-config\n")
+
+    def test_corrupted_existing_destination_is_rejected(self) -> None:
+        """Verify corrupted file at expected content-addressed destination fails safely."""
+        config_path = self.esp_dir / "sprout.toml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("version = 1\n# previous-config\n")
+
+        memtest_src = self.temp_dir / "memtest.efi"
+        memtest_bytes = b"original-memtest-bytes"
+        memtest_src.write_bytes(memtest_bytes)
+        expected_digest = hashlib.sha256(memtest_bytes).hexdigest()
+
+        # Pre-seed corrupted file at expected destination
+        extra_dir = self.esp_dir / "EFI" / "Sprout" / "extra-files"
+        extra_dir.mkdir(parents=True, exist_ok=True)
+        corrupted_dest = extra_dir / f"memtest-{expected_digest}.efi"
+        corrupted_dest.write_bytes(b"corrupted-bytes")
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            extra_files={"memtest": str(memtest_src)},
+        )
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod.install_bootloader(self.temp_dir)
+            self.assertIn("does not match expected SHA-256 digest", str(ctx.exception))
+
+        # Check prior config preserved and corrupted destination unchanged
+        self.assertEqual(config_path.read_text(), "version = 1\n# previous-config\n")
+        self.assertEqual(corrupted_dest.read_bytes(), b"corrupted-bytes")
+
+    def test_failed_installation_rolls_back_staged_files_and_preserves_prior(self) -> None:
+        """Verify failed installation removes newly staged extra files and preserves prior config."""
+        config_path = self.esp_dir / "sprout.toml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("version = 1\n# previous-config\n")
+
+        memtest_src = self.temp_dir / "memtest.efi"
+        memtest_bytes = b"memtest-data"
+        memtest_src.write_bytes(memtest_bytes)
+        expected_digest = hashlib.sha256(memtest_bytes).hexdigest()
+
+        # Induce failure during config generation or validation with an invalid settings action
+        settings = {
+            "entries": {
+                "e1": {"title": "E1", "actions": ["act1"]},
+            },
+            "actions": {
+                "act1": {},  # Invalid: 0 variants
+            },
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+            extra_files={"memtest": str(memtest_src)},
+        )
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            with self.assertRaises(RuntimeError):
+                mod.install_bootloader(self.temp_dir)
+
+        # Newly staged extra file must be unlinked by transaction rollback
+        staged_file = (
+            self.esp_dir
+            / "EFI"
+            / "Sprout"
+            / "extra-files"
+            / f"memtest-{expected_digest}.efi"
+        )
+        self.assertFalse(staged_file.exists())
+        self.assertEqual(config_path.read_text(), "version = 1\n# previous-config\n")
+
+    def test_update_publishes_new_config_and_gcs_obsolete_version(self) -> None:
+        """Verify updating an extra file publishes new version and GCs obsolete version."""
+        memtest_src = self.temp_dir / "memtest.efi"
+        memtest_src.write_bytes(b"version-1-content")
+        digest1 = hashlib.sha256(b"version-1-content").hexdigest()
+
+        # Step 1: Install version 1
+        mod1 = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            extra_files={"memtest": str(memtest_src)},
+        )
+        entry1 = self._create_sample_entry(mod1)
+        with patch.object(mod1, "check_mountpoint"), patch.object(
+            mod1, "collect_entries", return_value=[entry1]
+        ):
+            mod1.install_bootloader(self.temp_dir)
+
+        dest1 = self.esp_dir / "EFI" / "Sprout" / "extra-files" / f"memtest-{digest1}.efi"
+        self.assertTrue(dest1.is_file())
+
+        # Step 2: Update content to version 2
+        memtest_src.write_bytes(b"version-2-content")
+        digest2 = hashlib.sha256(b"version-2-content").hexdigest()
+
+        mod2 = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            extra_files={"memtest": str(memtest_src)},
+        )
+        entry2 = self._create_sample_entry(mod2)
+        with patch.object(mod2, "check_mountpoint"), patch.object(
+            mod2, "collect_entries", return_value=[entry2]
+        ):
+            mod2.install_bootloader(self.temp_dir)
+
+        dest2 = self.esp_dir / "EFI" / "Sprout" / "extra-files" / f"memtest-{digest2}.efi"
+        self.assertTrue(dest2.is_file())
+        self.assertEqual(dest2.read_bytes(), b"version-2-content")
+
+        # Obsolete version 1 must be deleted by GC
+        self.assertFalse(dest1.exists())
+
+    def test_gc_retains_unreferenced_declared_extra_files_and_removes_stale(self) -> None:
+        """Verify GC retains declared extra files even if unreferenced, and cleans stale files."""
+        memtest_src = self.temp_dir / "memtest.efi"
+        memtest_bytes = b"declared-unreferenced"
+        memtest_src.write_bytes(memtest_bytes)
+        digest = hashlib.sha256(memtest_bytes).hexdigest()
+
+        # Pre-create a stale unmanaged file in extra-files
+        extra_dir = self.esp_dir / "EFI" / "Sprout" / "extra-files"
+        extra_dir.mkdir(parents=True, exist_ok=True)
+        stale_file = extra_dir / "stale.efi"
+        stale_file.write_bytes(b"stale-data")
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            extra_files={"memtest": str(memtest_src)},
+        )
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        # Declared extra file is retained
+        dest = extra_dir / f"memtest-{digest}.efi"
+        self.assertTrue(dest.is_file())
+
+        # Stale file is cleaned up by GC
+        self.assertFalse(stale_file.exists())
+
+    def test_entry_values_cannot_override_reserved_prefix(self) -> None:
+        """Verify entry values using sprout_extra_file_ prefix are rejected."""
+        settings = {
+            "entries": {
+                "custom": {
+                    "title": "Custom",
+                    "actions": ["act1"],
+                    "values": {"sprout_extra_file_memtest": "/evil/path"},
+                },
+            },
+            "actions": {
+                "act1": {"print": {"text": "hello"}},
+            },
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+        )
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod.install_bootloader(self.temp_dir)
+            self.assertIn("uses reserved 'sprout_extra_file_' prefix", str(ctx.exception))
 
 
 if __name__ == "__main__":

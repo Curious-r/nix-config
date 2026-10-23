@@ -37,6 +37,8 @@ FIRMWARE_ENTRY_LABEL = @firmwareEntryLabel@
 
 DRIVERS: dict[str, str] = json.loads(r'''@drivers@''')
 
+EXTRA_FILES: dict[str, str] = json.loads(r'''@extraFiles@''')
+
 SETTINGS_FILE = Path("@settingsFile@")
 
 
@@ -62,8 +64,12 @@ def load_custom_settings() -> dict[str, Any]:
 SPROUT_DIR = Path("EFI/Sprout")
 NIXOS_DIR = SPROUT_DIR / "nixos"
 DRIVERS_DIR = SPROUT_DIR / "drivers"
+EXTRA_FILES_DIR = SPROUT_DIR / "extra-files"
 SPROUT_BINARY = SPROUT_DIR / "sprout.efi"
 SPROUT_CONFIG = Path("sprout.toml")
+
+EXTRA_FILE_NAME_RE: re.Pattern[str] = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+RESERVED_VALUE_PREFIX: str = "sprout_extra_file_"
 
 
 def esp_path(relative: Path | str) -> Path:
@@ -1166,11 +1172,103 @@ def install_drivers() -> dict[str, Path]:
     return installed
 
 
+def install_extra_files(
+    extra_files: dict[str, str | Path] | None = None,
+) -> dict[str, Path]:
+    if extra_files is None:
+        raw_files = EXTRA_FILES
+    else:
+        raw_files = {k: str(v) for k, v in extra_files.items()}
+
+    # Phase 1: Validate all names and source files, and prepare destination paths,
+    # before copying any custom files.
+    prepared: list[tuple[str, Path, Path, Path, str]] = []
+    for name, source_str in sorted(raw_files.items()):
+        if not isinstance(name, str) or not EXTRA_FILE_NAME_RE.match(name):
+            raise RuntimeError(
+                f"invalid extra file name {name!r}: must match [A-Za-z_][A-Za-z0-9_]*"
+            )
+
+        source_path = Path(source_str)
+        if not source_path.exists():
+            raise RuntimeError(
+                f"extra file {name!r} source does not exist: {source_path}"
+            )
+        if not source_path.is_file():
+            raise RuntimeError(
+                f"extra file {name!r} source is not a regular file: {source_path}"
+            )
+
+        hasher = hashlib.sha256()
+        try:
+            with source_path.open("rb") as file:
+                while chunk := file.read(65536):
+                    hasher.update(chunk)
+        except OSError as exc:
+            raise RuntimeError(
+                f"failed to read extra file {name!r} source {source_path}: {exc}"
+            ) from exc
+
+        digest = hasher.hexdigest()
+
+        # Preserve source filename suffixes where practical
+        source_suffixes = "".join(source_path.suffixes)
+        if "/" in source_suffixes or "\\" in source_suffixes or ".." in source_suffixes:
+            source_suffixes = ""
+
+        dest_filename = f"{name}-{digest}{source_suffixes}"
+        dest_rel = EXTRA_FILES_DIR / dest_filename
+        if dest_rel.parent != EXTRA_FILES_DIR or ".." in dest_rel.parts:
+            raise RuntimeError(
+                f"extra file {name!r} destination {dest_rel} escapes dedicated directory {EXTRA_FILES_DIR}"
+            )
+
+        target = esp_path(dest_rel)
+        prepared.append((name, source_path, dest_rel, target, digest))
+
+    # Phase 2: Copy or verify existing content-addressed files
+    installed: dict[str, Path] = {}
+    for name, source_path, dest_rel, target, digest in prepared:
+        already_existed = target.exists()
+        if already_existed:
+            if not target.is_file():
+                raise RuntimeError(
+                    f"destination for extra file {name!r} exists and is not a regular file: {target}"
+                )
+            target_hasher = hashlib.sha256()
+            try:
+                with target.open("rb") as file:
+                    while chunk := file.read(65536):
+                        target_hasher.update(chunk)
+            except OSError as exc:
+                raise RuntimeError(
+                    f"failed to read existing extra file at {target}: {exc}"
+                ) from exc
+            if target_hasher.hexdigest() != digest:
+                raise RuntimeError(
+                    f"existing file at destination {target} does not match expected SHA-256 digest {digest}"
+                )
+        else:
+            atomic_copy(
+                source_path,
+                target,
+                replace=False,
+            )
+            tx = StagedArtifactTransaction.current()
+            if tx is not None and target.exists():
+                tx.record_created(target)
+
+        installed[name] = dest_rel
+
+    return installed
+
+
 def generate_sprout_config(
     entries: Sequence[BootEntry],
     default_entry: str,
     drivers: dict[str, Path],
     settings: dict[str, Any] | None = None,
+    extra_files: dict[str, Path] | None = None,
 ) -> str:
     if settings is None:
         settings = load_custom_settings()
@@ -1231,6 +1329,14 @@ def generate_sprout_config(
                 raise RuntimeError(
                     f"custom entry {entry_id!r} references unknown custom action {act!r}"
                 )
+        if entry_dict.get("values"):
+            if not isinstance(entry_dict["values"], dict):
+                raise RuntimeError(f"custom entry {entry_id!r} 'values' must be a table")
+            for vk in entry_dict["values"]:
+                if vk.startswith(RESERVED_VALUE_PREFIX):
+                    raise RuntimeError(
+                        f"custom entry {entry_id!r} value {vk!r} uses reserved {RESERVED_VALUE_PREFIX!r} prefix"
+                    )
 
     for action_id, action_dict in custom_actions.items():
         if not action_id:
@@ -1291,6 +1397,17 @@ def generate_sprout_config(
 
     if menu_style is not None:
         lines.append(f"menu-style = {quote_toml(menu_style)}")
+
+    if extra_files:
+        lines.extend(
+            [
+                "",
+                "[values]",
+            ]
+        )
+        for name, dest in sorted(extra_files.items()):
+            val_name = f"{RESERVED_VALUE_PREFIX}{name}"
+            lines.append(f"{quote_toml(val_name)} = {quote_toml(uefi_path(dest))}")
 
     for name, path in sorted(drivers.items()):
         lines.extend(
@@ -1789,6 +1906,10 @@ def parse_and_validate_sprout_config(
                             raise RuntimeError(
                                 f"published Sprout configuration {config_path} phase {phase_name!r} item {item_idx} contains invalid 'values' table entry {vk!r}"
                             )
+                        if vk.startswith(RESERVED_VALUE_PREFIX):
+                            raise RuntimeError(
+                                f"published Sprout configuration {config_path} phase {phase_name!r} item {item_idx} value {vk!r} uses reserved {RESERVED_VALUE_PREFIX!r} prefix"
+                            )
                         phase_item_values[vk] = vv
                 merged_phase_values = finalize_values(
                     {**raw_root_values, **phase_item_values},
@@ -1845,6 +1966,10 @@ def parse_and_validate_sprout_config(
                     if not isinstance(vk, str) or not isinstance(vv, str):
                         raise RuntimeError(
                             f"published Sprout configuration {config_path} entry {entry_name!r} contains invalid 'values' table entry {vk!r}"
+                        )
+                    if vk.startswith(RESERVED_VALUE_PREFIX):
+                        raise RuntimeError(
+                            f"published Sprout configuration {config_path} entry {entry_name!r} value {vk!r} uses reserved {RESERVED_VALUE_PREFIX!r} prefix"
                         )
                     entry_values[vk] = vv
             merged_entry_values = finalize_values(
@@ -2130,6 +2255,7 @@ class StagedArtifactTransaction:
         for directory in (
             esp_path(NIXOS_DIR),
             esp_path(DRIVERS_DIR),
+            esp_path(EXTRA_FILES_DIR),
         ):
             if directory.exists():
                 for path in directory.rglob("*"):
@@ -2166,6 +2292,7 @@ class StagedArtifactTransaction:
                 if parent not in (
                     esp_path(NIXOS_DIR),
                     esp_path(DRIVERS_DIR),
+                    esp_path(EXTRA_FILES_DIR),
                     esp_path(SPROUT_DIR),
                     EFI_SYS_MOUNT_POINT,
                 ):
@@ -2483,6 +2610,7 @@ def garbage_collect(
     entries: Sequence[BootEntry],
     drivers: dict[str, Path],
     referenced_paths: set[Path],
+    extra_files: dict[str, Path] | None = None,
 ) -> None:
     keep = {
         esp_path(artifact.destination)
@@ -2494,6 +2622,12 @@ def garbage_collect(
         esp_path(path)
         for path in drivers.values()
     )
+
+    if extra_files is not None:
+        keep.update(
+            esp_path(path)
+            for path in extra_files.values()
+        )
 
     for entry in entries:
         for initrd in entry.initrds:
@@ -2507,6 +2641,7 @@ def garbage_collect(
     for directory in (
         esp_path(NIXOS_DIR),
         esp_path(DRIVERS_DIR),
+        esp_path(EXTRA_FILES_DIR),
     ):
         if not directory.exists():
             continue
@@ -2567,8 +2702,14 @@ def install_bootloader(
         parents=True,
         exist_ok=True,
     )
+    esp_path(EXTRA_FILES_DIR).mkdir(
+        parents=True,
+        exist_ok=True,
+    )
 
     with StagedArtifactTransaction() as artifact_tx:
+        extra_files = install_extra_files()
+
         entries = write_boot_files(entries)
 
         if not entries:
@@ -2592,6 +2733,7 @@ def install_bootloader(
                 entries,
                 default_entry.identifier,
                 drivers,
+                extra_files=extra_files,
             )
 
             referenced_paths = parse_and_validate_sprout_config(
@@ -2599,6 +2741,11 @@ def install_bootloader(
                 esp_path(SPROUT_CONFIG),
                 check_files_exist=True,
             )
+
+            declared_extra_file_paths = {
+                esp_path(dest) for dest in extra_files.values()
+            }
+            combined_keep_set = referenced_paths | declared_extra_file_paths
 
             # Atomically replace sprout.toml only after all referenced files are present.
             atomic_write_text(
@@ -2617,7 +2764,8 @@ def install_bootloader(
     garbage_collect(
         entries,
         drivers,
-        referenced_paths,
+        combined_keep_set,
+        extra_files,
     )
 
 

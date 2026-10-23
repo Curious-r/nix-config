@@ -17,4 +17,37 @@ The optional Flake boundary exports the same sets as `nixosModules` and
 ## Available Modules
 
 - `homeManagerModules`: an empty set reserved for reusable Home Manager modules.
-- `nixosModules`: self-contained NixOS modules, currently including `daed` and `ddns-go`.
+- `nixosModules`: self-contained NixOS modules, currently including `daed`, `ddns-go`, and `sprout`.
+
+### Sprout (`modules/nixos/sprout.nix`)
+
+Sprout is a lightweight UEFI bootloader for NixOS featuring transactional, atomic bootloader installation and generation management.
+
+#### Custom EFI Files (`boot.loader.sprout.extraFiles`)
+
+The `boot.loader.sprout.extraFiles` option allows installing individual EFI binaries, kernels, or initrds from the Nix store into a module-managed ESP directory (`EFI/Sprout/extra-files/`).
+
+```nix
+boot.loader.sprout.extraFiles = {
+  memtest = pkgs.memtest86plus + "/memtest.efi";
+};
+```
+
+- **Attribute names**: Each attribute name serves as a logical identifier matching `[A-Za-z_][A-Za-z0-9_]*`.
+- **Individual file paths**: The option accepts individual file paths, not package directories.
+- **Module-managed destination**: Files are installed under content-addressed names (`<name>-<sha256><source-suffixes>`) in `EFI/Sprout/extra-files/`.
+- **Referencing in settings**: Each extra file is exposed in `sprout.toml` through a root value named `sprout_extra_file_<name>`. Custom actions defined in `boot.loader.sprout.settings.actions` can reference them using `$sprout_extra_file_<name>`:
+
+```nix
+boot.loader.sprout.settings = {
+  entries.memtest = {
+    title = "Memtest86+";
+    actions = [ "run-memtest" ];
+  };
+  actions.run-memtest = {
+    chainload.path = "$sprout_extra_file_memtest";
+  };
+};
+```
+
+Extra files are staged transactionally with automatic rollback on pre-publication failure and cleaned up by garbage collection when no longer declared.
