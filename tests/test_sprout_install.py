@@ -28,6 +28,7 @@ def load_sprout_installer(
     removable: bool = False,
     entry_label: str = "NixOS Sprout",
     settings: dict[str, Any] | None = None,
+    settings_file: Path | None = None,
 ) -> ModuleType:
     src_file = (
         Path(__file__).resolve().parent.parent
@@ -39,12 +40,15 @@ def load_sprout_installer(
 
     bin_path = sprout_binary or (esp_mount / "EFI" / "Sprout" / "sprout.efi")
 
-    temp_settings = tempfile.NamedTemporaryFile(
-        delete=False, suffix=".json", mode="w", encoding="utf-8"
-    )
-    json.dump(settings or {}, temp_settings)
-    temp_settings.close()
-    settings_file = Path(temp_settings.name)
+    if settings_file is None:
+        temp_settings = tempfile.NamedTemporaryFile(
+            delete=False, suffix=".json", mode="w", encoding="utf-8"
+        )
+        json.dump(settings or {}, temp_settings)
+        temp_settings.close()
+        effective_settings_file = Path(temp_settings.name)
+    else:
+        effective_settings_file = settings_file
 
     replacements = {
         "@python3@": sys.executable,
@@ -59,7 +63,7 @@ def load_sprout_installer(
         "@efiInstallAsRemovable@": "1" if removable else "0",
         "@firmwareEntryLabel@": json.dumps(entry_label),
         "@drivers@": json.dumps(drivers or {}),
-        "@settingsFile@": str(settings_file),
+        "@settingsFile@": str(effective_settings_file),
     }
 
     for key, value in replacements.items():
@@ -329,7 +333,7 @@ class SproutInstallRegressionTest(unittest.TestCase):
         self.assertTrue(active_driver.exists())
 
         # Run garbage collection
-        self.mod.garbage_collect([], installed)
+        self.mod.garbage_collect([], installed, set())
 
         self.assertTrue(active_driver.exists(), "Active configured driver must be kept")
         self.assertFalse(
@@ -606,7 +610,10 @@ class SproutInstallRegressionTest(unittest.TestCase):
 
         # Verify garbage collection cleans up orphaned k1 from omitted entry
         self.assertTrue((self.esp_dir / dest_k1).exists())
-        self.mod.garbage_collect(valid_entries, {})
+        referenced_paths = self.mod.parse_and_validate_sprout_config(
+            config, self.esp_dir / self.mod.SPROUT_CONFIG, check_files_exist=True
+        )
+        self.mod.garbage_collect(valid_entries, {}, referenced_paths)
         self.assertFalse(
             (self.esp_dir / dest_k1).exists(),
             "Orphaned kernel should be garbage collected",
@@ -6362,6 +6369,314 @@ class SproutStaticSettingsTest(unittest.TestCase):
         self.assertIn("nixos-g1", data["actions"])
         self.assertEqual(len(data["entries"]), 1)
         self.assertEqual(len(data["actions"]), 1)
+
+    def test_direct_gc_requires_and_honors_explicit_reference_set(self) -> None:
+        """Verify garbage_collect requires and includes the provided referenced_paths set in keep."""
+        managed_custom = self.esp_dir / "EFI" / "Sprout" / "nixos" / "custom.efi"
+        managed_custom.parent.mkdir(parents=True, exist_ok=True)
+        managed_custom.write_text("custom-content")
+
+        stale = self.esp_dir / "EFI" / "Sprout" / "nixos" / "stale.efi"
+        stale.write_text("stale-content")
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+        )
+
+        # Call garbage_collect with explicit reference to managed_custom
+        mod.garbage_collect([], {}, {managed_custom})
+
+        self.assertTrue(managed_custom.exists(), "Explicitly referenced path must be kept")
+        self.assertFalse(stale.exists(), "Unreferenced file must be collected")
+
+    def test_empty_chainload_linux_initrd_fails_before_publication_and_preserves_esp(self) -> None:
+        """Verify empty string for chainload.linux-initrd fails before publication and leaves ESP intact."""
+        settings = {
+            "entries": {
+                "custom-entry": {
+                    "title": "Custom",
+                    "actions": ["act-custom"],
+                },
+            },
+            "actions": {
+                "act-custom": {
+                    "chainload": {
+                        "path": r"\EFI\kernel.efi",
+                        "linux-initrd": "",
+                    },
+                },
+            },
+        }
+
+        # Pre-create a previous valid configuration and kernel
+        config_path = self.esp_dir / "sprout.toml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("version = 1\n# previous-config\n")
+
+        existing_kernel = self.esp_dir / "EFI" / "kernel.efi"
+        existing_kernel.parent.mkdir(parents=True, exist_ok=True)
+        existing_kernel.write_text("existing-kernel")
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+        )
+
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod.install_bootloader(self.temp_dir)
+            self.assertIn("references invalid initrd path ''", str(ctx.exception))
+
+        # Previous configuration and artifacts must remain intact
+        self.assertEqual(config_path.read_text(), "version = 1\n# previous-config\n")
+        self.assertTrue(existing_kernel.is_file())
+
+    def test_empty_edera_initrd_fails_before_publication_and_preserves_esp(self) -> None:
+        """Verify empty string for edera.initrd fails before publication and leaves ESP intact."""
+        xen_file = self.esp_dir / "EFI" / "xen.efi"
+        xen_file.parent.mkdir(parents=True, exist_ok=True)
+        xen_file.write_text("xen-bytes")
+
+        kernel_file = self.esp_dir / "EFI" / "vmlinuz.efi"
+        kernel_file.write_text("kernel-bytes")
+
+        settings = {
+            "entries": {
+                "edera-entry": {
+                    "title": "Edera",
+                    "actions": ["act-edera"],
+                },
+            },
+            "actions": {
+                "act-edera": {
+                    "edera": {
+                        "xen": r"\EFI\xen.efi",
+                        "kernel": r"\EFI\vmlinuz.efi",
+                        "initrd": "",
+                    },
+                },
+            },
+        }
+
+        config_path = self.esp_dir / "sprout.toml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("version = 1\n# previous-config\n")
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+        )
+
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod.install_bootloader(self.temp_dir)
+            self.assertIn("references invalid edera initrd path ''", str(ctx.exception))
+
+        self.assertEqual(config_path.read_text(), "version = 1\n# previous-config\n")
+        self.assertTrue(xen_file.is_file())
+        self.assertTrue(kernel_file.is_file())
+
+    def test_missing_settings_file_fails_before_publication_and_preserves_esp(self) -> None:
+        """Verify missing settings file raises RuntimeError and preserves previous ESP configuration."""
+        missing_file = self.temp_dir / "nonexistent-settings.json"
+        self.assertFalse(missing_file.exists())
+
+        config_path = self.esp_dir / "sprout.toml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("version = 1\n# previous-config\n")
+
+        prev_kernel = self.esp_dir / "EFI" / "Sprout" / "nixos" / "prev-kernel.efi"
+        prev_kernel.parent.mkdir(parents=True, exist_ok=True)
+        prev_kernel.write_text("prev-kernel-content")
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings_file=missing_file,
+        )
+
+        with self.assertRaises(RuntimeError) as ctx_load:
+            mod.load_custom_settings()
+        self.assertIn("custom settings file does not exist", str(ctx_load.exception))
+
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod.install_bootloader(self.temp_dir)
+            self.assertIn("custom settings file does not exist", str(ctx.exception))
+
+        self.assertEqual(config_path.read_text(), "version = 1\n# previous-config\n")
+        self.assertTrue(prev_kernel.is_file())
+
+    def test_valid_empty_settings_file_is_accepted(self) -> None:
+        """Verify a settings file containing empty object {} is accepted."""
+        empty_file = self.temp_dir / "empty-settings.json"
+        empty_file.write_text("{}", encoding="utf-8")
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings_file=empty_file,
+        )
+
+        data = mod.load_custom_settings()
+        self.assertEqual(data, {})
+
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        self.assertTrue(config_path.is_file())
+
+    def test_malformed_settings_file_fails_before_publication(self) -> None:
+        """Verify invalid or non-object JSON settings file fails before publication."""
+        bad_json = self.temp_dir / "bad-settings.json"
+        bad_json.write_text("{ not valid json", encoding="utf-8")
+
+        config_path = self.esp_dir / "sprout.toml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("version = 1\n# previous-config\n")
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings_file=bad_json,
+        )
+
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod.install_bootloader(self.temp_dir)
+            self.assertIn("failed to read custom settings", str(ctx.exception))
+
+        self.assertEqual(config_path.read_text(), "version = 1\n# previous-config\n")
+
+    def test_action_with_zero_recognized_variants_fails_before_publication(self) -> None:
+        """Verify action with no recognized variant fails validation before publication."""
+        config_path = self.esp_dir / "sprout.toml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("version = 1\n# previous-config\n")
+
+        # Test direct validation of TOML with zero recognized variants
+        raw_toml = (
+            "version = 1\n"
+            "[entries.e1]\n"
+            "title = 'Entry 1'\n"
+            "actions = ['act1']\n"
+            "[actions.act1]\n"
+            "unknown_variant = { foo = 'bar' }\n"
+        )
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+        )
+
+        with self.assertRaises(RuntimeError) as ctx:
+            mod.parse_and_validate_sprout_config(raw_toml, config_path)
+        self.assertIn("must define exactly one action variant", str(ctx.exception))
+        self.assertIn("found none", str(ctx.exception))
+
+        # Test during install_bootloader with invalid action dict
+        settings = {
+            "entries": {
+                "e1": {"title": "E1", "actions": ["act1"]},
+            },
+            "actions": {
+                "act1": {},
+            },
+        }
+        mod_settings = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+        )
+        entry = self._create_sample_entry(mod_settings)
+        with patch.object(mod_settings, "check_mountpoint"), patch.object(
+            mod_settings, "collect_entries", return_value=[entry]
+        ):
+            with self.assertRaises(RuntimeError) as ctx_inst:
+                mod_settings.install_bootloader(self.temp_dir)
+            self.assertIn("must define exactly one variant", str(ctx_inst.exception))
+
+        self.assertEqual(config_path.read_text(), "version = 1\n# previous-config\n")
+
+    def test_action_with_multiple_recognized_variants_fails_before_publication(self) -> None:
+        """Verify action with multiple recognized variants fails validation before publication."""
+        config_path = self.esp_dir / "sprout.toml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("version = 1\n# previous-config\n")
+
+        raw_toml = (
+            "version = 1\n"
+            "[entries.e1]\n"
+            "title = 'E1'\n"
+            "actions = ['act1']\n"
+            "[actions.act1.chainload]\n"
+            "path = 'EFI/boot.efi'\n"
+            "[actions.act1.print]\n"
+            "text = 'hello'\n"
+        )
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+        )
+
+        with self.assertRaises(RuntimeError) as ctx:
+            mod.parse_and_validate_sprout_config(raw_toml, config_path)
+        self.assertIn("specifies multiple action variants", str(ctx.exception))
+
+        # Test during install_bootloader
+        settings = {
+            "entries": {
+                "e1": {"title": "E1", "actions": ["act1"]},
+            },
+            "actions": {
+                "act1": {
+                    "chainload": {"path": r"\EFI\boot.efi"},
+                    "print": {"text": "hello"},
+                },
+            },
+        }
+        mod_settings = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+        )
+        entry = self._create_sample_entry(mod_settings)
+        with patch.object(mod_settings, "check_mountpoint"), patch.object(
+            mod_settings, "collect_entries", return_value=[entry]
+        ):
+            with self.assertRaises(RuntimeError) as ctx_inst:
+                mod_settings.install_bootloader(self.temp_dir)
+            self.assertIn("must define exactly one variant", str(ctx_inst.exception))
+
+        self.assertEqual(config_path.read_text(), "version = 1\n# previous-config\n")
 
 
 if __name__ == "__main__":

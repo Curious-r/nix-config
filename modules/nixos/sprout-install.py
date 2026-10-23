@@ -42,7 +42,9 @@ SETTINGS_FILE = Path("@settingsFile@")
 
 def load_custom_settings() -> dict[str, Any]:
     if not SETTINGS_FILE.is_file():
-        return {}
+        raise RuntimeError(
+            f"custom settings file does not exist or is not a regular file: {SETTINGS_FILE}"
+        )
     try:
         content = SETTINGS_FILE.read_text(encoding="utf-8")
         data = json.loads(content)
@@ -1367,7 +1369,7 @@ def generate_sprout_config(
             lines.append(f"chainload.path = {quote_toml(cl['path'])}")
             if cl.get("options"):
                 lines.append(f"chainload.options = {array_toml(cl['options'])}")
-            if cl.get("linux-initrd"):
+            if cl.get("linux-initrd") is not None:
                 lines.append(f"chainload.linux-initrd = {quote_toml(cl['linux-initrd'])}")
             elif cl.get("linux-initrd-chain"):
                 lines.append(
@@ -1380,7 +1382,7 @@ def generate_sprout_config(
             ed = action_data["edera"]
             lines.append(f"edera.xen = {quote_toml(ed['xen'])}")
             lines.append(f"edera.kernel = {quote_toml(ed['kernel'])}")
-            if ed.get("initrd"):
+            if ed.get("initrd") is not None:
                 lines.append(f"edera.initrd = {quote_toml(ed['initrd'])}")
             elif ed.get("initrd-chain"):
                 lines.append(f"edera.initrd-chain = {array_toml(ed['initrd-chain'])}")
@@ -1892,9 +1894,13 @@ def parse_and_validate_sprout_config(
         recognized_variants = [
             k for k in ("chainload", "print", "edera") if k in action_entry
         ]
+        if len(recognized_variants) == 0:
+            raise RuntimeError(
+                f"published Sprout configuration {config_path} {context_desc} must define exactly one action variant (chainload, print, or edera); found none"
+            )
         if len(recognized_variants) > 1:
             raise RuntimeError(
-                f"published Sprout configuration {config_path} {context_desc} specifies multiple action variants: {recognized_variants}"
+                f"published Sprout configuration {config_path} {context_desc} must define exactly one action variant (chainload, print, or edera); specifies multiple action variants: {recognized_variants}"
             )
 
         print_entry = action_entry.get("print")
@@ -1908,22 +1914,6 @@ def parse_and_validate_sprout_config(
                 raise RuntimeError(
                     f"published Sprout configuration {config_path} {context_desc} print 'text' is not a string"
                 )
-
-        action_path = action_entry.get("path")
-        if action_path is not None:
-            if not isinstance(action_path, str):
-                raise RuntimeError(
-                    f"published Sprout configuration {config_path} {context_desc} path is not a string"
-                )
-            referenced.add(
-                resolve_stamped_path(
-                    action_path,
-                    context_values,
-                    config_path,
-                    context=context_desc,
-                    path_kind="path",
-                )
-            )
 
         chainload = action_entry.get("chainload")
         if chainload is not None:
@@ -2492,6 +2482,7 @@ def install_nvram_entry() -> None:
 def garbage_collect(
     entries: Sequence[BootEntry],
     drivers: dict[str, Path],
+    referenced_paths: set[Path],
 ) -> None:
     keep = {
         esp_path(artifact.destination)
@@ -2511,10 +2502,7 @@ def garbage_collect(
             except RuntimeError:
                 pass
 
-    try:
-        keep.update(published_config_referenced_files())
-    except Exception:
-        pass
+    keep.update(referenced_paths)
 
     for directory in (
         esp_path(NIXOS_DIR),
@@ -2606,7 +2594,7 @@ def install_bootloader(
                 drivers,
             )
 
-            parse_and_validate_sprout_config(
+            referenced_paths = parse_and_validate_sprout_config(
                 configuration,
                 esp_path(SPROUT_CONFIG),
                 check_files_exist=True,
@@ -2629,6 +2617,7 @@ def install_bootloader(
     garbage_collect(
         entries,
         drivers,
+        referenced_paths,
     )
 
 
