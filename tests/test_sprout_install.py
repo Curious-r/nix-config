@@ -7581,6 +7581,416 @@ class SproutStaticPhasesTest(unittest.TestCase):
             self.assertEqual(config_path.read_text(encoding="utf-8"), prior_content)
 
 
+class SproutStaticRootValuesTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp_dir_obj = tempfile.TemporaryDirectory()
+        self.temp_dir = Path(self.temp_dir_obj.name).resolve()
+        self.esp_dir = self.temp_dir / "esp"
+        self.esp_dir.mkdir(parents=True, exist_ok=True)
+
+        self.old_cwd = Path.cwd()
+        os.chdir(self.temp_dir)
+
+        self.driver_src = self.temp_dir / "btrfs-driver.efi"
+        self.driver_src.write_text("driver-initial")
+
+        self.sprout_source = self.temp_dir / "source-sprout.efi"
+        self.sprout_source.write_text("sprout-bin")
+
+        self.drivers_config = {
+            "btrfs": str(self.driver_src),
+        }
+
+    def tearDown(self) -> None:
+        os.chdir(self.old_cwd)
+        self.temp_dir_obj.cleanup()
+
+    def _create_sample_entry(
+        self,
+        mod: ModuleType,
+        identifier: str = "nixos-g1",
+        generation: int = 1,
+        title: str = "NixOS generation 1",
+    ) -> Any:
+        k = self.temp_dir / f"kernel-{identifier}.efi"
+        k.write_text("kernel-bytes")
+        dest_k = mod.NIXOS_DIR / f"{identifier}-kernel.efi"
+        art_k = mod.BootArtifact(dest_k, k, None, generation, True)
+        return mod.BootEntry(
+            identifier=identifier,
+            title=title,
+            sort_key=identifier,
+            kernel=dest_k,
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(art_k,),
+            critical=True,
+        )
+
+    def test_root_values_toml_serialization_and_deterministic_sorting(self) -> None:
+        """Verify root values are serialized to a single [values] table with deterministic key sorting."""
+        settings = {
+            "values": {
+                "z_param": "last",
+                "a_param": "first",
+                "m_param": "middle",
+            },
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+        )
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        self.assertTrue(config_path.is_file())
+        raw_toml = config_path.read_text(encoding="utf-8")
+        data = tomllib.loads(raw_toml)
+
+        self.assertIn("values", data)
+        self.assertEqual(
+            data["values"],
+            {
+                "a_param": "first",
+                "m_param": "middle",
+                "z_param": "last",
+            },
+        )
+
+        # Verify sorted ordering in raw text
+        pos_a = raw_toml.index('"a_param" = "first"')
+        pos_m = raw_toml.index('"m_param" = "middle"')
+        pos_z = raw_toml.index('"z_param" = "last"')
+        self.assertTrue(pos_a < pos_m < pos_z)
+
+    def test_empty_settings_omits_values_table(self) -> None:
+        """Verify empty root values omit [values] table entirely, matching default output."""
+        mod_none = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings={},
+        )
+        entry = self._create_sample_entry(mod_none)
+        with patch.object(mod_none, "check_mountpoint"), patch.object(
+            mod_none, "collect_entries", return_value=[entry]
+        ):
+            mod_none.install_bootloader(self.temp_dir)
+        config_none = (self.esp_dir / mod_none.SPROUT_CONFIG).read_text(encoding="utf-8")
+        self.assertNotIn("values", config_none)
+
+        mod_empty = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings={"values": {}},
+        )
+        with patch.object(mod_empty, "check_mountpoint"), patch.object(
+            mod_empty, "collect_entries", return_value=[entry]
+        ):
+            mod_empty.install_bootloader(self.temp_dir)
+        config_empty = (self.esp_dir / mod_empty.SPROUT_CONFIG).read_text(encoding="utf-8")
+        self.assertEqual(config_none, config_empty)
+        self.assertNotIn("values", config_empty)
+
+    def test_root_values_coexist_with_extra_files_without_duplicate_keys(self) -> None:
+        """Verify root values coexist with generated extra-file values under a single [values] table without duplicates."""
+        memtest_src = self.temp_dir / "memtest.efi"
+        memtest_src.write_text("memtest-data")
+
+        settings = {
+            "values": {
+                "shared_tools_dir": r"\EFI\tools",
+            },
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+            extra_files={"memtest": str(memtest_src)},
+        )
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        self.assertTrue(config_path.is_file())
+        raw_toml = config_path.read_text(encoding="utf-8")
+        data = tomllib.loads(raw_toml)
+
+        # Single [values] table in raw text
+        self.assertEqual(raw_toml.count("[values]"), 1)
+
+        self.assertIn("values", data)
+        self.assertEqual(data["values"]["shared_tools_dir"], r"\EFI\tools")
+        self.assertIn("sprout_extra_file_memtest", data["values"])
+
+    def test_root_values_referenced_by_action_and_phase(self) -> None:
+        """Verify root values are available to expand variables in entry actions and static boot phase actions."""
+        tools_dir = self.esp_dir / "EFI" / "tools"
+        tools_dir.mkdir(parents=True, exist_ok=True)
+        tool_file = tools_dir / "tool.efi"
+        tool_file.write_text("tool-bin")
+
+        splash_dir = self.esp_dir / "EFI" / "splashes"
+        splash_dir.mkdir(parents=True, exist_ok=True)
+        splash_file = splash_dir / "logo.efi"
+        splash_file.write_text("splash-bin")
+
+        settings = {
+            "values": {
+                "tools_dir": r"\EFI\tools",
+                "splash_dir": r"\EFI\splashes",
+            },
+            "actions": {
+                "run-tool": {
+                    "chainload": {"path": r"$tools_dir\tool.efi"},
+                },
+                "show-logo": {
+                    "chainload": {"path": r"$splash_dir\logo.efi"},
+                },
+            },
+            "entries": {
+                "tool-entry": {
+                    "title": "Custom Tool",
+                    "actions": ["run-tool"],
+                },
+            },
+            "phases": {
+                "early": [
+                    {
+                        "actions": ["show-logo"],
+                    },
+                ],
+            },
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+        )
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        ref_paths = mod.parse_and_validate_sprout_config(
+            config_path.read_text(encoding="utf-8"),
+            config_path,
+            check_files_exist=True,
+        )
+
+        self.assertIn(tool_file.resolve(), ref_paths)
+        self.assertIn(splash_file.resolve(), ref_paths)
+        self.assertTrue(tool_file.is_file())
+        self.assertTrue(splash_file.is_file())
+
+    def test_nested_root_values_expansion(self) -> None:
+        """Verify nested root values referencing each other are expanded correctly."""
+        tools_dir = self.esp_dir / "EFI" / "tools"
+        tools_dir.mkdir(parents=True, exist_ok=True)
+        nested_file = tools_dir / "nested.efi"
+        nested_file.write_text("nested-bin")
+
+        settings = {
+            "values": {
+                "base_dir": r"\EFI",
+                "tools_dir": r"$base_dir\tools",
+                "tool_path": r"$tools_dir\nested.efi",
+            },
+            "actions": {
+                "run-nested": {
+                    "chainload": {"path": "$tool_path"},
+                },
+            },
+            "entries": {
+                "nested-entry": {
+                    "title": "Nested Entry",
+                    "actions": ["run-nested"],
+                },
+            },
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+        )
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        ref_paths = mod.parse_and_validate_sprout_config(
+            config_path.read_text(encoding="utf-8"),
+            config_path,
+            check_files_exist=True,
+        )
+        self.assertIn(nested_file.resolve(), ref_paths)
+
+    def test_entry_and_phase_local_values_override_root_values(self) -> None:
+        """Verify entry-local and phase-local values take precedence over root-level defaults."""
+        app_dir = self.esp_dir / "EFI" / "app"
+        app_dir.mkdir(parents=True, exist_ok=True)
+        default_file = app_dir / "default.efi"
+        default_file.write_text("default-bin")
+        entry_file = app_dir / "entry_override.efi"
+        entry_file.write_text("entry-bin")
+        phase_file = app_dir / "phase_override.efi"
+        phase_file.write_text("phase-bin")
+
+        settings = {
+            "values": {
+                "target": "default",
+            },
+            "actions": {
+                "run-app": {
+                    "chainload": {"path": r"\EFI\app\$target.efi"},
+                },
+            },
+            "entries": {
+                "entry-default": {
+                    "title": "Default App",
+                    "actions": ["run-app"],
+                },
+                "entry-overridden": {
+                    "title": "Overridden App",
+                    "actions": ["run-app"],
+                    "values": {"target": "entry_override"},
+                },
+            },
+            "phases": {
+                "early": [
+                    {
+                        "actions": ["run-app"],
+                        "values": {"target": "phase_override"},
+                    },
+                ],
+            },
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+        )
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        ref_paths = mod.parse_and_validate_sprout_config(
+            config_path.read_text(encoding="utf-8"),
+            config_path,
+            check_files_exist=True,
+        )
+        self.assertIn(default_file.resolve(), ref_paths)
+        self.assertIn(entry_file.resolve(), ref_paths)
+        self.assertIn(phase_file.resolve(), ref_paths)
+
+    def test_invalid_root_values_fail_before_publication(self) -> None:
+        """Verify invalid root value configurations fail before publication, leaving prior config unchanged."""
+        config_path = self.esp_dir / "sprout.toml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        prior_content = "version = 1\n# prior-valid-config\n"
+        config_path.write_text(prior_content, encoding="utf-8")
+
+        test_cases: list[tuple[dict[str, Any], str]] = [
+            # Invalid identifier with dash
+            (
+                {"values": {"bad-identifier": "val"}},
+                "must match [A-Za-z_][A-Za-z0-9_]*",
+            ),
+            # Invalid identifier starting with digit
+            (
+                {"values": {"123var": "val"}},
+                "must match [A-Za-z_][A-Za-z0-9_]*",
+            ),
+            # Invalid identifier ending in newline
+            (
+                {"values": {"bad_name\n": "val"}},
+                "must match [A-Za-z_][A-Za-z0-9_]*",
+            ),
+            # Reserved prefix
+            (
+                {"values": {"sprout_extra_file_test": "val"}},
+                "uses reserved 'sprout_extra_file_' prefix",
+            ),
+            # Non-string value (integer)
+            (
+                {"values": {"num_val": 42}},
+                "must be a string",
+            ),
+            # Malformed values (not a dict)
+            (
+                {"values": "not-a-dict"},
+                "custom settings 'values' must be a table",
+            ),
+            # Unresolved nested variable in root values
+            (
+                {"values": {"tool": r"$unknown_var\tool.efi"}},
+                "contains unresolved variable '$unknown_var'",
+            ),
+            # Missing file derived from root values
+            (
+                {
+                    "values": {"tools_dir": r"\EFI\nonexistent"},
+                    "actions": {
+                        "run-missing": {
+                            "chainload": {"path": r"$tools_dir\file.efi"},
+                        },
+                    },
+                    "entries": {
+                        "e1": {
+                            "title": "E1",
+                            "actions": ["run-missing"],
+                        },
+                    },
+                },
+                "references missing file",
+            ),
+        ]
+
+        for invalid_settings, expected_err in test_cases:
+            mod = load_sprout_installer(
+                self.esp_dir,
+                sprout_binary=self.sprout_source,
+                drivers=self.drivers_config,
+                settings=invalid_settings,
+            )
+            entry = self._create_sample_entry(mod)
+            with patch.object(mod, "check_mountpoint"), patch.object(
+                mod, "collect_entries", return_value=[entry]
+            ):
+                with self.assertRaises(RuntimeError) as ctx:
+                    mod.install_bootloader(self.temp_dir)
+                self.assertIn(expected_err, str(ctx.exception))
+
+            # Ensure prior config was preserved
+            self.assertEqual(config_path.read_text(encoding="utf-8"), prior_content)
+
+
 if __name__ == "__main__":
     unittest.main()
 

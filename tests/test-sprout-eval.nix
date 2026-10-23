@@ -985,6 +985,81 @@ let
     assert case48a.success == false;
     assert case48b.success == false;
     true;
+
+  # 49. Sprout enabled: settings.values defaults to empty set.
+  case49 = eval [ { boot.loader.sprout.enable = true; } ];
+  testCase49 =
+    assert case49.config.boot.loader.sprout.settings.values == { };
+    true;
+
+  # 50. Valid identifiers and string values in settings.values evaluate successfully.
+  case50 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.sprout.settings.values = {
+        tools_dir = "\\EFI\\tools";
+        memtest_path = "$tools_dir\\memtest.efi";
+      };
+    }
+  ];
+  testCase50 =
+    assert (builtins.tryEval case50.config.system.build.toplevel).success == true;
+    assert case50.config.boot.loader.sprout.settings.values.tools_dir == "\\EFI\\tools";
+    assert case50.config.boot.loader.sprout.settings.values.memtest_path == "$tools_dir\\memtest.efi";
+    true;
+
+  # 51. Invalid identifier in settings.values is rejected by assertion.
+  case51 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.sprout.settings.values."invalid-identifier" = "val";
+    }
+  ];
+  testCase51 =
+    let
+      toplevelEval = builtins.tryEval case51.config.system.build.toplevel;
+      failedAssertions = builtins.filter (
+        x:
+        !x.assertion
+        && pkgs.lib.hasInfix "boot.loader.sprout.settings.values attribute names must match" x.message
+      ) case51.config.assertions;
+    in
+    assert toplevelEval.success == false;
+    assert failedAssertions != [ ];
+    true;
+
+  # 52. Names using reserved 'sprout_extra_file_' prefix in settings.values are rejected by assertion.
+  case52 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.sprout.settings.values.sprout_extra_file_custom = "/path";
+    }
+  ];
+  testCase52 =
+    let
+      toplevelEval = builtins.tryEval case52.config.system.build.toplevel;
+      failedAssertions = builtins.filter (
+        x:
+        !x.assertion
+        && pkgs.lib.hasInfix "boot.loader.sprout.settings.values cannot use reserved 'sprout_extra_file_' prefix" x.message
+      ) case52.config.assertions;
+    in
+    assert toplevelEval.success == false;
+    assert failedAssertions != [ ];
+    true;
+
+  # 53. settings remains a closed submodule and rejects unknown fields.
+  case53 =
+    builtins.tryEval
+      (eval [
+        {
+          boot.loader.sprout.enable = true;
+          boot.loader.sprout.settings.unknownSubmoduleField = "bad";
+        }
+      ]).config.system.build.toplevel;
+  testCase53 =
+    assert case53.success == false;
+    true;
 in
 assert testCase1;
 assert testCase2;
@@ -1034,6 +1109,11 @@ assert testCase45;
 assert testCase46;
 assert testCase47;
 assert testCase48;
+assert testCase49;
+assert testCase50;
+assert testCase51;
+assert testCase52;
+assert testCase53;
 {
   inherit
     testCase1
@@ -1084,5 +1164,10 @@ assert testCase48;
     testCase46
     testCase47
     testCase48
+    testCase49
+    testCase50
+    testCase51
+    testCase52
+    testCase53
     ;
 }

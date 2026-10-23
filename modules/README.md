@@ -97,3 +97,33 @@ boot.loader.sprout.settings = {
   };
 };
 ```
+
+#### Root Values (`boot.loader.sprout.settings.values`)
+
+The `boot.loader.sprout.settings.values` option configures shared default root-level string values for variable expansion across Sprout configurations:
+
+- **Shared defaults**: Root values define shared string variables that can be referenced in static action paths (e.g. `$tools_dir`), phase configurations, or other nested root values.
+- **Precedence**: Narrower entry-local and phase-local `values` retain precedence over root values and override them within their local scope.
+- **Managed extra files**: `boot.loader.sprout.extraFiles` owns the reserved `sprout_extra_file_` prefix, exposing installed EFI files as root values (`$sprout_extra_file_<name>`), and remains the supported mechanism for installing individual files onto the ESP.
+
+```nix
+boot.loader.sprout.settings = {
+  values = {
+    tools_dir = "\\EFI\\tools";
+    shell_bin = "$tools_dir\\Shell.efi";
+  };
+
+  actions = {
+    uefi-shell = {
+      chainload.path = "$shell_bin";
+    };
+  };
+
+  entries = {
+    shell = {
+      title = "UEFI Shell";
+      actions = [ "uefi-shell" ];
+    };
+  };
+};
+```

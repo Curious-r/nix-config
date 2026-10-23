@@ -72,6 +72,9 @@ let
         { }
     ) cfg.settings.actions;
   }
+  // (lib.optionalAttrs (cfg.settings.values != { }) {
+    inherit (cfg.settings) values;
+  })
   // (lib.optionalAttrs
     (
       cfg.settings.phases.early != [ ]
@@ -519,12 +522,21 @@ in
               Static Sprout boot phases.
             '';
           };
+
+          values = mkOption {
+            type = types.attrsOf types.str;
+            default = { };
+            description = ''
+              Shared default root-level values for variable expansion in Sprout configuration.
+              May be overridden by narrower entry- or phase-local values according to Sprout's value semantics.
+            '';
+          };
         };
       };
       default = { };
       description = ''
         Static Sprout configuration settings. Exposes a closed, typed subset of Sprout's
-        configuration schema for static menu options, additional entries, actions, and phases.
+        configuration schema for static menu options, additional entries, actions, phases, and root values.
       '';
     };
   };
@@ -738,6 +750,26 @@ in
 
         message = ''
           boot.loader.sprout.settings.phases.<name>.*.values cannot use reserved 'sprout_extra_file_' prefix.
+        '';
+      }
+
+      {
+        assertion = lib.all (name: builtins.match "[A-Za-z_][A-Za-z0-9_]*" name != null) (
+          lib.attrNames cfg.settings.values
+        );
+
+        message = ''
+          boot.loader.sprout.settings.values attribute names must match [A-Za-z_][A-Za-z0-9_]*.
+        '';
+      }
+
+      {
+        assertion = lib.all (name: !lib.hasPrefix "sprout_extra_file_" name) (
+          lib.attrNames cfg.settings.values
+        );
+
+        message = ''
+          boot.loader.sprout.settings.values cannot use reserved 'sprout_extra_file_' prefix.
         '';
       }
     ];

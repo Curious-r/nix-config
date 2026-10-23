@@ -69,6 +69,7 @@ SPROUT_BINARY = SPROUT_DIR / "sprout.efi"
 SPROUT_CONFIG = Path("sprout.toml")
 
 EXTRA_FILE_NAME_RE: re.Pattern[str] = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+VALUE_IDENTIFIER_RE: re.Pattern[str] = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 RESERVED_VALUE_PREFIX: str = "sprout_extra_file_"
 
 
@@ -1274,7 +1275,7 @@ def generate_sprout_config(
         settings = load_custom_settings()
 
     for key in settings:
-        if key not in ("options", "entries", "actions", "phases"):
+        if key not in ("options", "entries", "actions", "phases", "values"):
             raise RuntimeError(f"unsupported custom settings section: {key!r}")
 
     options_cfg = settings.get("options", {})
@@ -1442,6 +1443,24 @@ def generate_sprout_config(
                                 f"custom phase {phase_name!r} item {item_idx} value {vk!r} uses reserved {RESERVED_VALUE_PREFIX!r} prefix"
                             )
 
+    custom_values = settings.get("values")
+    if custom_values is not None:
+        if not isinstance(custom_values, dict):
+            raise RuntimeError("custom settings 'values' must be a table")
+        for vk, vv in custom_values.items():
+            if not isinstance(vk, str) or not VALUE_IDENTIFIER_RE.fullmatch(vk):
+                raise RuntimeError(
+                    f"custom settings value identifier {vk!r} must match [A-Za-z_][A-Za-z0-9_]*"
+                )
+            if vk.startswith(RESERVED_VALUE_PREFIX):
+                raise RuntimeError(
+                    f"custom settings value {vk!r} uses reserved {RESERVED_VALUE_PREFIX!r} prefix"
+                )
+            if not isinstance(vv, str):
+                raise RuntimeError(
+                    f"custom settings value {vk!r} must be a string, got {type(vv).__name__}"
+                )
+
     lines: list[str] = [
         "version = 1",
         "",
@@ -1453,16 +1472,24 @@ def generate_sprout_config(
     if menu_style is not None:
         lines.append(f"menu-style = {quote_toml(menu_style)}")
 
+    all_root_values: dict[str, str] = {}
+    if custom_values:
+        for vk, vv in custom_values.items():
+            all_root_values[vk] = vv
     if extra_files:
+        for name, dest in extra_files.items():
+            val_name = f"{RESERVED_VALUE_PREFIX}{name}"
+            all_root_values[val_name] = uefi_path(dest)
+
+    if all_root_values:
         lines.extend(
             [
                 "",
                 "[values]",
             ]
         )
-        for name, dest in sorted(extra_files.items()):
-            val_name = f"{RESERVED_VALUE_PREFIX}{name}"
-            lines.append(f"{quote_toml(val_name)} = {quote_toml(uefi_path(dest))}")
+        for vk, vv in sorted(all_root_values.items()):
+            lines.append(f"{quote_toml(vk)} = {quote_toml(vv)}")
 
     if custom_phases:
         for phase_name in ("early", "startup", "late"):
@@ -1889,6 +1916,10 @@ def parse_and_validate_sprout_config(
             if not isinstance(val_key, str) or not isinstance(val_val, str):
                 raise RuntimeError(
                     f"published Sprout configuration {config_path} contains invalid 'values' table entry {val_key!r}"
+                )
+            if not VALUE_IDENTIFIER_RE.fullmatch(val_key):
+                raise RuntimeError(
+                    f"published Sprout configuration {config_path} root 'values' entry {val_key!r} must match [A-Za-z_][A-Za-z0-9_]*"
                 )
             raw_root_values[val_key] = val_val
 
