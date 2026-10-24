@@ -62,7 +62,7 @@ let
   cptCfg = lib.attrByPath [ cpt ] "" compositorConfigs;
 in
 {
-  services.displayManager.dms-greeter = {
+  services.displayManager.dux-greeter = {
     enable = true;
     compositor = {
       name = cpt;

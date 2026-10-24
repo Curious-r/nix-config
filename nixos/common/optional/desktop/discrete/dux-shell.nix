@@ -3,9 +3,9 @@
   ...
 }:
 {
-  imports = [ (import "${sources.dms-plugin-registry}/nix/module.nix") ];
+  imports = [ (import "${sources.dux-plugin-registry}/nix/module.nix") ];
 
-  programs.dms-shell = {
+  programs.dux-shell = {
     enable = true;
 
     systemd = {
@@ -22,6 +22,4 @@
       dockerManager.enable = true;
     };
   };
-
-  programs.dsearch.enable = true;
 }

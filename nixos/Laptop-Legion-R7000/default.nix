@@ -10,8 +10,11 @@
     ../common/optional/preservation/curious/desktop.nix
     ../common/optional/boot/plymouth.nix
     ../common/optional/kmscon.nix
-    ../common/optional/desktop/discrete/dms-shell.nix
-    ../common/optional/desktop/discrete/dms-greeter.nix
+    ../common/optional/desktop/discrete/dux-greeter.nix
+    ../common/optional/desktop/discrete/dux-shell.nix
+    # ../common/optional/desktop/discrete/dux-files.nix
+    ../common/optional/desktop/discrete/dux-search.nix
+    # ../common/optional/desktop/discrete/dux-calendar.nix
     ../common/optional/desktop/discrete/upower.nix
     ../common/optional/desktop/discrete/power-profiles-daemon.nix
     ../common/optional/desktop/discrete/niri.nix
@@ -20,7 +23,6 @@
     ../common/optional/desktop/discrete/oo7/greetd.nix
     ../common/optional/desktop/discrete/cursors.nix
     ../common/optional/desktop/discrete/icon.nix
-    ../common/optional/desktop/discrete/dankcalendar.nix
     ../common/optional/input-method.nix
     ../common/optional/daed.nix
     ../common/optional/preservation/daed.nix
