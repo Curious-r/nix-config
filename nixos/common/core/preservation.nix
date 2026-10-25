@@ -4,7 +4,29 @@
   ...
 }:
 {
-  imports = [ (import "${sources.preservation}/module.nix") ];
+  imports = [
+    # TODO: Remove wrapper once upstream preservation drops the obsolete `boot.initrd.systemd.enable` assertion.
+    # In recent nixpkgs, scripted initrd has been removed and `boot.initrd.systemd.enable` was turned into
+    # `mkRemovedOptionModule`. Preservation still accesses `config.boot.initrd.systemd.enable` in its assertion,
+    # which triggers a throw on evaluation.
+    (
+      args:
+      let
+        orig = (import "${sources.preservation}/module.nix") args;
+      in
+      orig
+      // {
+        config = lib.mkIf orig.config.condition (
+          orig.config.content
+          // {
+            assertions = builtins.filter (x: x.message != "This module cannot be used with scripted initrd.") (
+              orig.config.content.assertions or [ ]
+            );
+          }
+        );
+      }
+    )
+  ];
   preservation = {
     # The module doesn't do anything unless it is enabled.
     enable = lib.mkDefault true;
