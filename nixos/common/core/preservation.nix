@@ -4,29 +4,7 @@
   ...
 }:
 {
-  imports = [
-    # TODO: Remove wrapper once upstream preservation drops the obsolete `boot.initrd.systemd.enable` assertion.
-    # In recent nixpkgs, scripted initrd has been removed and `boot.initrd.systemd.enable` was turned into
-    # `mkRemovedOptionModule`. Preservation still accesses `config.boot.initrd.systemd.enable` in its assertion,
-    # which triggers a throw on evaluation.
-    (
-      args:
-      let
-        orig = (import "${sources.preservation}/module.nix") args;
-      in
-      orig
-      // {
-        config = lib.mkIf orig.config.condition (
-          orig.config.content
-          // {
-            assertions = builtins.filter (x: x.message != "This module cannot be used with scripted initrd.") (
-              orig.config.content.assertions or [ ]
-            );
-          }
-        );
-      }
-    )
-  ];
+  imports = [ (import "${sources.preservation}/module.nix") ];
   preservation = {
     # The module doesn't do anything unless it is enabled.
     enable = lib.mkDefault true;
@@ -167,9 +145,14 @@
     };
   };
 
-  # 通过去掉 suppressedSystemUnits 修复了上游文档示例自相矛盾的问题。
-  # 参考：https://github.com/nix-community/preservation/issues/29。
+  # 当 persistent 下的 machine-id 尚不存在时，通过 initrd tmpfiles 初始化为 "uninitialized"，
+  # 以满足 systemd 262+ 的 ConditionFirstBoot（参考上游 commit 74a2062）。
+  boot.initrd.systemd.tmpfiles.settings.preservation."/sysroot/persistent/etc/machine-id".f = {
+    argument = "uninitialized";
+  };
+
   # Adapt the stock service to commit the transient ID to the persistent volume.
+  # 上游已在文档与测试中确认不使用 suppressedSystemUnits 并采用此 commit 方案（PR #30 / commit 74a2062）。
   systemd.services.systemd-machine-id-commit = {
     unitConfig.ConditionPathIsMountPoint = [
       ""
