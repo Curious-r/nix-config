@@ -9,9 +9,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "3e458cb89dd4c659f2ad9b3139654fd861215468",
-      "url": "https://github.com/Curious-r/nix-packages/archive/3e458cb89dd4c659f2ad9b3139654fd861215468.tar.gz",
-      "hash": "sha256-W9BG+Y/ZO9YVsGJsB785hfxvwBzoM7itbX0YX7BYuoc="
+      "revision": "456b26b3182827519453cc865e37e2168786e113",
+      "url": "https://github.com/Curious-r/nix-packages/archive/456b26b3182827519453cc865e37e2168786e113.tar.gz",
+      "hash": "sha256-ClBz+4SaBKA71FeMMdYWnSkeUU6i5thrxFXikHOLCRY="
     },
     "disko": {
       "type": "Git",
@@ -35,9 +35,9 @@
       },
       "branch": "master",
       "submodules": false,
-      "revision": "66afb3fae41a62a24e8558d11a31842bcd9e0135",
-      "url": "https://github.com/duxlabs-dev/dux-plugin-registry/archive/66afb3fae41a62a24e8558d11a31842bcd9e0135.tar.gz",
-      "hash": "sha256-eK0BztGcriE1vNpnckak9fhhzl9S673+DA/6ifqwfIw="
+      "revision": "cb788da6d2e6cf20205784c0baca041e48183612",
+      "url": "https://github.com/duxlabs-dev/dux-plugin-registry/archive/cb788da6d2e6cf20205784c0baca041e48183612.tar.gz",
+      "hash": "sha256-wTMsaavNJwgGOX991oIa6xgDWHwJnWdi9bwwQsjGkAg="
     },
     "home-manager": {
       "type": "Git",
@@ -77,9 +77,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "d7c27bbc1544974a9ea90bdfc27d281683fb69f6",
-      "url": "https://github.com/numtide/llm-agents.nix/archive/d7c27bbc1544974a9ea90bdfc27d281683fb69f6.tar.gz",
-      "hash": "sha256-3J6CRLwFjxrc5gqec5/0PgI23w2cCHR8+6qi6C9mOd0="
+      "revision": "a5500f41321b0a6b68407500f26dd55dbeb5793f",
+      "url": "https://github.com/numtide/llm-agents.nix/archive/a5500f41321b0a6b68407500f26dd55dbeb5793f.tar.gz",
+      "hash": "sha256-t//ltF7M58hc9Rqags5IQCLyzMOPgAuyxkzDwcn1bj0="
     },
     "nix-on-droid": {
       "type": "Git",
