@@ -1,4 +1,8 @@
-{ nixosModules, pkgs, ... }:
+{
+  pkgs,
+  nixosModules,
+  ...
+}:
 {
   imports = [ nixosModules.sprout ];
 

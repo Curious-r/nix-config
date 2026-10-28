@@ -1,8 +1,8 @@
 {
-  sources,
   config,
-  pkgs,
   lib,
+  pkgs,
+  sources,
   ...
 }:
 

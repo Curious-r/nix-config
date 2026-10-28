@@ -1,7 +1,7 @@
 {
-  sources,
-  homeManagerModules,
   config,
+  homeManagerModules,
+  sources,
   ...
 }:
 {

@@ -1,4 +1,7 @@
-{ lib, ... }:
+{
+  lib,
+  ...
+}:
 {
   networking = {
     timeServers = lib.mkDefault [ "ntp.aliyun.com" ];

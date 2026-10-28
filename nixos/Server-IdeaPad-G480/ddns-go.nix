@@ -1,7 +1,7 @@
 {
-  nixosModules,
   config,
   pkgs,
+  nixosModules,
   ...
 }:
 {

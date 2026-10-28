@@ -1,4 +1,7 @@
-{ config, ... }:
+{
+  config,
+  ...
+}:
 let
   nixosRoot = ../../..;
   dirEntries = builtins.readDir nixosRoot;

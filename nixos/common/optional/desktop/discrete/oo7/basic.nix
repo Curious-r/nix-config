@@ -1,4 +1,8 @@
-{ pkgs, lib, ... }:
+{
+  lib,
+  pkgs,
+  ...
+}:
 {
   services = {
     gnome.gnome-keyring.enable = false;

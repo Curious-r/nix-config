@@ -1,4 +1,8 @@
-{ pkgs, lib, ... }:
+{
+  lib,
+  pkgs,
+  ...
+}:
 {
   # All fonts are linked to /nix/var/nix/profiles/system/sw/share/X11/fonts.
   fonts = {

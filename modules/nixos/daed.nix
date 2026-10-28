@@ -29,8 +29,8 @@
 
 {
   config,
-  pkgs,
   lib,
+  pkgs,
   utils,
   ...
 }:

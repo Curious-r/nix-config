@@ -1,6 +1,6 @@
 {
-  overlays,
   pkgs,
+  overlays,
   ...
 }:
 {

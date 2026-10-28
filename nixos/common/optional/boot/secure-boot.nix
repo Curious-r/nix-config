@@ -1,8 +1,8 @@
 {
-  sources,
-  pkgs,
-  lib,
   config,
+  lib,
+  pkgs,
+  sources,
   ...
 }:
 let

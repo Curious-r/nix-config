@@ -1,4 +1,8 @@
-{ config, lib, ... }:
+{
+  config,
+  lib,
+  ...
+}:
 
 let
   onboardNic = "enabcm6e4ei0"; # 板载以太网卡

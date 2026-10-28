@@ -1,6 +1,6 @@
 {
-  sources,
   lib,
+  sources,
   ...
 }:
 {
