@@ -12,13 +12,13 @@
     ../common/optional/kmscon.nix
     ../common/optional/desktop/discrete/dux-greeter.nix
     ../common/optional/desktop/discrete/dux-shell.nix
-    # ../common/optional/desktop/discrete/dux-files.nix
+    ../common/optional/desktop/discrete/dux-files.nix
+    ../common/optional/desktop/discrete/gvfs.nix
     ../common/optional/desktop/discrete/dux-search.nix
-    # ../common/optional/desktop/discrete/dux-calendar.nix
+    ../common/optional/desktop/discrete/dux-calendar.nix
     ../common/optional/desktop/discrete/upower.nix
     ../common/optional/desktop/discrete/power-profiles-daemon.nix
     ../common/optional/desktop/discrete/niri.nix
-    ../common/optional/desktop/discrete/nautilus.nix
     ../common/optional/desktop/discrete/oo7/basic.nix
     ../common/optional/desktop/discrete/oo7/greetd.nix
     ../common/optional/desktop/discrete/cursors.nix

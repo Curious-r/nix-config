@@ -1,4 +1,7 @@
 { ... }:
 {
-  programs.dux-calendar.enable = true;
+  programs.dux-calendar = {
+    enable = true;
+    systemd.enable = true;
+  };
 }
