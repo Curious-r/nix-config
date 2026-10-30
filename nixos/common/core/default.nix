@@ -19,7 +19,6 @@
     ./networking.nix
     ./preservation.nix
     ./home-manager.nix
-    ./udisks2.nix
   ];
 
   nixpkgs = {

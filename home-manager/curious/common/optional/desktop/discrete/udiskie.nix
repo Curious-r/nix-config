@@ -1,5 +1,7 @@
 { ... }:
 {
+  # udiskie 只是前端，依赖系统级的 udisks2 服务，不过如果已经启用 gvfs
+  # 的话就已经隐式拉入了。
   services.udiskie = {
     enable = true;
     automount = true; # 自动挂载插入的设备
