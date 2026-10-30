@@ -29,6 +29,7 @@
     ../common/optional/mail-client/aerion.nix
     ../common/optional/video-player/showtime.nix
     ../common/optional/image-viewer/loupe.nix
+    ../common/optional/pdf-reader/papers.nix
 
     ../common/optional/gh.nix
 
