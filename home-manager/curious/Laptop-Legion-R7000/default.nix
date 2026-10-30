@@ -27,8 +27,8 @@
     ../common/optional/browser/zen.nix
     ../common/optional/browser/servo.nix
     ../common/optional/mail-client/aerion.nix
-    ../common/optional/media-player/showtime.nix
-    ../common/optional/picture-viewer/oculante.nix
+    ../common/optional/video-player/showtime.nix
+    ../common/optional/image-viewer/oculante.nix
 
     ../common/optional/gh.nix
 
