@@ -1,4 +1,7 @@
-{ config, ... }:
+{
+  config,
+  ...
+}:
 {
   home.sessionVariables = {
     XDG_CACHE_HOME = config.xdg.cacheHome;

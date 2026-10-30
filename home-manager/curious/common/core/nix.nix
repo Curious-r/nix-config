@@ -1,4 +1,8 @@
-{ pkgs, lib, ... }:
+{
+  lib,
+  pkgs,
+  ...
+}:
 {
   nix = {
     package = lib.mkDefault pkgs.lixPackageSets.latest.lix;

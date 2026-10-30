@@ -1,4 +1,8 @@
-{ pkgs, lib, ... }:
+{
+  lib,
+  pkgs,
+  ...
+}:
 {
   programs.zed-editor = {
     enable = true;

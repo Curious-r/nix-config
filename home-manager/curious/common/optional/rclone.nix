@@ -1,4 +1,8 @@
-{ pkgs, config, ... }:
+{
+  config,
+  pkgs,
+  ...
+}:
 {
   systemd.user = {
     services.curious-drive-mounts = {

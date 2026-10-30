@@ -1,4 +1,8 @@
-{ pkgs, config, ... }:
+{
+  config,
+  pkgs,
+  ...
+}:
 
 {
   cachix.pull = [ "curious" ];
