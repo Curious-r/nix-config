@@ -9,6 +9,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -1798,20 +1799,28 @@ class FixedLoaderTransaction:
         try:
             temp_path = Path(self._temp_dir.name)
             for index, path in enumerate(self.paths):
-                if path.is_dir():
+                try:
+                    st = path.lstat()
+                except FileNotFoundError:
+                    self.backups.append((path, None))
+                    continue
+
+                if stat.S_ISDIR(st.st_mode):
                     raise RuntimeError(
                         f"transaction path is an existing directory: {path}"
                     )
-                if path.exists() or path.is_symlink():
-                    if not path.is_file():
-                        raise RuntimeError(
-                            f"transaction path is not a regular file: {path}"
-                        )
-                    backup_file = temp_path / f"loader_{index}.efi"
-                    atomic_copy(path, backup_file, replace=True)
-                    self.backups.append((path, backup_file))
-                else:
-                    self.backups.append((path, None))
+                if stat.S_ISLNK(st.st_mode):
+                    raise RuntimeError(
+                        f"transaction path is a symbolic link: {path}"
+                    )
+                if not stat.S_ISREG(st.st_mode):
+                    raise RuntimeError(
+                        f"transaction path is not a regular file: {path}"
+                    )
+
+                backup_file = temp_path / f"loader_{index}.efi"
+                atomic_copy(path, backup_file, replace=True)
+                self.backups.append((path, backup_file))
             return self
         except BaseException:
             if self._temp_dir is not None:
@@ -3057,8 +3066,8 @@ def install_bootloader(
                 loader_conf_content,
             )
 
-            transaction.commit()
             artifact_tx.commit()
+            transaction.commit()
 
     sync_filesystem(EFI_SYS_MOUNT_POINT)
 

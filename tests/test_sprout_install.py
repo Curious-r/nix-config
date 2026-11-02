@@ -9024,6 +9024,132 @@ class SproutLoaderConfManagementTest(unittest.TestCase):
             "timeout menu-force\nreboot-on-error auto\n",
         )
 
+    def test_interruption_between_commits_boundary_restores_config_and_retains_artifacts(
+        self,
+    ) -> None:
+        """Verify interruption between artifact_tx.commit() and transaction.commit()
+
+        restores previous config while leaving newly staged artifacts intact on ESP.
+        """
+        sprout_toml = self.esp_dir / "sprout.toml"
+        sprout_toml.parent.mkdir(parents=True, exist_ok=True)
+        prior_sprout = "version = 1\n# prior-sprout-content\n"
+        sprout_toml.write_text(prior_sprout, encoding="utf-8")
+
+        loader_conf = self.esp_dir / "loader" / "loader.conf"
+        loader_conf.parent.mkdir(parents=True, exist_ok=True)
+        prior_loader = "timeout 42\nreboot-on-error no\n"
+        loader_conf.write_text(prior_loader, encoding="utf-8")
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            timeout=5,
+        )
+        entry = self._create_sample_entry(mod)
+
+        def failing_commit(tx_self: Any) -> None:
+            raise KeyboardInterrupt("simulated interrupt between commits")
+
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ), patch.object(mod.FixedLoaderTransaction, "commit", failing_commit):
+            with self.assertRaises(KeyboardInterrupt):
+                mod.install_bootloader(self.temp_dir)
+
+        # Config files must be restored to previous state
+        self.assertEqual(sprout_toml.read_text(encoding="utf-8"), prior_sprout)
+        self.assertEqual(loader_conf.read_text(encoding="utf-8"), prior_loader)
+
+        # Newly staged boot artifacts must NOT be deleted
+        dest_k = self.esp_dir / mod.NIXOS_DIR / "nixos-g1-kernel.efi"
+        self.assertTrue(dest_k.is_file())
+        self.assertEqual(dest_k.read_text(), "kernel-bytes")
+
+    def test_interruption_between_commits_boundary_with_previously_absent_config(
+        self,
+    ) -> None:
+        """Verify interruption between commits leaves previously absent config files absent."""
+        sprout_toml = self.esp_dir / "sprout.toml"
+        loader_conf = self.esp_dir / "loader" / "loader.conf"
+        self.assertFalse(sprout_toml.exists())
+        self.assertFalse(loader_conf.exists())
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            timeout=5,
+        )
+        entry = self._create_sample_entry(mod)
+
+        def failing_commit(tx_self: Any) -> None:
+            raise KeyboardInterrupt("simulated interrupt between commits")
+
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ), patch.object(mod.FixedLoaderTransaction, "commit", failing_commit):
+            with self.assertRaises(KeyboardInterrupt):
+                mod.install_bootloader(self.temp_dir)
+
+        # Previously absent files must remain absent
+        self.assertFalse(sprout_toml.exists())
+        self.assertFalse(loader_conf.exists())
+
+        # Staged artifacts remain intact
+        dest_k = self.esp_dir / mod.NIXOS_DIR / "nixos-g1-kernel.efi"
+        self.assertTrue(dest_k.is_file())
+
+    def test_symlink_to_regular_file_rejected_in_transaction(self) -> None:
+        """Verify symbolic link pointing to a regular file is rejected and unmodified."""
+        target_file = self.esp_dir / "target.conf"
+        target_file.write_text("target-content", encoding="utf-8")
+
+        loader_conf = self.esp_dir / "loader" / "loader.conf"
+        loader_conf.parent.mkdir(parents=True, exist_ok=True)
+        loader_conf.symlink_to(target_file)
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+        )
+        entry = self._create_sample_entry(mod)
+
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod.install_bootloader(self.temp_dir)
+            self.assertIn("symbolic link", str(ctx.exception))
+
+        # Symlink and target must remain unmodified
+        self.assertTrue(loader_conf.is_symlink())
+        self.assertEqual(target_file.read_text(encoding="utf-8"), "target-content")
+
+    def test_broken_symlink_rejected_in_transaction(self) -> None:
+        """Verify broken symbolic link is rejected and remains a broken symlink."""
+        loader_conf = self.esp_dir / "loader" / "loader.conf"
+        loader_conf.parent.mkdir(parents=True, exist_ok=True)
+        loader_conf.symlink_to(self.esp_dir / "nonexistent-target")
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+        )
+        entry = self._create_sample_entry(mod)
+
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod.install_bootloader(self.temp_dir)
+            self.assertIn("symbolic link", str(ctx.exception))
+
+        self.assertTrue(loader_conf.is_symlink())
+
 
 
 

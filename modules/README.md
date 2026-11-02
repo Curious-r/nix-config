@@ -211,7 +211,15 @@ boot.loader.sprout.loaderConf = {
   - Numeric seconds (e.g. `5` or `0`) serialize as `timeout <n>`.
   - `null` (indefinitely displayed menu in NixOS) maps to Sprout's native `timeout menu-force`.
   - Negative integers are rejected.
-- **Timeout precedence**: Sprout's EFI Boot Loader Interface timeout variables (`LoaderConfigTimeout`, `LoaderTimeOutInit`) take precedence over `sprout.toml`, which takes precedence over `loader.conf`. The installer does not emit `options.menu-timeout` into `sprout.toml`, allowing `loader.conf` to control the timeout consistently while preserving EFI Boot Loader Interface runtime overrides.
+- **Timeout precedence**: Sprout determines the menu timeout using the following sources, in descending precedence:
+  1. `LoaderConfigTimeoutOneShot`
+  2. Command-line `--menu-timeout`
+  3. `LoaderConfigTimeout`
+  4. `menu-timeout` in `sprout.toml`
+  5. `timeout` in `loader/loader.conf`
+
+  Because the NixOS module no longer generates `menu-timeout` in `sprout.toml`, the generated `loader.conf` timeout controls the menu timeout under normal boot, while EFI Boot Loader Interface timeout overrides (`LoaderConfigTimeoutOneShot`, `LoaderConfigTimeout`) remain fully effective.
+
 - **Reboot on error policy (`boot.loader.sprout.loaderConf.reboot-on-error`)**:
   - `auto` (default): Reboot only when a boot-counted entry has consumed a try and still has tries remaining. For static NixOS entries without boot counters, this does not force a reboot.
   - `yes`: Reboot immediately after any entry fails to start. **Caution**: this can cause an endless reboot loop if an entry continuously fails.
