@@ -30,6 +30,7 @@ def load_sprout_installer(
     settings: dict[str, Any] | None = None,
     settings_file: Path | None = None,
     extra_files: dict[str, str | Path] | None = None,
+    driver_provides: dict[str, str] | None = None,
 ) -> ModuleType:
     src_file = (
         Path(__file__).resolve().parent.parent
@@ -64,6 +65,7 @@ def load_sprout_installer(
         "@efiInstallAsRemovable@": "1" if removable else "0",
         "@firmwareEntryLabel@": json.dumps(entry_label),
         "@drivers@": json.dumps(drivers or {}),
+        "@driverProvides@": json.dumps(driver_provides or {}),
         "@extraFiles@": json.dumps(
             {k: str(v) for k, v in (extra_files or {}).items()}
         ),
@@ -7989,6 +7991,652 @@ class SproutStaticRootValuesTest(unittest.TestCase):
 
             # Ensure prior config was preserved
             self.assertEqual(config_path.read_text(encoding="utf-8"), prior_content)
+
+
+class SproutStaticV0031FeaturesTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp_dir_obj = tempfile.TemporaryDirectory()
+        self.temp_dir = Path(self.temp_dir_obj.name).resolve()
+        self.esp_dir = self.temp_dir / "esp"
+        self.esp_dir.mkdir(parents=True, exist_ok=True)
+
+        self.old_cwd = Path.cwd()
+        os.chdir(self.temp_dir)
+
+        self.driver_src = self.temp_dir / "btrfs-driver.efi"
+        self.driver_src.write_text("driver-initial")
+
+        self.sprout_source = self.temp_dir / "source-sprout.efi"
+        self.sprout_source.write_text("sprout-bin")
+
+        self.drivers_config = {
+            "btrfs": str(self.driver_src),
+        }
+
+    def tearDown(self) -> None:
+        os.chdir(self.old_cwd)
+        self.temp_dir_obj.cleanup()
+
+    def _create_sample_entry(
+        self,
+        mod: ModuleType,
+        identifier: str = "nixos-g1",
+        generation: int = 1,
+        title: str = "NixOS generation 1",
+    ) -> Any:
+        k = self.temp_dir / f"kernel-{identifier}.efi"
+        k.write_text("kernel-bytes")
+        dest_k = mod.NIXOS_DIR / f"{identifier}-kernel.efi"
+        art_k = mod.BootArtifact(dest_k, k, None, generation, True)
+        return mod.BootEntry(
+            identifier=identifier,
+            title=title,
+            sort_key=identifier,
+            kernel=dest_k,
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(art_k,),
+            critical=True,
+        )
+
+    def test_graphical_menu_style_serialization_and_omission(self) -> None:
+        """Verify menu-style = 'graphical' is serialized, but [menu-styles.graphical] is omitted when matching upstream defaults."""
+        settings = {
+            "options": {
+                "menu-style": "graphical",
+            },
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+        )
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        self.assertTrue(config_path.is_file())
+        raw_toml = config_path.read_text(encoding="utf-8")
+        data = tomllib.loads(raw_toml)
+
+        self.assertEqual(data["options"]["menu-style"], "graphical")
+        self.assertNotIn("menu-styles", data)
+        self.assertNotIn("menu-styles", raw_toml)
+
+    def test_graphical_menu_all_fields_serialization(self) -> None:
+        """Verify custom graphical menu fields serialize deterministically under [menu-styles.graphical]."""
+        settings = {
+            "options": {
+                "menu-style": "graphical",
+            },
+            "menu-styles": {
+                "graphical": {
+                    "enable-mouse": True,
+                    "enable-logo": False,
+                    "enable-animation": False,
+                },
+            },
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+        )
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        self.assertTrue(config_path.is_file())
+        raw_toml = config_path.read_text(encoding="utf-8")
+        data = tomllib.loads(raw_toml)
+
+        self.assertIn("menu-styles", data)
+        self.assertIn("graphical", data["menu-styles"])
+        graphical = data["menu-styles"]["graphical"]
+        self.assertEqual(
+            graphical,
+            {
+                "enable-mouse": True,
+                "enable-logo": False,
+                "enable-animation": False,
+            },
+        )
+
+        mouse_pos = raw_toml.find("enable-mouse = true")
+        logo_pos = raw_toml.find("enable-logo = false")
+        anim_pos = raw_toml.find("enable-animation = false")
+        self.assertTrue(0 < mouse_pos < logo_pos < anim_pos)
+
+    def test_graphical_menu_validation_failures_leave_prior_config_intact(self) -> None:
+        """Verify invalid graphical menu settings fail before publication, preserving prior valid config."""
+        config_path = self.esp_dir / "sprout.toml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        prior_content = "version = 1\n# prior-valid-config\n"
+        config_path.write_text(prior_content, encoding="utf-8")
+
+        test_cases: list[tuple[dict[str, Any], str]] = [
+            (
+                {"options": {"menu-style": "fancy"}},
+                "invalid custom settings menu-style: 'fancy'",
+            ),
+            (
+                {"menu-styles": "not-a-table"},
+                "custom settings 'menu-styles' must be a table",
+            ),
+            (
+                {"menu-styles": {"unsupported": {}}},
+                "unsupported custom settings menu-style: 'unsupported'",
+            ),
+            (
+                {"menu-styles": {"graphical": "not-a-table"}},
+                "custom settings 'menu-styles.graphical' must be a table",
+            ),
+            (
+                {"menu-styles": {"graphical": {"custom-font": "sans"}}},
+                "unknown field in custom settings 'menu-styles.graphical': 'custom-font'",
+            ),
+            (
+                {"menu-styles": {"graphical": {"enable-mouse": "true"}}},
+                "custom settings 'menu-styles.graphical.enable-mouse' must be a boolean",
+            ),
+            (
+                {"menu-styles": {"graphical": {"enable-logo": 1}}},
+                "custom settings 'menu-styles.graphical.enable-logo' must be a boolean",
+            ),
+            (
+                {"menu-styles": {"graphical": {"enable-animation": None}}},
+                "custom settings 'menu-styles.graphical.enable-animation' must be a boolean",
+            ),
+        ]
+
+        for invalid_settings, expected_err in test_cases:
+            mod = load_sprout_installer(
+                self.esp_dir,
+                sprout_binary=self.sprout_source,
+                drivers=self.drivers_config,
+                settings=invalid_settings,
+            )
+            entry = self._create_sample_entry(mod)
+            with patch.object(mod, "check_mountpoint"), patch.object(
+                mod, "collect_entries", return_value=[entry]
+            ):
+                with self.assertRaises(RuntimeError) as ctx:
+                    mod.install_bootloader(self.temp_dir)
+                self.assertIn(expected_err, str(ctx.exception))
+
+            self.assertEqual(config_path.read_text(encoding="utf-8"), prior_content)
+
+    def test_parse_and_validate_menu_styles_direct(self) -> None:
+        """Verify parse_and_validate_sprout_config directly checks menu-style and menu-styles."""
+        mod = load_sprout_installer(self.esp_dir)
+        config_path = self.esp_dir / "sprout.toml"
+
+        valid_toml = """
+version = 1
+[options]
+menu-style = "graphical"
+
+[menu-styles.graphical]
+enable-mouse = true
+enable-logo = true
+enable-animation = false
+"""
+        mod.parse_and_validate_sprout_config(valid_toml, config_path, check_files_exist=False)
+
+        invalid_style_toml = 'version = 1\n[options]\nmenu-style = "invalid"\n'
+        with self.assertRaises(RuntimeError) as ctx:
+            mod.parse_and_validate_sprout_config(invalid_style_toml, config_path, check_files_exist=False)
+        self.assertIn("has invalid 'options.menu-style': 'invalid'", str(ctx.exception))
+
+        unknown_section_toml = 'version = 1\n[menu-styles.console]\ncolor = "blue"\n'
+        with self.assertRaises(RuntimeError) as ctx:
+            mod.parse_and_validate_sprout_config(unknown_section_toml, config_path, check_files_exist=False)
+        self.assertIn("contains unsupported menu-style 'console'", str(ctx.exception))
+
+        unknown_field_toml = 'version = 1\n[menu-styles.graphical]\nfont = "fixed"\n'
+        with self.assertRaises(RuntimeError) as ctx:
+            mod.parse_and_validate_sprout_config(unknown_field_toml, config_path, check_files_exist=False)
+        self.assertIn("'menu-styles.graphical' contains unknown field 'font'", str(ctx.exception))
+
+        non_bool_toml = 'version = 1\n[menu-styles.graphical]\nenable-mouse = "yes"\n'
+        with self.assertRaises(RuntimeError) as ctx:
+            mod.parse_and_validate_sprout_config(non_bool_toml, config_path, check_files_exist=False)
+        self.assertIn("'menu-styles.graphical.enable-mouse' is not a boolean", str(ctx.exception))
+
+    def test_devicetree_serialization_and_reference(self) -> None:
+        """Verify chainload.devicetree serializes and is included in validated references."""
+        linux_efi = self.esp_dir / "EFI" / "Linux" / "linux.efi"
+        linux_efi.parent.mkdir(parents=True, exist_ok=True)
+        linux_efi.write_text("linux-bytes")
+
+        dtb_file = self.esp_dir / "EFI" / "Linux" / "device-tree.dtb"
+        dtb_file.write_text("dtb-bytes")
+
+        settings = {
+            "actions": {
+                "boot-linux": {
+                    "chainload": {
+                        "path": r"\EFI\Linux\linux.efi",
+                        "devicetree": r"\EFI\Linux\device-tree.dtb",
+                    },
+                },
+            },
+            "entries": {
+                "custom-linux": {
+                    "title": "Custom Linux",
+                    "actions": ["boot-linux"],
+                },
+            },
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+        )
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        self.assertTrue(config_path.is_file())
+        raw_toml = config_path.read_text(encoding="utf-8")
+        data = tomllib.loads(raw_toml)
+
+        chainload = data["actions"]["boot-linux"]["chainload"]
+        self.assertEqual(chainload["path"], r"\EFI\Linux\linux.efi")
+        self.assertEqual(chainload["devicetree"], r"\EFI\Linux\device-tree.dtb")
+
+        ref_paths = mod.parse_and_validate_sprout_config(
+            raw_toml,
+            config_path,
+            check_files_exist=True,
+        )
+        self.assertIn(linux_efi.resolve(), ref_paths)
+        self.assertIn(dtb_file.resolve(), ref_paths)
+
+    def test_devicetree_variable_expansion_using_root_values(self) -> None:
+        """Verify root values expand in chainload.devicetree paths and referenced file is tracked."""
+        dtb_dir = self.esp_dir / "EFI" / "dtbs"
+        dtb_dir.mkdir(parents=True, exist_ok=True)
+        board_dtb = dtb_dir / "board.dtb"
+        board_dtb.write_text("board-dtb")
+
+        kernel_dir = self.esp_dir / "EFI" / "kernel"
+        kernel_dir.mkdir(parents=True, exist_ok=True)
+        kernel_img = kernel_dir / "image.efi"
+        kernel_img.write_text("kernel-img")
+
+        settings = {
+            "values": {
+                "dtb_dir": r"\EFI\dtbs",
+            },
+            "actions": {
+                "boot-arm": {
+                    "chainload": {
+                        "path": r"\EFI\kernel\image.efi",
+                        "devicetree": r"$dtb_dir\board.dtb",
+                    },
+                },
+            },
+            "entries": {
+                "arm-entry": {
+                    "title": "ARM Entry",
+                    "actions": ["boot-arm"],
+                },
+            },
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+        )
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        raw_toml = config_path.read_text(encoding="utf-8")
+        data = tomllib.loads(raw_toml)
+
+        self.assertEqual(data["actions"]["boot-arm"]["chainload"]["devicetree"], r"$dtb_dir\board.dtb")
+
+        ref_paths = mod.parse_and_validate_sprout_config(
+            raw_toml,
+            config_path,
+            check_files_exist=True,
+        )
+        self.assertIn(board_dtb.resolve(), ref_paths)
+        self.assertIn(kernel_img.resolve(), ref_paths)
+
+    def test_missing_devicetree_fails_before_publication(self) -> None:
+        """Verify referencing a missing devicetree fails before publication, preserving prior config."""
+        config_path = self.esp_dir / "sprout.toml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        prior_content = "version = 1\n# prior-valid-config\n"
+        config_path.write_text(prior_content, encoding="utf-8")
+
+        kernel_img = self.esp_dir / "EFI" / "kernel" / "image.efi"
+        kernel_img.parent.mkdir(parents=True, exist_ok=True)
+        kernel_img.write_text("kernel-img")
+
+        settings = {
+            "actions": {
+                "boot-linux": {
+                    "chainload": {
+                        "path": r"\EFI\kernel\image.efi",
+                        "devicetree": r"\EFI\dtb\nonexistent.dtb",
+                    },
+                },
+            },
+            "entries": {
+                "test-entry": {
+                    "title": "Test",
+                    "actions": ["boot-linux"],
+                },
+            },
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+        )
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod.install_bootloader(self.temp_dir)
+            self.assertIn("references missing file", str(ctx.exception))
+
+        self.assertEqual(config_path.read_text(encoding="utf-8"), prior_content)
+
+    def test_devicetree_omitted_when_null_or_absent(self) -> None:
+        """Verify chainload action without devicetree does not serialize devicetree field."""
+        kernel_img = self.esp_dir / "EFI" / "kernel" / "image.efi"
+        kernel_img.parent.mkdir(parents=True, exist_ok=True)
+        kernel_img.write_text("kernel-img")
+
+        settings = {
+            "actions": {
+                "boot-plain": {
+                    "chainload": {
+                        "path": r"\EFI\kernel\image.efi",
+                    },
+                },
+            },
+            "entries": {
+                "plain-entry": {
+                    "title": "Plain",
+                    "actions": ["boot-plain"],
+                },
+            },
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=settings,
+        )
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        raw_toml = config_path.read_text(encoding="utf-8")
+        data = tomllib.loads(raw_toml)
+
+        self.assertNotIn("devicetree", data["actions"]["boot-plain"]["chainload"])
+        self.assertNotIn("devicetree", raw_toml)
+
+    def test_devicetree_invalid_types_and_fields_fail(self) -> None:
+        """Verify non-string devicetree or unknown chainload fields fail validation."""
+        config_path = self.esp_dir / "sprout.toml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        prior_content = "version = 1\n# prior-valid-config\n"
+        config_path.write_text(prior_content, encoding="utf-8")
+
+        test_cases: list[tuple[dict[str, Any], str]] = [
+            (
+                {
+                    "actions": {
+                        "a1": {
+                            "chainload": {
+                                "path": r"\EFI\boot.efi",
+                                "devicetree": 42,
+                            },
+                        },
+                    },
+                    "entries": {"e1": {"title": "E1", "actions": ["a1"]}},
+                },
+                "chainload 'devicetree' must be a string",
+            ),
+            (
+                {
+                    "actions": {
+                        "a1": {
+                            "chainload": {
+                                "path": r"\EFI\boot.efi",
+                                "unknown_opt": True,
+                            },
+                        },
+                    },
+                    "entries": {"e1": {"title": "E1", "actions": ["a1"]}},
+                },
+                "chainload has unknown field: 'unknown_opt'",
+            ),
+        ]
+
+        for invalid_settings, expected_err in test_cases:
+            mod = load_sprout_installer(
+                self.esp_dir,
+                sprout_binary=self.sprout_source,
+                drivers=self.drivers_config,
+                settings=invalid_settings,
+            )
+            entry = self._create_sample_entry(mod)
+            with patch.object(mod, "check_mountpoint"), patch.object(
+                mod, "collect_entries", return_value=[entry]
+            ):
+                with self.assertRaises(RuntimeError) as ctx:
+                    mod.install_bootloader(self.temp_dir)
+                self.assertIn(expected_err, str(ctx.exception))
+
+            self.assertEqual(config_path.read_text(encoding="utf-8"), prior_content)
+
+    def test_driver_provides_legacy_shorthand_default_any_omitted(self) -> None:
+        """Verify legacy driver path shorthand produces default provides = 'any' which is omitted from TOML."""
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            driver_provides={"btrfs": "any"},
+        )
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        self.assertTrue(config_path.is_file())
+        raw_toml = config_path.read_text(encoding="utf-8")
+        data = tomllib.loads(raw_toml)
+
+        self.assertIn("btrfs", data["drivers"])
+        self.assertIn("path", data["drivers"]["btrfs"])
+        self.assertNotIn("provides", data["drivers"]["btrfs"])
+        self.assertNotIn("provides", raw_toml)
+
+    def test_driver_provides_explicit_filesystems_serialized(self) -> None:
+        """Verify structured driver declaring provides = 'filesystems' serializes provides in TOML."""
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            driver_provides={"btrfs": "filesystems"},
+        )
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        self.assertTrue(config_path.is_file())
+        raw_toml = config_path.read_text(encoding="utf-8")
+        data = tomllib.loads(raw_toml)
+
+        self.assertIn("btrfs", data["drivers"])
+        self.assertEqual(data["drivers"]["btrfs"]["provides"], "filesystems")
+        self.assertIn('provides = "filesystems"', raw_toml)
+
+    def test_driver_provides_validation_failures_preserve_prior_config(self) -> None:
+        """Verify invalid driver_provides metadata fails before publication and leaves prior config intact."""
+        config_path = self.esp_dir / "sprout.toml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        prior_content = "version = 1\n# prior-valid-config\n"
+        config_path.write_text(prior_content, encoding="utf-8")
+
+        test_cases: list[tuple[Any, str]] = [
+            (
+                {"unknown_driver": "filesystems"},
+                "driver metadata references undeclared driver: 'unknown_driver'",
+            ),
+            (
+                {"btrfs": "storage"},
+                "invalid 'provides' for driver 'btrfs': 'storage'",
+            ),
+            (
+                {"btrfs": 123},
+                "driver metadata entries must be string key-value pairs",
+            ),
+            (
+                "not-a-dict",
+                "driver metadata must be a table",
+            ),
+        ]
+
+        for invalid_provides, expected_err in test_cases:
+            mod = load_sprout_installer(
+                self.esp_dir,
+                sprout_binary=self.sprout_source,
+                drivers=self.drivers_config,
+                driver_provides=invalid_provides,
+            )
+            entry = self._create_sample_entry(mod)
+            with patch.object(mod, "check_mountpoint"), patch.object(
+                mod, "collect_entries", return_value=[entry]
+            ):
+                with self.assertRaises(RuntimeError) as ctx:
+                    mod.install_bootloader(self.temp_dir)
+                self.assertIn(expected_err, str(ctx.exception))
+
+            self.assertEqual(config_path.read_text(encoding="utf-8"), prior_content)
+
+    def test_parse_and_validate_driver_provides_direct(self) -> None:
+        """Verify parse_and_validate_sprout_config validates driver provides and rejects invalid values/keys."""
+        mod = load_sprout_installer(self.esp_dir)
+        config_path = self.esp_dir / "sprout.toml"
+
+        driver_file = self.esp_dir / "EFI" / "Sprout" / "drivers" / "btrfs.efi"
+        driver_file.parent.mkdir(parents=True, exist_ok=True)
+        driver_file.write_text("btrfs-driver")
+
+        valid_toml = f"""
+version = 1
+[drivers.btrfs]
+path = "\\\\EFI\\\\Sprout\\\\drivers\\\\btrfs.efi"
+provides = "filesystems"
+"""
+        ref_paths = mod.parse_and_validate_sprout_config(valid_toml, config_path, check_files_exist=True)
+        self.assertIn(driver_file.resolve(), ref_paths)
+
+        invalid_provides_toml = f"""
+version = 1
+[drivers.btrfs]
+path = "\\\\EFI\\\\Sprout\\\\drivers\\\\btrfs.efi"
+provides = "network"
+"""
+        with self.assertRaises(RuntimeError) as ctx:
+            mod.parse_and_validate_sprout_config(invalid_provides_toml, config_path, check_files_exist=True)
+        self.assertIn("has invalid 'provides': 'network'", str(ctx.exception))
+
+        unknown_key_toml = f"""
+version = 1
+[drivers.btrfs]
+path = "\\\\EFI\\\\Sprout\\\\drivers\\\\btrfs.efi"
+load_priority = 10
+"""
+        with self.assertRaises(RuntimeError) as ctx:
+            mod.parse_and_validate_sprout_config(unknown_key_toml, config_path, check_files_exist=True)
+        self.assertIn("contains unknown field 'load_priority'", str(ctx.exception))
+
+    def test_driver_installation_and_gc_intact(self) -> None:
+        """Verify driver installation to content-addressed destination, GC of obsolete version, and active retention."""
+        src_v1 = self.temp_dir / "driver-v1.efi"
+        src_v1.write_text("content-v1")
+        src_v2 = self.temp_dir / "driver-v2.efi"
+        src_v2.write_text("content-v2")
+
+        mod_v1 = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers={"btrfs": str(src_v1)},
+            driver_provides={"btrfs": "filesystems"},
+        )
+        entry1 = self._create_sample_entry(mod_v1, "g1", 1)
+        with patch.object(mod_v1, "check_mountpoint"), patch.object(
+            mod_v1, "collect_entries", return_value=[entry1]
+        ):
+            mod_v1.install_bootloader(self.temp_dir)
+
+        dest_v1 = self.esp_dir / mod_v1.driver_path("btrfs", src_v1)
+        self.assertTrue(dest_v1.exists())
+        config_path = self.esp_dir / mod_v1.SPROUT_CONFIG
+        data_v1 = tomllib.loads(config_path.read_text(encoding="utf-8"))
+        self.assertEqual(data_v1["drivers"]["btrfs"]["provides"], "filesystems")
+
+        mod_v2 = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers={"btrfs": str(src_v2)},
+            driver_provides={"btrfs": "any"},
+        )
+        entry2 = self._create_sample_entry(mod_v2, "g2", 2)
+        with patch.object(mod_v2, "check_mountpoint"), patch.object(
+            mod_v2, "collect_entries", return_value=[entry2]
+        ):
+            mod_v2.install_bootloader(self.temp_dir)
+
+        dest_v2 = self.esp_dir / mod_v2.driver_path("btrfs", src_v2)
+        self.assertTrue(dest_v2.exists())
+        self.assertFalse(dest_v1.exists())
+
+        data_v2 = tomllib.loads(config_path.read_text(encoding="utf-8"))
+        self.assertNotIn("provides", data_v2["drivers"]["btrfs"])
 
 
 if __name__ == "__main__":

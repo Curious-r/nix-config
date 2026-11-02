@@ -1060,6 +1060,273 @@ let
   testCase53 =
     assert case53.success == false;
     true;
+
+  # 54. Existing menu-style "basic" remains valid.
+  case54 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.sprout.settings.options.menu-style = "basic";
+    }
+  ];
+  testCase54 =
+    assert (builtins.tryEval case54.config.system.build.toplevel).success == true;
+    assert case54.config.boot.loader.sprout.settings.options.menu-style == "basic";
+    true;
+
+  # 55. Menu-style "graphical" is accepted.
+  case55 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.sprout.settings.options.menu-style = "graphical";
+    }
+  ];
+  testCase55 =
+    assert (builtins.tryEval case55.config.system.build.toplevel).success == true;
+    assert case55.config.boot.loader.sprout.settings.options.menu-style == "graphical";
+    true;
+
+  # 56. All three graphical options have the expected defaults.
+  case56 = eval [
+    {
+      boot.loader.sprout.enable = true;
+    }
+  ];
+  testCase56 =
+    assert case56.config.boot.loader.sprout.settings.menu-styles.graphical.enable-mouse == false;
+    assert case56.config.boot.loader.sprout.settings.menu-styles.graphical.enable-logo == true;
+    assert case56.config.boot.loader.sprout.settings.menu-styles.graphical.enable-animation == true;
+    true;
+
+  # 57. Custom graphical boolean values evaluate correctly.
+  case57 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.sprout.settings.options.menu-style = "graphical";
+      boot.loader.sprout.settings.menu-styles.graphical = {
+        enable-mouse = true;
+        enable-logo = false;
+        enable-animation = false;
+      };
+    }
+  ];
+  testCase57 =
+    assert (builtins.tryEval case57.config.system.build.toplevel).success == true;
+    assert case57.config.boot.loader.sprout.settings.menu-styles.graphical.enable-mouse == true;
+    assert case57.config.boot.loader.sprout.settings.menu-styles.graphical.enable-logo == false;
+    assert case57.config.boot.loader.sprout.settings.menu-styles.graphical.enable-animation == false;
+    true;
+
+  # 58. Unknown graphical fields are rejected.
+  case58 =
+    builtins.tryEval
+      (eval [
+        {
+          boot.loader.sprout.enable = true;
+          boot.loader.sprout.settings.menu-styles.graphical.unknownField = true;
+        }
+      ]).config.system.build.installBootLoader.drvPath;
+  testCase58 =
+    assert case58.success == false;
+    true;
+
+  # 59. Unknown menu-styles submodules are rejected.
+  case59 =
+    builtins.tryEval
+      (eval [
+        {
+          boot.loader.sprout.enable = true;
+          boot.loader.sprout.settings.menu-styles.unknownStyle = { };
+        }
+      ]).config.system.build.installBootLoader.drvPath;
+  testCase59 =
+    assert case59.success == false;
+    true;
+
+  # 60. Invalid graphical field types are rejected.
+  case60 =
+    builtins.tryEval
+      (eval [
+        {
+          boot.loader.sprout.enable = true;
+          boot.loader.sprout.settings.menu-styles.graphical.enable-mouse = "not-a-bool";
+        }
+      ]).config.system.build.installBootLoader.drvPath;
+  testCase60 =
+    assert case60.success == false;
+    true;
+
+  # 61. Chainload devicetree defaults to null.
+  case61 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.sprout.settings.actions.act = {
+        chainload.path = "\\EFI\\Linux\\linux.efi";
+      };
+    }
+  ];
+  testCase61 =
+    assert (builtins.tryEval case61.config.system.build.toplevel).success == true;
+    assert case61.config.boot.loader.sprout.settings.actions.act.chainload.devicetree == null;
+    true;
+
+  # 62. Valid string paths evaluate for chainload devicetree.
+  case62 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.sprout.settings.actions.act = {
+        chainload = {
+          path = "\\EFI\\Linux\\linux.efi";
+          devicetree = "\\EFI\\Linux\\device-tree.dtb";
+        };
+      };
+    }
+  ];
+  testCase62 =
+    assert (builtins.tryEval case62.config.system.build.toplevel).success == true;
+    assert
+      case62.config.boot.loader.sprout.settings.actions.act.chainload.devicetree
+      == "\\EFI\\Linux\\device-tree.dtb";
+    true;
+
+  # 63. Invalid types for chainload devicetree are rejected.
+  case63 =
+    builtins.tryEval
+      (eval [
+        {
+          boot.loader.sprout.enable = true;
+          boot.loader.sprout.settings.actions.act = {
+            chainload = {
+              path = "\\EFI\\Linux\\linux.efi";
+              devicetree = 123;
+            };
+          };
+        }
+      ]).config.system.build.installBootLoader.drvPath;
+  testCase63 =
+    assert case63.success == false;
+    true;
+
+  # 64. Chainload submodule remains closed to unknown fields.
+  case64 =
+    builtins.tryEval
+      (eval [
+        {
+          boot.loader.sprout.enable = true;
+          boot.loader.sprout.settings.actions.act = {
+            chainload = {
+              path = "\\EFI\\Linux\\linux.efi";
+              unknownField = "bad";
+            };
+          };
+        }
+      ]).config.system.build.installBootLoader.drvPath;
+  testCase64 =
+    assert case64.success == false;
+    true;
+
+  # 65. Empty driver configuration remains valid.
+  case65 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.sprout.drivers = { };
+    }
+  ];
+  testCase65 =
+    assert (builtins.tryEval case65.config.system.build.toplevel).success == true;
+    assert case65.config.boot.loader.sprout.drivers == { };
+    true;
+
+  # 66. Existing path shorthand remains valid and normalizes provides to "any".
+  case66 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.sprout.drivers.btrfs = ./flake.nix;
+    }
+  ];
+  testCase66 =
+    assert (builtins.tryEval case66.config.system.build.toplevel).success == true;
+    assert case66.config.boot.loader.sprout.drivers.btrfs.provides == "any";
+    assert case66.config.boot.loader.sprout.drivers.btrfs.path == ./flake.nix;
+    true;
+
+  # 67. Structured driver configuration evaluates with provides = "filesystems".
+  case67 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.sprout.drivers.btrfs = {
+        path = ./flake.nix;
+        provides = "filesystems";
+      };
+    }
+  ];
+  testCase67 =
+    assert (builtins.tryEval case67.config.system.build.toplevel).success == true;
+    assert case67.config.boot.loader.sprout.drivers.btrfs.provides == "filesystems";
+    assert case67.config.boot.loader.sprout.drivers.btrfs.path == ./flake.nix;
+    true;
+
+  # 68. Structured driver configuration evaluates with provides = "any".
+  case68 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.sprout.drivers.btrfs = {
+        path = ./flake.nix;
+        provides = "any";
+      };
+    }
+  ];
+  testCase68 =
+    assert (builtins.tryEval case68.config.system.build.toplevel).success == true;
+    assert case68.config.boot.loader.sprout.drivers.btrfs.provides == "any";
+    assert case68.config.boot.loader.sprout.drivers.btrfs.path == ./flake.nix;
+    true;
+
+  # 69. Invalid driver provides values are rejected.
+  case69 =
+    builtins.tryEval
+      (eval [
+        {
+          boot.loader.sprout.enable = true;
+          boot.loader.sprout.drivers.btrfs = {
+            path = ./flake.nix;
+            provides = "invalid";
+          };
+        }
+      ]).config.system.build.installBootLoader.drvPath;
+  testCase69 =
+    assert case69.success == false;
+    true;
+
+  # 70. Unknown structured driver fields are rejected.
+  case70 =
+    builtins.tryEval
+      (eval [
+        {
+          boot.loader.sprout.enable = true;
+          boot.loader.sprout.drivers.btrfs = {
+            path = ./flake.nix;
+            unknown = 1;
+          };
+        }
+      ]).config.system.build.installBootLoader.drvPath;
+  testCase70 =
+    assert case70.success == false;
+    true;
+
+  # 71. Missing required path in structured driver is rejected.
+  case71 =
+    builtins.tryEval
+      (eval [
+        {
+          boot.loader.sprout.enable = true;
+          boot.loader.sprout.drivers.btrfs = {
+            provides = "filesystems";
+          };
+        }
+      ]).config.system.build.installBootLoader.drvPath;
+  testCase71 =
+    assert case71.success == false;
+    true;
 in
 assert testCase1;
 assert testCase2;
@@ -1114,6 +1381,24 @@ assert testCase50;
 assert testCase51;
 assert testCase52;
 assert testCase53;
+assert testCase54;
+assert testCase55;
+assert testCase56;
+assert testCase57;
+assert testCase58;
+assert testCase59;
+assert testCase60;
+assert testCase61;
+assert testCase62;
+assert testCase63;
+assert testCase64;
+assert testCase65;
+assert testCase66;
+assert testCase67;
+assert testCase68;
+assert testCase69;
+assert testCase70;
+assert testCase71;
 {
   inherit
     testCase1
@@ -1169,5 +1454,23 @@ assert testCase53;
     testCase51
     testCase52
     testCase53
+    testCase54
+    testCase55
+    testCase56
+    testCase57
+    testCase58
+    testCase59
+    testCase60
+    testCase61
+    testCase62
+    testCase63
+    testCase64
+    testCase65
+    testCase66
+    testCase67
+    testCase68
+    testCase69
+    testCase70
+    testCase71
     ;
 }

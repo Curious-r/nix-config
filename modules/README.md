@@ -127,3 +127,69 @@ boot.loader.sprout.settings = {
   };
 };
 ```
+
+#### EFI Drivers (`boot.loader.sprout.drivers`)
+
+The `boot.loader.sprout.drivers` option configures EFI drivers to install into `EFI/Sprout/drivers/`. Both the legacy path shorthand and the structured form are supported:
+
+```nix
+# Legacy path shorthand (normalized to provides = "any"):
+boot.loader.sprout.drivers = {
+  btrfs = pkgs.btrfs-efi-driver;
+};
+
+# Structured form with driver capability classification:
+boot.loader.sprout.drivers = {
+  btrfs = {
+    path = pkgs.btrfs-efi-driver;
+    provides = "filesystems";
+  };
+};
+```
+
+- **`provides`**: Capability classification for the driver (`"any"` or `"filesystems"`), defaulting to `"any"`.
+  - `"any"`: Sprout reconnects all UEFI controllers after driver initialization. This remains the safe default for drivers whose behavior is not specifically limited to filesystem/storage support.
+  - `"filesystems"`: Sprout restricts reconnection to storage-related controllers.
+  - The `"filesystems"` optimization applies only when **every** loaded driver declares `provides = "filesystems"`. If any driver declares `"any"`, Sprout retains the standard behavior of reconnecting all controllers.
+
+#### Graphical Menu (`boot.loader.sprout.settings.menu-styles.graphical`)
+
+Sprout v0.0.31 supports a graphical menu style alongside `"simple"` and `"basic"`:
+
+```nix
+boot.loader.sprout.settings = {
+  options.menu-style = "graphical";
+
+  menu-styles.graphical = {
+    enable-mouse = false;
+    enable-logo = true;
+    enable-animation = true;
+  };
+};
+```
+
+- **Options and defaults**:
+  - `enable-mouse`: Enable mouse support in the graphical menu (boolean, default: `false`).
+  - `enable-logo`: Display Sprout's built-in logo (boolean, default: `true`).
+  - `enable-animation`: Enable menu animations (boolean, default: `true`).
+- **Built-in assets**: The graphical menu uses Sprout's built-in font and logo. It is not an arbitrary theme customization system (custom fonts, backgrounds, colors, or layouts are not supported).
+- **Graceful fallback**: If graphical output fails or is unsupported by the UEFI GOP firmware, Sprout falls back to simple/basic text console menu behavior.
+
+#### Devicetree in Chainload Actions (`boot.loader.sprout.settings.actions.<name>.chainload.devicetree`)
+
+Static chainload actions support passing a flattened devicetree (FDT) binary to the chainloaded EFI image:
+
+```nix
+boot.loader.sprout.settings = {
+  actions.boot-linux = {
+    chainload = {
+      path = "\\EFI\\Linux\\linux.efi";
+      devicetree = "\\EFI\\Linux\\device-tree.dtb";
+    };
+  };
+};
+```
+
+- **ESP-relative paths**: The `devicetree` setting requires an ESP-relative path (e.g. `\EFI\Linux\device-tree.dtb`), which can also reference root values (e.g. `$sprout_extra_file_dtb`).
+- **Validation**: Devicetree files are checked for existence and protected from garbage collection during installation transactions.
+- **Secure Boot limitation**: Sprout v0.0.31 cannot verify devicetree binaries under UEFI Secure Boot. When Secure Boot is active, Sprout ignores the devicetree with a warning.
