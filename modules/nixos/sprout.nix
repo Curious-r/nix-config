@@ -135,15 +135,11 @@ let
       efiSysMountPoint = toString efi.efiSysMountPoint;
       sproutBinary = "${cfg.package}/lib/sprout/sprout.efi";
 
-      timeout =
-        if config.boot.loader.timeout == null then
-          throw ''
-            boot.loader.sprout requires boot.loader.timeout to be non-null.
-            Sprout's native configuration format currently has no equivalent
-            for NixOS's null timeout.
-          ''
-        else
-          toString config.boot.loader.timeout;
+      loaderTimeout = builtins.toJSON (
+        if config.boot.loader.timeout == null then "menu-force" else toString config.boot.loader.timeout
+      );
+
+      loaderRebootOnError = builtins.toJSON cfg.loaderConf.reboot-on-error;
 
       configurationLimit =
         if cfg.configurationLimit == null then "0" else toString cfg.configurationLimit;
@@ -276,6 +272,31 @@ in
         Each file is installed under a deterministic content-addressed path
         in `EFI/Sprout/extra-files/` and exposed in `sprout.toml` through a
         root value named `sprout_extra_file_<name>`.
+      '';
+    };
+
+    loaderConf = mkOption {
+      type = types.submodule {
+        options = {
+          reboot-on-error = mkOption {
+            type = types.enum [
+              "auto"
+              "yes"
+              "no"
+            ];
+            default = "auto";
+            description = ''
+              Whether Sprout should reboot when an entry fails to start:
+              - `auto`: reboot only when a boot-counted entry has consumed a try and still has tries remaining.
+              - `yes`: reboot after every failed entry start. This can cause an endless reboot loop.
+              - `no`: never reboot after an entry fails to start.
+            '';
+          };
+        };
+      };
+      default = { };
+      description = ''
+        Configuration options for Sprout's `loader/loader.conf`.
       '';
     };
 
@@ -689,11 +710,10 @@ in
       }
 
       {
-        assertion = config.boot.loader.timeout != null && config.boot.loader.timeout >= 0;
+        assertion = config.boot.loader.timeout == null || config.boot.loader.timeout >= 0;
 
         message = ''
-          boot.loader.timeout must be non-null and non-negative. Sprout does not
-          support null / an indefinitely displayed boot menu.
+          boot.loader.timeout must be null or a non-negative integer.
         '';
       }
 

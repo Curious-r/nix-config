@@ -228,9 +228,7 @@ let
     true;
 
   # 13. Sprout enabled, null timeout:
-  #     evaluating the NixOS system build assertion path rejects the configuration,
-  #     and the failed assertion identifies boot.loader.timeout and explains that null
-  #     (an indefinitely displayed boot menu) is unsupported.
+  #     boot.loader.timeout = null is accepted and maps to loader.conf "timeout menu-force".
   case13 = eval [
     {
       boot.loader.sprout.enable = true;
@@ -239,16 +237,13 @@ let
   ];
   testCase13 =
     let
-      toplevelEval = builtins.tryEval case13.config.system.build.toplevel;
-      failedAssertions = builtins.filter (
-        x:
-        !x.assertion
-        && pkgs.lib.hasInfix "boot.loader.timeout" x.message
-        && pkgs.lib.hasInfix "null" x.message
+      timeoutFailedAssertions = builtins.filter (
+        x: !x.assertion && pkgs.lib.hasInfix "boot.loader.timeout" x.message
       ) case13.config.assertions;
+      drv = case13.config.system.build.installBootLoader.drvPath;
     in
-    assert toplevelEval.success == false;
-    assert failedAssertions != [ ];
+    assert timeoutFailedAssertions == [ ];
+    assert drv != "";
     true;
 
   # 14. Sprout enabled, systemd-boot explicitly enabled:
@@ -1327,6 +1322,66 @@ let
   testCase71 =
     assert case71.success == false;
     true;
+
+  # 72. loaderConf.reboot-on-error defaults to auto.
+  case72 = eval [
+    {
+      boot.loader.sprout.enable = true;
+    }
+  ];
+  testCase72 =
+    assert case72.config.boot.loader.sprout.loaderConf.reboot-on-error == "auto";
+    true;
+
+  # 73. loaderConf.reboot-on-error = "yes" is accepted.
+  case73 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.sprout.loaderConf.reboot-on-error = "yes";
+    }
+  ];
+  testCase73 =
+    assert case73.config.boot.loader.sprout.loaderConf.reboot-on-error == "yes";
+    assert case73.config.system.build.installBootLoader.drvPath != "";
+    true;
+
+  # 74. loaderConf.reboot-on-error = "no" is accepted.
+  case74 = eval [
+    {
+      boot.loader.sprout.enable = true;
+      boot.loader.sprout.loaderConf.reboot-on-error = "no";
+    }
+  ];
+  testCase74 =
+    assert case74.config.boot.loader.sprout.loaderConf.reboot-on-error == "no";
+    assert case74.config.system.build.installBootLoader.drvPath != "";
+    true;
+
+  # 75. Invalid loaderConf.reboot-on-error enum value is rejected.
+  case75 =
+    builtins.tryEval
+      (eval [
+        {
+          boot.loader.sprout.enable = true;
+          boot.loader.sprout.loaderConf.reboot-on-error = "invalid";
+        }
+      ]).config.system.build.installBootLoader.drvPath;
+  testCase75 =
+    assert case75.success == false;
+    true;
+
+  # 76. Unknown loaderConf fields are rejected.
+  case76 =
+    builtins.tryEval
+      (eval [
+        {
+          boot.loader.sprout.enable = true;
+          boot.loader.sprout.loaderConf.unknown = "invalid";
+        }
+      ]).config.system.build.installBootLoader.drvPath;
+  testCase76 =
+    assert case76.success == false;
+    true;
 in
 assert testCase1;
 assert testCase2;
@@ -1399,6 +1454,11 @@ assert testCase68;
 assert testCase69;
 assert testCase70;
 assert testCase71;
+assert testCase72;
+assert testCase73;
+assert testCase74;
+assert testCase75;
+assert testCase76;
 {
   inherit
     testCase1
@@ -1472,5 +1532,10 @@ assert testCase71;
     testCase69
     testCase70
     testCase71
+    testCase72
+    testCase73
+    testCase74
+    testCase75
+    testCase76
     ;
 }

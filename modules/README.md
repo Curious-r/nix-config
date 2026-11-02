@@ -193,3 +193,26 @@ boot.loader.sprout.settings = {
 - **ESP-relative paths**: The `devicetree` setting requires an ESP-relative path (e.g. `\EFI\Linux\device-tree.dtb`), which can also reference root values (e.g. `$sprout_extra_file_dtb`).
 - **Validation**: Devicetree files are checked for existence and protected from garbage collection during installation transactions.
 - **Secure Boot limitation**: Sprout v0.0.31 cannot verify devicetree binaries under UEFI Secure Boot. When Secure Boot is active, Sprout ignores the devicetree with a warning.
+
+#### Loader Configuration (`loader/loader.conf`)
+
+Sprout supports systemd-boot compatible loader configuration via `loader/loader.conf`. The Sprout module owns and deterministically generates the entire `loader/loader.conf` file on the ESP:
+
+```nix
+boot.loader.timeout = 5; # or null for menu-force, 0 for immediate boot
+
+boot.loader.sprout.loaderConf = {
+  reboot-on-error = "auto";
+};
+```
+
+- **Generated location**: `loader/loader.conf` on the ESP. The module owns the file completely; existing content is fully replaced on successful installation and restored if installation fails.
+- **Timeout mapping**: `boot.loader.timeout` is mapped directly to `timeout` in `loader.conf`:
+  - Numeric seconds (e.g. `5` or `0`) serialize as `timeout <n>`.
+  - `null` (indefinitely displayed menu in NixOS) maps to Sprout's native `timeout menu-force`.
+  - Negative integers are rejected.
+- **Timeout precedence**: Sprout's EFI Boot Loader Interface timeout variables (`LoaderConfigTimeout`, `LoaderTimeOutInit`) take precedence over `sprout.toml`, which takes precedence over `loader.conf`. The installer does not emit `options.menu-timeout` into `sprout.toml`, allowing `loader.conf` to control the timeout consistently while preserving EFI Boot Loader Interface runtime overrides.
+- **Reboot on error policy (`boot.loader.sprout.loaderConf.reboot-on-error`)**:
+  - `auto` (default): Reboot only when a boot-counted entry has consumed a try and still has tries remaining. For static NixOS entries without boot counters, this does not force a reboot.
+  - `yes`: Reboot immediately after any entry fails to start. **Caution**: this can cause an endless reboot loop if an entry continuously fails.
+  - `no`: Never reboot after an entry fails to start, remaining in the bootloader.

@@ -27,7 +27,8 @@ EFIBOOTMGR = "@efibootmgr@/bin/efibootmgr"
 FINDMNT = "@util-linux@/bin/findmnt"
 LSBLK = "@util-linux@/bin/lsblk"
 
-TIMEOUT = int("@timeout@")
+LOADER_TIMEOUT: str = json.loads(r'''@loaderTimeout@''')
+LOADER_REBOOT_ON_ERROR: str = json.loads(r'''@loaderRebootOnError@''')
 CONFIGURATION_LIMIT = int("@configurationLimit@")
 
 CAN_TOUCH_EFI_VARIABLES = "@canTouchEfiVariables@" == "1"
@@ -68,6 +69,7 @@ DRIVERS_DIR = SPROUT_DIR / "drivers"
 EXTRA_FILES_DIR = SPROUT_DIR / "extra-files"
 SPROUT_BINARY = SPROUT_DIR / "sprout.efi"
 SPROUT_CONFIG = Path("sprout.toml")
+LOADER_CONF = Path("loader/loader.conf")
 
 EXTRA_FILE_NAME_RE: re.Pattern[str] = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 VALUE_IDENTIFIER_RE: re.Pattern[str] = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
@@ -1265,6 +1267,33 @@ def install_extra_files(
     return installed
 
 
+def validate_loader_conf_params(timeout: str, reboot_on_error: str) -> None:
+    if not isinstance(timeout, str):
+        raise RuntimeError(
+            f"loader timeout must be a string, got {type(timeout).__name__}"
+        )
+    if timeout != "menu-force" and not (timeout.isascii() and timeout.isdigit()):
+        raise RuntimeError(
+            f"invalid loader timeout: {timeout!r}; expected 'menu-force' or non-negative ASCII decimal integer"
+        )
+    if not isinstance(reboot_on_error, str):
+        raise RuntimeError(
+            f"loader reboot-on-error must be a string, got {type(reboot_on_error).__name__}"
+        )
+    if reboot_on_error not in ("auto", "yes", "no"):
+        raise RuntimeError(
+            f"invalid loader reboot-on-error: {reboot_on_error!r}; expected 'auto', 'yes', or 'no'"
+        )
+
+
+def generate_loader_conf(
+    timeout: str = LOADER_TIMEOUT,
+    reboot_on_error: str = LOADER_REBOOT_ON_ERROR,
+) -> str:
+    validate_loader_conf_params(timeout, reboot_on_error)
+    return f"timeout {timeout}\nreboot-on-error {reboot_on_error}\n"
+
+
 def generate_sprout_config(
     entries: Sequence[BootEntry],
     default_entry: str,
@@ -1522,7 +1551,6 @@ def generate_sprout_config(
         "",
         "[options]",
         f"default-entry = {quote_toml(default_entry)}",
-        f"menu-timeout = {TIMEOUT}",
     ]
 
     if menu_style is not None:
@@ -1730,6 +1758,31 @@ def fixed_loader_paths() -> list[Path]:
     return paths
 
 
+def fixed_transaction_paths() -> list[Path]:
+    return fixed_loader_paths() + [
+        esp_path(SPROUT_CONFIG),
+        esp_path(LOADER_CONF),
+    ]
+
+
+def files_identical(path1: Path, path2: Path) -> bool:
+    try:
+        s1 = path1.stat()
+        s2 = path2.stat()
+        if s1.st_size != s2.st_size:
+            return False
+        with path1.open("rb") as f1, path2.open("rb") as f2:
+            while True:
+                c1 = f1.read(65536)
+                c2 = f2.read(65536)
+                if c1 != c2:
+                    return False
+                if not c1:
+                    return True
+    except OSError:
+        return False
+
+
 class FixedLoaderTransaction:
     """Manages backup and atomic restoration of fixed-path bootloaders."""
 
@@ -1745,7 +1798,15 @@ class FixedLoaderTransaction:
         try:
             temp_path = Path(self._temp_dir.name)
             for index, path in enumerate(self.paths):
-                if path.is_file():
+                if path.is_dir():
+                    raise RuntimeError(
+                        f"transaction path is an existing directory: {path}"
+                    )
+                if path.exists() or path.is_symlink():
+                    if not path.is_file():
+                        raise RuntimeError(
+                            f"transaction path is not a regular file: {path}"
+                        )
                     backup_file = temp_path / f"loader_{index}.efi"
                     atomic_copy(path, backup_file, replace=True)
                     self.backups.append((path, backup_file))
@@ -1776,6 +1837,8 @@ class FixedLoaderTransaction:
         for path, backup_file in reversed(self.backups):
             try:
                 if backup_file is not None:
+                    if path.is_file() and files_identical(backup_file, path):
+                        continue
                     atomic_copy(backup_file, path, replace=True)
                 else:
                     path.unlink(missing_ok=True)
@@ -2952,37 +3015,46 @@ def install_bootloader(
 
         drivers = install_drivers()
 
-        # Install the loader before publishing the new configuration. At this
-        # point all boot artifacts needed by the new configuration already exist.
-        with FixedLoaderTransaction(fixed_loader_paths()) as transaction:
+        configuration = generate_sprout_config(
+            entries,
+            default_entry.identifier,
+            drivers,
+            extra_files=extra_files,
+            driver_provides=DRIVER_PROVIDES,
+        )
+
+        loader_conf_content = generate_loader_conf(
+            LOADER_TIMEOUT,
+            LOADER_REBOOT_ON_ERROR,
+        )
+
+        referenced_paths = parse_and_validate_sprout_config(
+            configuration,
+            esp_path(SPROUT_CONFIG),
+            check_files_exist=True,
+        )
+
+        declared_extra_file_paths = {
+            esp_path(dest) for dest in extra_files.values()
+        }
+        combined_keep_set = referenced_paths | declared_extra_file_paths
+
+        # Install the loader and publish both configuration files transactionally.
+        with FixedLoaderTransaction(fixed_transaction_paths()) as transaction:
             install_sprout_binary()
 
             if EFI_INSTALL_AS_REMOVABLE:
                 install_removable_loader()
 
-            configuration = generate_sprout_config(
-                entries,
-                default_entry.identifier,
-                drivers,
-                extra_files=extra_files,
-                driver_provides=DRIVER_PROVIDES,
-            )
-
-            referenced_paths = parse_and_validate_sprout_config(
-                configuration,
-                esp_path(SPROUT_CONFIG),
-                check_files_exist=True,
-            )
-
-            declared_extra_file_paths = {
-                esp_path(dest) for dest in extra_files.values()
-            }
-            combined_keep_set = referenced_paths | declared_extra_file_paths
-
-            # Atomically replace sprout.toml only after all referenced files are present.
+            # Atomically replace sprout.toml and loader/loader.conf
             atomic_write_text(
                 esp_path(SPROUT_CONFIG),
                 configuration,
+            )
+
+            atomic_write_text(
+                esp_path(LOADER_CONF),
+                loader_conf_content,
             )
 
             transaction.commit()

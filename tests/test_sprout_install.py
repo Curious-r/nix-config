@@ -22,7 +22,7 @@ def load_sprout_installer(
     esp_mount: Path,
     sprout_binary: Path | None = None,
     drivers: dict[str, str] | None = None,
-    timeout: int = 5,
+    timeout: int | str | None = 5,
     config_limit: int = 0,
     can_touch_efi: bool = False,
     removable: bool = False,
@@ -31,6 +31,8 @@ def load_sprout_installer(
     settings_file: Path | None = None,
     extra_files: dict[str, str | Path] | None = None,
     driver_provides: dict[str, str] | None = None,
+    reboot_on_error: str = "auto",
+    loader_timeout: Any = None,
 ) -> ModuleType:
     src_file = (
         Path(__file__).resolve().parent.parent
@@ -52,6 +54,15 @@ def load_sprout_installer(
     else:
         effective_settings_file = settings_file
 
+    if loader_timeout is not None:
+        effective_timeout = loader_timeout
+    elif timeout is None:
+        effective_timeout = "menu-force"
+    elif isinstance(timeout, int):
+        effective_timeout = str(timeout)
+    else:
+        effective_timeout = str(timeout)
+
     replacements = {
         "@python3@": sys.executable,
         "@efiSysMountPoint@": str(esp_mount),
@@ -59,7 +70,8 @@ def load_sprout_installer(
         "@nix@": "/nix",
         "@efibootmgr@": "/bin/efibootmgr",
         "@util-linux@": "/bin",
-        "@timeout@": str(timeout),
+        "@loaderTimeout@": json.dumps(effective_timeout),
+        "@loaderRebootOnError@": json.dumps(reboot_on_error),
         "@configurationLimit@": str(config_limit),
         "@canTouchEfiVariables@": "1" if can_touch_efi else "0",
         "@efiInstallAsRemovable@": "1" if removable else "0",
@@ -4423,15 +4435,14 @@ class SproutTomlConfigConformanceTest(unittest.TestCase):
         self.assertIn("options", data)
         options = data["options"]
         self.assertEqual(options.get("default-entry"), "nixos-g2")
-        self.assertEqual(options.get("menu-timeout"), 5)
-        self.assertIsInstance(options.get("menu-timeout"), int)
+        self.assertNotIn("menu-timeout", options)
 
         # The selected default entry exists in the generated entries
         self.assertIn("entries", data)
         self.assertIn(options["default-entry"], data["entries"])
 
     def test_zero_timeout_option(self) -> None:
-        """Validate options table with a zero timeout."""
+        """Validate options table does not emit menu-timeout even when timeout is zero."""
         mod_zero = load_sprout_installer(self.esp_dir, timeout=0)
         entry = self._create_sample_entry()
 
@@ -4442,8 +4453,7 @@ class SproutTomlConfigConformanceTest(unittest.TestCase):
         )
         data = tomllib.loads(toml_str)
 
-        self.assertEqual(data["options"]["menu-timeout"], 0)
-        self.assertIsInstance(data["options"]["menu-timeout"], int)
+        self.assertNotIn("menu-timeout", data["options"])
 
     def test_drivers_schema_conformance(self) -> None:
         """Validate drivers table against Sprout schema."""
@@ -5962,7 +5972,13 @@ class SproutStaticSettingsTest(unittest.TestCase):
         self.assertEqual(data["version"], 1)
         # Module-owned options
         self.assertEqual(data["options"]["default-entry"], "nixos-g1")
-        self.assertEqual(data["options"]["menu-timeout"], 10)
+        self.assertNotIn("menu-timeout", data["options"])
+        loader_conf_path = self.esp_dir / mod.LOADER_CONF
+        self.assertTrue(loader_conf_path.is_file())
+        self.assertEqual(
+            loader_conf_path.read_text(encoding="utf-8"),
+            "timeout 10\nreboot-on-error auto\n",
+        )
         # Custom option
         self.assertEqual(data["options"]["menu-style"], "simple")
         # Drivers
@@ -8637,6 +8653,379 @@ load_priority = 10
 
         data_v2 = tomllib.loads(config_path.read_text(encoding="utf-8"))
         self.assertNotIn("provides", data_v2["drivers"]["btrfs"])
+
+
+class SproutLoaderConfManagementTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp_dir_obj = tempfile.TemporaryDirectory()
+        self.temp_dir = Path(self.temp_dir_obj.name).resolve()
+        self.esp_dir = self.temp_dir / "esp"
+        self.esp_dir.mkdir(parents=True, exist_ok=True)
+
+        self.old_cwd = Path.cwd()
+        os.chdir(self.temp_dir)
+
+        self.driver_src = self.temp_dir / "btrfs-driver.efi"
+        self.driver_src.write_text("driver-initial")
+
+        self.sprout_source = self.temp_dir / "source-sprout.efi"
+        self.sprout_source.write_text("sprout-bin")
+
+        self.drivers_config = {
+            "btrfs": str(self.driver_src),
+        }
+
+    def tearDown(self) -> None:
+        os.chdir(self.old_cwd)
+        self.temp_dir_obj.cleanup()
+
+    def _create_sample_entry(
+        self,
+        mod: ModuleType,
+        identifier: str = "nixos-g1",
+        generation: int = 1,
+        title: str = "NixOS generation 1",
+    ) -> Any:
+        k = self.temp_dir / f"kernel-{identifier}.efi"
+        k.write_text("kernel-bytes")
+        dest_k = mod.NIXOS_DIR / f"{identifier}-kernel.efi"
+        art_k = mod.BootArtifact(dest_k, k, None, generation, True)
+        return mod.BootEntry(
+            identifier=identifier,
+            title=title,
+            sort_key=identifier,
+            kernel=dest_k,
+            initrds=(),
+            options=("init=/init",),
+            artifacts=(art_k,),
+            critical=True,
+        )
+
+    def test_timeout_generation_values(self) -> None:
+        """Verify numeric timeout values and None map to expected loader.conf timeout lines."""
+        mod5 = load_sprout_installer(self.esp_dir, timeout=5)
+        self.assertEqual(mod5.generate_loader_conf(), "timeout 5\nreboot-on-error auto\n")
+
+        mod0 = load_sprout_installer(self.esp_dir, timeout=0)
+        self.assertEqual(mod0.generate_loader_conf(), "timeout 0\nreboot-on-error auto\n")
+
+        mod_none = load_sprout_installer(self.esp_dir, timeout=None)
+        self.assertEqual(mod_none.generate_loader_conf(), "timeout menu-force\nreboot-on-error auto\n")
+
+    def test_reboot_on_error_values(self) -> None:
+        """Verify all three reboot-on-error values generate valid loader.conf lines."""
+        for val in ("auto", "yes", "no"):
+            mod = load_sprout_installer(self.esp_dir, timeout=5, reboot_on_error=val)
+            self.assertEqual(mod.generate_loader_conf(), f"timeout 5\nreboot-on-error {val}\n")
+
+    def test_deterministic_field_ordering_and_final_newline(self) -> None:
+        """Verify deterministic field ordering (timeout then reboot-on-error) and trailing newline."""
+        mod = load_sprout_installer(self.esp_dir)
+        content = mod.generate_loader_conf("10", "no")
+        lines = content.splitlines(keepends=True)
+        self.assertEqual(lines, ["timeout 10\n", "reboot-on-error no\n"])
+        self.assertTrue(content.endswith("\n"))
+
+    def test_defensive_rejection_of_invalid_replacement_values(self) -> None:
+        """Verify invalid timeout and reboot-on-error values are rejected defensively."""
+        mod = load_sprout_installer(self.esp_dir)
+
+        # Negative timeout
+        with self.assertRaises(RuntimeError) as ctx:
+            mod.generate_loader_conf("-1", "auto")
+        self.assertIn("invalid loader timeout", str(ctx.exception))
+
+        # Non-digit string
+        with self.assertRaises(RuntimeError) as ctx:
+            mod.generate_loader_conf("invalid", "auto")
+        self.assertIn("invalid loader timeout", str(ctx.exception))
+
+        # Unsupported string like menu-disabled
+        with self.assertRaises(RuntimeError) as ctx:
+            mod.generate_loader_conf("menu-disabled", "auto")
+        self.assertIn("invalid loader timeout", str(ctx.exception))
+
+        # Non-string timeout
+        with self.assertRaises(RuntimeError) as ctx:
+            mod.generate_loader_conf(5, "auto")  # type: ignore[arg-type]
+        self.assertIn("loader timeout must be a string", str(ctx.exception))
+
+        # Invalid reboot-on-error enum
+        with self.assertRaises(RuntimeError) as ctx:
+            mod.generate_loader_conf("5", "sometimes")
+        self.assertIn("invalid loader reboot-on-error", str(ctx.exception))
+
+        # Non-string reboot-on-error
+        with self.assertRaises(RuntimeError) as ctx:
+            mod.generate_loader_conf("5", True)  # type: ignore[arg-type]
+        self.assertIn("loader reboot-on-error must be a string", str(ctx.exception))
+
+    def test_sprout_toml_no_longer_contains_menu_timeout(self) -> None:
+        """Verify sprout.toml does not contain options.menu-timeout."""
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            timeout=5,
+        )
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        config_path = self.esp_dir / mod.SPROUT_CONFIG
+        self.assertTrue(config_path.is_file())
+        raw_toml = config_path.read_text(encoding="utf-8")
+        data = tomllib.loads(raw_toml)
+
+        self.assertIn("options", data)
+        self.assertNotIn("menu-timeout", data["options"])
+        self.assertNotIn("menu-timeout", raw_toml)
+
+    def test_successful_installation_creates_sprout_toml_and_loader_conf(self) -> None:
+        """Verify successful installation publishes both sprout.toml and loader/loader.conf."""
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            timeout=7,
+            reboot_on_error="no",
+        )
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        sprout_toml = self.esp_dir / mod.SPROUT_CONFIG
+        loader_conf = self.esp_dir / mod.LOADER_CONF
+        self.assertTrue(sprout_toml.is_file())
+        self.assertTrue(loader_conf.is_file())
+
+        self.assertEqual(
+            loader_conf.read_text(encoding="utf-8"),
+            "timeout 7\nreboot-on-error no\n",
+        )
+
+    def test_existing_loader_conf_fully_replaced_without_stale_keys(self) -> None:
+        """Verify existing loader.conf is completely replaced, retaining no stale keys."""
+        loader_conf = self.esp_dir / "loader" / "loader.conf"
+        loader_conf.parent.mkdir(parents=True, exist_ok=True)
+        loader_conf.write_text(
+            "timeout 99\ndefault old-system\neditor yes\nauto-entries 0\nreboot-on-error no\n",
+            encoding="utf-8",
+        )
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            timeout=3,
+            reboot_on_error="auto",
+        )
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        new_content = loader_conf.read_text(encoding="utf-8")
+        self.assertEqual(new_content, "timeout 3\nreboot-on-error auto\n")
+        self.assertNotIn("default", new_content)
+        self.assertNotIn("editor", new_content)
+        self.assertNotIn("auto-entries", new_content)
+
+    def test_failure_before_publication_preserves_both_previous_files(self) -> None:
+        """Verify failure before publication leaves both existing sprout.toml and loader.conf unchanged."""
+        sprout_toml = self.esp_dir / "sprout.toml"
+        sprout_toml.parent.mkdir(parents=True, exist_ok=True)
+        prior_sprout = "version = 1\n# prior-sprout-content\n"
+        sprout_toml.write_text(prior_sprout, encoding="utf-8")
+
+        loader_conf = self.esp_dir / "loader" / "loader.conf"
+        loader_conf.parent.mkdir(parents=True, exist_ok=True)
+        prior_loader = "timeout 42\nreboot-on-error no\n"
+        loader_conf.write_text(prior_loader, encoding="utf-8")
+
+        invalid_settings = {
+            "actions": {
+                "broken": {
+                    "chainload": {"path": r"\EFI\Linux\nonexistent.efi"},
+                },
+            },
+            "entries": {
+                "broken-entry": {
+                    "title": "Broken",
+                    "actions": ["broken"],
+                },
+            },
+        }
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            settings=invalid_settings,
+        )
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            with self.assertRaises(RuntimeError):
+                mod.install_bootloader(self.temp_dir)
+
+        self.assertEqual(sprout_toml.read_text(encoding="utf-8"), prior_sprout)
+        self.assertEqual(loader_conf.read_text(encoding="utf-8"), prior_loader)
+
+    def test_failure_publishing_second_config_file_restores_first_and_second(self) -> None:
+        """Verify failure while publishing loader.conf rolls back newly written sprout.toml as well."""
+        sprout_toml = self.esp_dir / "sprout.toml"
+        sprout_toml.parent.mkdir(parents=True, exist_ok=True)
+        prior_sprout = "version = 1\n# prior-sprout-content\n"
+        sprout_toml.write_text(prior_sprout, encoding="utf-8")
+
+        loader_conf = self.esp_dir / "loader" / "loader.conf"
+        loader_conf.parent.mkdir(parents=True, exist_ok=True)
+        prior_loader = "timeout 42\nreboot-on-error no\n"
+        loader_conf.write_text(prior_loader, encoding="utf-8")
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            timeout=8,
+            reboot_on_error="yes",
+        )
+        entry = self._create_sample_entry(mod)
+
+        orig_atomic_write = mod.atomic_write_text
+
+        def fail_on_loader_conf(dst: Path, content: str) -> None:
+            if dst == self.esp_dir / mod.LOADER_CONF:
+                raise RuntimeError("simulated loader.conf write failure")
+            return orig_atomic_write(dst, content)
+
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ), patch.object(mod, "atomic_write_text", side_effect=fail_on_loader_conf):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod.install_bootloader(self.temp_dir)
+            self.assertIn("simulated loader.conf write failure", str(ctx.exception))
+
+        self.assertEqual(sprout_toml.read_text(encoding="utf-8"), prior_sprout)
+        self.assertEqual(loader_conf.read_text(encoding="utf-8"), prior_loader)
+
+    def test_rollback_previously_absent_config_files_removes_both(self) -> None:
+        """Verify rollback removes newly created configuration files when neither existed previously."""
+        sprout_toml = self.esp_dir / "sprout.toml"
+        loader_conf = self.esp_dir / "loader" / "loader.conf"
+        self.assertFalse(sprout_toml.exists())
+        self.assertFalse(loader_conf.exists())
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            timeout=5,
+        )
+        entry = self._create_sample_entry(mod)
+
+        orig_atomic_write = mod.atomic_write_text
+
+        def fail_on_loader_conf(dst: Path, content: str) -> None:
+            if dst == self.esp_dir / mod.LOADER_CONF:
+                raise RuntimeError("simulated failure writing loader.conf")
+            return orig_atomic_write(dst, content)
+
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ), patch.object(mod, "atomic_write_text", side_effect=fail_on_loader_conf):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod.install_bootloader(self.temp_dir)
+            self.assertIn("simulated failure writing loader.conf", str(ctx.exception))
+
+        self.assertFalse(sprout_toml.exists())
+        self.assertFalse(loader_conf.exists())
+
+    def test_rollback_when_sprout_toml_absent_and_loader_conf_present(self) -> None:
+        """Verify rollback removes newly created sprout.toml while restoring existing loader.conf."""
+        sprout_toml = self.esp_dir / "sprout.toml"
+        loader_conf = self.esp_dir / "loader" / "loader.conf"
+        loader_conf.parent.mkdir(parents=True, exist_ok=True)
+        prior_loader = "timeout 15\nreboot-on-error no\n"
+        loader_conf.write_text(prior_loader, encoding="utf-8")
+
+        self.assertFalse(sprout_toml.exists())
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            timeout=5,
+        )
+        entry = self._create_sample_entry(mod)
+
+        orig_atomic_write = mod.atomic_write_text
+
+        def fail_on_loader_conf(dst: Path, content: str) -> None:
+            if dst == self.esp_dir / mod.LOADER_CONF:
+                raise RuntimeError("simulated failure on loader.conf")
+            return orig_atomic_write(dst, content)
+
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ), patch.object(mod, "atomic_write_text", side_effect=fail_on_loader_conf):
+            with self.assertRaises(RuntimeError):
+                mod.install_bootloader(self.temp_dir)
+
+        self.assertFalse(sprout_toml.exists())
+        self.assertEqual(loader_conf.read_text(encoding="utf-8"), prior_loader)
+
+    def test_existing_directory_at_loader_conf_fails_safely(self) -> None:
+        """Verify an existing directory at loader/loader.conf fails safely and is not treated as absent."""
+        loader_conf_dir = self.esp_dir / "loader" / "loader.conf"
+        loader_conf_dir.mkdir(parents=True, exist_ok=True)
+
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+        )
+        entry = self._create_sample_entry(mod)
+
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            with self.assertRaises(RuntimeError) as ctx:
+                mod.install_bootloader(self.temp_dir)
+            self.assertIn("existing directory", str(ctx.exception))
+
+        self.assertTrue(loader_conf_dir.is_dir())
+
+    def test_null_timeout_maps_to_menu_force(self) -> None:
+        """Verify boot.loader.timeout = null generates 'timeout menu-force' in loader.conf."""
+        mod = load_sprout_installer(
+            self.esp_dir,
+            sprout_binary=self.sprout_source,
+            drivers=self.drivers_config,
+            timeout=None,
+        )
+        entry = self._create_sample_entry(mod)
+        with patch.object(mod, "check_mountpoint"), patch.object(
+            mod, "collect_entries", return_value=[entry]
+        ):
+            mod.install_bootloader(self.temp_dir)
+
+        loader_conf = self.esp_dir / mod.LOADER_CONF
+        self.assertTrue(loader_conf.is_file())
+        self.assertEqual(
+            loader_conf.read_text(encoding="utf-8"),
+            "timeout menu-force\nreboot-on-error auto\n",
+        )
+
+
+
 
 
 if __name__ == "__main__":
