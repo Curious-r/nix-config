@@ -10,13 +10,17 @@
     loader = {
       systemd-boot.enable = false;
       efi.canTouchEfiVariables = true;
-      timeout = 5;
+      timeout = null;
 
       sprout = {
         enable = true;
         package = pkgs.curious.sprout;
         configurationLimit = 20;
         efiInstallAsRemovable = false;
+        settings = {
+          options.menu-style = "graphical";
+          menu-styles.graphical.enable-mouse = true;
+        };
       };
     };
     # 用于为其他架构构建系统。
