@@ -1,7 +1,7 @@
 [![Declarative](https://img.shields.io/badge/Declarative-Configuration-success)](https://builtwithnix.org/)
 [![CI](https://github.com/Curious-r/nix-config/actions/workflows/ci.yml/badge.svg)](https://github.com/Curious-r/nix-config/actions/workflows/ci.yml)
 
-# ❄️ Curious's Nix Config
+# ![❄️](./logo.svg) Curious's Nix Config
 
 Personal NixOS, Home Manager and nix-on-droid configurations evaluated directly
 from npins-pinned sources. A small Flake remains available as an optional

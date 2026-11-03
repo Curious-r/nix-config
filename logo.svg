@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1200 -1200 2400 2400" width="32" height="32">
+  <defs>
+    <linearGradient id="nix-dark-radial" x1="0" y1="0" x2="560" y2="970" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#355394" />
+      <stop offset="35%" stop-color="#4564a5" />
+      <stop offset="100%" stop-color="#5277c3" />
+    </linearGradient>
+
+    <linearGradient id="nix-light-radial" x1="0" y1="0" x2="560" y2="970" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#5599c8" />
+      <stop offset="40%" stop-color="#72a9cf" />
+      <stop offset="100%" stop-color="#8ec7ed" />
+    </linearGradient>
+
+    <polygon id="lambda-v1-sharpened" points="
+      -128.00, 221.70
+         0.00,   0.00
+       560.00, 969.95
+       304.00, 969.95
+       176.00, 748.25
+        48.00, 969.95
+      -208.00, 969.95
+        48.00, 526.54" />
+  </defs>
+
+  <g>
+    <use href="#lambda-v1-sharpened" fill="url(#nix-dark-radial)" transform="rotate(0)" />
+    <use href="#lambda-v1-sharpened" fill="url(#nix-light-radial)" transform="rotate(60)" />
+    <use href="#lambda-v1-sharpened" fill="url(#nix-dark-radial)" transform="rotate(120)" />
+    <use href="#lambda-v1-sharpened" fill="url(#nix-light-radial)" transform="rotate(180)" />
+    <use href="#lambda-v1-sharpened" fill="url(#nix-dark-radial)" transform="rotate(240)" />
+    <use href="#lambda-v1-sharpened" fill="url(#nix-light-radial)" transform="rotate(300)" />
+  </g>
+</svg>
