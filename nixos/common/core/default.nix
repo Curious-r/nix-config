@@ -16,6 +16,7 @@
     ./fonts.nix
     ./editor.nix
     ./ssh.nix
+    ./starship.nix
     ./networking.nix
     ./preservation.nix
     ./home-manager.nix

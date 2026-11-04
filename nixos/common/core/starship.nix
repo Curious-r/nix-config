@@ -1,0 +1,4 @@
+{ ... }:
+{
+  programs.starship.enable = true;
+}
