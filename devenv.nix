@@ -39,9 +39,7 @@
     # Scan staged content for secrets before committing.
     gitleaks = {
       enable = true;
-      name = "gitleaks";
-      entry = "${pkgs.gitleaks}/bin/gitleaks git --pre-commit --redact --staged --verbose";
-      pass_filenames = false;
+      packages = pkgs.gitleaks;
     };
   };
 }
