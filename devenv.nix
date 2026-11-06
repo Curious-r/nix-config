@@ -39,7 +39,7 @@
     # Scan staged content for secrets before committing.
     gitleaks = {
       enable = true;
-      packages = pkgs.gitleaks;
+      package = pkgs.gitleaks;
     };
   };
 }
