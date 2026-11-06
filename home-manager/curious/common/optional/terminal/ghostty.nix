@@ -3,9 +3,9 @@
   programs.ghostty = {
     enable = true;
     settings = {
-      theme = "light:One Half Light,dark:One Half Dark";
+      theme = "light:Selenized Light,dark:One Half Dark";
 
-      background-opacity = 0.85;
+      background-opacity = 0.70;
       background-blur-radius = 20;
 
       font-size = 12;
