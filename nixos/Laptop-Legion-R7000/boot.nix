@@ -10,7 +10,7 @@
     loader = {
       systemd-boot.enable = false;
       efi.canTouchEfiVariables = true;
-      timeout = null;
+      timeout = 3;
 
       sprout = {
         enable = true;
