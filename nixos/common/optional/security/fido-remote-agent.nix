@@ -20,7 +20,6 @@ in
   services.fido-remote-agent = {
     enable = true;
     hosts = remoteServers;
-    legacySocket = null;
     rpIdAllow = [ "pam://gen1.remote.curious.host" ];
   };
 }
