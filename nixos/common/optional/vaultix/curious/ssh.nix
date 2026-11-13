@@ -87,12 +87,12 @@ in
       # 集群受管服务器：定向注入 pam-fido-remote 隔离套接字
       # ==========================================
       ${lib.concatMapStrings (host: ''
-        Host ${host} ${host}.*
+        Match host ${host},${host}.*
           RemoteForward /run/fido-remote/%r/agent.sock ''${XDG_RUNTIME_DIR}/fido-remote/${host}.sock
 
       '') remoteServers}
       # 局域网私网 IP 直连兜底：转发至共享的 legacySocket，允许未通过主机名匹配的内网连接鉴权。
-      Host 192.168.* 10.* 172.16.* 172.17.* 172.18.* 172.19.* 172.2* 172.30.* 172.31.* fd* fe80:*
+      Match host 192.168.*,10.*,172.16.*,172.17.*,172.18.*,172.19.*,172.2*,172.30.*,172.31.*,fd*,fe80:*
         RemoteForward /run/fido-remote/%r/agent.sock ''${XDG_RUNTIME_DIR}/fido-remote/agent.sock
 
       # 默认全局配置：显式指定默认使用通用私钥。
