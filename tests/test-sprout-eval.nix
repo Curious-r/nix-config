@@ -87,7 +87,7 @@ let
   ];
   testCase5 =
     let
-      toplevelEval = builtins.tryEval case5.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case5.config.system.build.toplevel.type;
       failedAssertions = builtins.filter (
         x: !x.assertion && pkgs.lib.hasInfix "boot.loader.sprout.configurationLimit" x.message
       ) case5.config.assertions;
@@ -106,7 +106,7 @@ let
   ];
   testCase6 =
     let
-      toplevelEval = builtins.tryEval case6.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case6.config.system.build.toplevel.type;
       sproutFailedAssertions = builtins.filter (
         x: !x.assertion && pkgs.lib.hasInfix "boot.loader.sprout.configurationLimit" x.message
       ) case6.config.assertions;
@@ -125,7 +125,7 @@ let
   ];
   testCase7 =
     let
-      toplevelEval = builtins.tryEval case7.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case7.config.system.build.toplevel.type;
       sproutFailedAssertions = builtins.filter (
         x: !x.assertion && pkgs.lib.hasInfix "boot.loader.sprout.configurationLimit" x.message
       ) case7.config.assertions;
@@ -144,7 +144,7 @@ let
   ];
   testCase8 =
     let
-      toplevelEval = builtins.tryEval case8.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case8.config.system.build.toplevel.type;
       sproutFailedAssertions = builtins.filter (
         x: !x.assertion && pkgs.lib.hasInfix "boot.loader.sprout.configurationLimit" x.message
       ) case8.config.assertions;
@@ -164,7 +164,7 @@ let
   ];
   testCase9 =
     let
-      toplevelEval = builtins.tryEval case9.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case9.config.system.build.toplevel.type;
       failedAssertions = builtins.filter (
         x: !x.assertion && pkgs.lib.hasInfix "boot.loader.timeout" x.message
       ) case9.config.assertions;
@@ -183,7 +183,7 @@ let
   ];
   testCase10 =
     let
-      toplevelEval = builtins.tryEval case10.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case10.config.system.build.toplevel.type;
       timeoutFailedAssertions = builtins.filter (
         x: !x.assertion && pkgs.lib.hasInfix "boot.loader.timeout" x.message
       ) case10.config.assertions;
@@ -202,7 +202,7 @@ let
   ];
   testCase11 =
     let
-      toplevelEval = builtins.tryEval case11.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case11.config.system.build.toplevel.type;
       timeoutFailedAssertions = builtins.filter (
         x: !x.assertion && pkgs.lib.hasInfix "boot.loader.timeout" x.message
       ) case11.config.assertions;
@@ -257,8 +257,8 @@ let
   ];
   testCase14 =
     let
-      toplevelEval = builtins.tryEval case14.config.system.build.toplevel;
-      installBootLoaderEval = builtins.tryEval case14.config.system.build.installBootLoader;
+      toplevelEval = builtins.tryEval case14.config.system.build.toplevel.drvPath;
+      installBootLoaderEval = builtins.tryEval (toString case14.config.system.build.installBootLoader);
     in
     assert case14.config.boot.loader.sprout.enable == true;
     assert case14.config.boot.loader.systemd-boot.enable == true;
@@ -276,7 +276,7 @@ let
   ];
   testCase15 =
     let
-      toplevelEval = builtins.tryEval case15.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case15.config.system.build.toplevel.type;
       failedAssertions = builtins.filter (
         x: !x.assertion && pkgs.lib.hasInfix "boot.loader.sprout.efiInstallAsRemovable" x.message
       ) case15.config.assertions;
@@ -298,7 +298,7 @@ let
   ];
   testCase16 =
     let
-      toplevelEval = builtins.tryEval case16.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case16.config.system.build.toplevel.type;
       failedAssertions = builtins.filter (
         x: !x.assertion && pkgs.lib.hasInfix "boot.loader.sprout.efiInstallAsRemovable" x.message
       ) case16.config.assertions;
@@ -318,7 +318,7 @@ let
   ];
   testCase17 =
     let
-      toplevelEval = builtins.tryEval case17.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case17.config.system.build.toplevel.type;
       failedAssertions = builtins.filter (
         x: !x.assertion && pkgs.lib.hasInfix "boot.loader.sprout.efiInstallAsRemovable" x.message
       ) case17.config.assertions;
@@ -357,7 +357,7 @@ let
   ];
   testCase19 =
     let
-      toplevelEval = builtins.tryEval case19.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case19.config.system.build.toplevel.type;
       installerEval = builtins.tryEval case19.config.system.build.installBootLoader.drvPath;
     in
     assert toplevelEval.success == true;
@@ -399,7 +399,7 @@ let
   ];
   testCase20 =
     let
-      toplevelEval = builtins.tryEval case20.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case20.config.system.build.toplevel.type;
       installerEval = builtins.tryEval case20.config.system.build.installBootLoader.drvPath;
     in
     assert toplevelEval.success == true;
@@ -454,7 +454,7 @@ let
   ];
   testCase23 =
     let
-      toplevelEval = builtins.tryEval case23.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case23.config.system.build.toplevel.type;
       failedAssertions = builtins.filter (
         x: !x.assertion && pkgs.lib.hasInfix "actions must be non-empty" x.message
       ) case23.config.assertions;
@@ -473,7 +473,7 @@ let
   ];
   testCase24 =
     let
-      toplevelEval = builtins.tryEval case24.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case24.config.system.build.toplevel.type;
       failedAssertions = builtins.filter (
         x: !x.assertion && pkgs.lib.hasInfix "must define exactly one variant" x.message
       ) case24.config.assertions;
@@ -495,7 +495,7 @@ let
   ];
   testCase25 =
     let
-      toplevelEval = builtins.tryEval case25.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case25.config.system.build.toplevel.type;
       failedAssertions = builtins.filter (
         x: !x.assertion && pkgs.lib.hasInfix "must define exactly one variant" x.message
       ) case25.config.assertions;
@@ -520,7 +520,7 @@ let
   ];
   testCase26 =
     let
-      toplevelEval = builtins.tryEval case26.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case26.config.system.build.toplevel.type;
       failedAssertions = builtins.filter (
         x:
         !x.assertion
@@ -548,7 +548,7 @@ let
   ];
   testCase27 =
     let
-      toplevelEval = builtins.tryEval case27.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case27.config.system.build.toplevel.type;
       failedAssertions = builtins.filter (
         x: !x.assertion && pkgs.lib.hasInfix "cannot specify both 'initrd' and 'initrd-chain'" x.message
       ) case27.config.assertions;
@@ -618,7 +618,7 @@ let
   ];
   testCase31 =
     let
-      toplevelEval = builtins.tryEval case31.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case31.config.system.build.toplevel.type;
       failedAssertions = builtins.filter (
         x: !x.assertion && pkgs.lib.hasInfix "cannot contain an empty entry name" x.message
       ) case31.config.assertions;
@@ -643,7 +643,7 @@ let
   ];
   testCase32 =
     let
-      toplevelEval = builtins.tryEval case32.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case32.config.system.build.toplevel.type;
       failedAssertions = builtins.filter (
         x: !x.assertion && pkgs.lib.hasInfix "cannot use reserved 'nixos-' prefix" x.message
       ) case32.config.assertions;
@@ -668,7 +668,7 @@ let
   ];
   testCase33 =
     let
-      toplevelEval = builtins.tryEval case33.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case33.config.system.build.toplevel.type;
       failedAssertions = builtins.filter (
         x: !x.assertion && pkgs.lib.hasInfix "must exist in boot.loader.sprout.settings.actions" x.message
       ) case33.config.assertions;
@@ -721,7 +721,7 @@ let
   ];
   testCase36 =
     let
-      toplevelEval = builtins.tryEval case36.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case36.config.system.build.toplevel.type;
       failedAssertions = builtins.filter (
         x: !x.assertion && pkgs.lib.hasInfix "cannot contain an empty action name" x.message
       ) case36.config.assertions;
@@ -742,7 +742,7 @@ let
   ];
   testCase37 =
     let
-      toplevelEval = builtins.tryEval case37.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case37.config.system.build.toplevel.type;
       failedAssertions = builtins.filter (
         x: !x.assertion && pkgs.lib.hasInfix "cannot use reserved 'nixos-' prefix" x.message
       ) case37.config.assertions;
@@ -767,7 +767,7 @@ let
   ];
   testCase39 =
     assert case39.config.boot.loader.sprout.extraFiles.memtest == dummyEfi;
-    assert (builtins.tryEval case39.config.system.build.toplevel).success == true;
+    assert (builtins.tryEval case39.config.system.build.toplevel.type).success == true;
     true;
 
   # 40. Invalid logical name starting with digit is rejected.
@@ -779,7 +779,7 @@ let
   ];
   testCase40 =
     let
-      toplevelEval = builtins.tryEval case40.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case40.config.system.build.toplevel.type;
       failedAssertions = builtins.filter (
         x:
         !x.assertion
@@ -799,7 +799,7 @@ let
   ];
   testCase41 =
     let
-      toplevelEval = builtins.tryEval case41.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case41.config.system.build.toplevel.type;
       failedAssertions = builtins.filter (
         x:
         !x.assertion
@@ -824,7 +824,7 @@ let
   ];
   testCase42 =
     let
-      toplevelEval = builtins.tryEval case42.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case42.config.system.build.toplevel.type;
       failedAssertions = builtins.filter (
         x: !x.assertion && pkgs.lib.hasInfix "cannot use reserved 'sprout_extra_file_' prefix" x.message
       ) case42.config.assertions;
@@ -873,7 +873,7 @@ let
     }
   ];
   testCase44 =
-    assert (builtins.tryEval case44.config.system.build.toplevel).success == true;
+    assert (builtins.tryEval case44.config.system.build.toplevel.type).success == true;
     assert (builtins.length case44.config.boot.loader.sprout.settings.phases.early) == 1;
     assert (builtins.length case44.config.boot.loader.sprout.settings.phases.startup) == 1;
     assert (builtins.length case44.config.boot.loader.sprout.settings.phases.late) == 1;
@@ -892,7 +892,7 @@ let
   ];
   testCase45 =
     let
-      toplevelEval = builtins.tryEval case45.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case45.config.system.build.toplevel.type;
       failedAssertions = builtins.filter (
         x:
         !x.assertion
@@ -916,7 +916,7 @@ let
   ];
   testCase46 =
     let
-      toplevelEval = builtins.tryEval case46.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case46.config.system.build.toplevel.type;
       failedAssertions = builtins.filter (
         x:
         !x.assertion
@@ -942,7 +942,7 @@ let
   ];
   testCase47 =
     let
-      toplevelEval = builtins.tryEval case47.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case47.config.system.build.toplevel.type;
       failedAssertions = builtins.filter (
         x: !x.assertion && pkgs.lib.hasInfix "cannot use reserved 'sprout_extra_file_' prefix" x.message
       ) case47.config.assertions;
@@ -959,7 +959,7 @@ let
           boot.loader.sprout.enable = true;
           boot.loader.sprout.settings.phases.unknown = [ ];
         }
-      ]).config.system.build.toplevel;
+      ]).config.system.build.installBootLoader.drvPath;
 
   case48b =
     builtins.tryEval
@@ -974,7 +974,7 @@ let
             }
           ];
         }
-      ]).config.system.build.toplevel;
+      ]).config.system.build.installBootLoader.drvPath;
 
   testCase48 =
     assert case48a.success == false;
@@ -998,7 +998,7 @@ let
     }
   ];
   testCase50 =
-    assert (builtins.tryEval case50.config.system.build.toplevel).success == true;
+    assert (builtins.tryEval case50.config.system.build.toplevel.type).success == true;
     assert case50.config.boot.loader.sprout.settings.values.tools_dir == "\\EFI\\tools";
     assert case50.config.boot.loader.sprout.settings.values.memtest_path == "$tools_dir\\memtest.efi";
     true;
@@ -1012,7 +1012,7 @@ let
   ];
   testCase51 =
     let
-      toplevelEval = builtins.tryEval case51.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case51.config.system.build.toplevel.type;
       failedAssertions = builtins.filter (
         x:
         !x.assertion
@@ -1032,7 +1032,7 @@ let
   ];
   testCase52 =
     let
-      toplevelEval = builtins.tryEval case52.config.system.build.toplevel;
+      toplevelEval = builtins.tryEval case52.config.system.build.toplevel.type;
       failedAssertions = builtins.filter (
         x:
         !x.assertion
@@ -1051,7 +1051,7 @@ let
           boot.loader.sprout.enable = true;
           boot.loader.sprout.settings.unknownSubmoduleField = "bad";
         }
-      ]).config.system.build.toplevel;
+      ]).config.system.build.installBootLoader.drvPath;
   testCase53 =
     assert case53.success == false;
     true;
@@ -1064,7 +1064,7 @@ let
     }
   ];
   testCase54 =
-    assert (builtins.tryEval case54.config.system.build.toplevel).success == true;
+    assert (builtins.tryEval case54.config.system.build.toplevel.type).success == true;
     assert case54.config.boot.loader.sprout.settings.options.menu-style == "basic";
     true;
 
@@ -1076,7 +1076,7 @@ let
     }
   ];
   testCase55 =
-    assert (builtins.tryEval case55.config.system.build.toplevel).success == true;
+    assert (builtins.tryEval case55.config.system.build.toplevel.type).success == true;
     assert case55.config.boot.loader.sprout.settings.options.menu-style == "graphical";
     true;
 
@@ -1105,7 +1105,7 @@ let
     }
   ];
   testCase57 =
-    assert (builtins.tryEval case57.config.system.build.toplevel).success == true;
+    assert (builtins.tryEval case57.config.system.build.toplevel.type).success == true;
     assert case57.config.boot.loader.sprout.settings.menu-styles.graphical.enable-mouse == true;
     assert case57.config.boot.loader.sprout.settings.menu-styles.graphical.enable-logo == false;
     assert case57.config.boot.loader.sprout.settings.menu-styles.graphical.enable-animation == false;
@@ -1160,7 +1160,7 @@ let
     }
   ];
   testCase61 =
-    assert (builtins.tryEval case61.config.system.build.toplevel).success == true;
+    assert (builtins.tryEval case61.config.system.build.toplevel.type).success == true;
     assert case61.config.boot.loader.sprout.settings.actions.act.chainload.devicetree == null;
     true;
 
@@ -1177,7 +1177,7 @@ let
     }
   ];
   testCase62 =
-    assert (builtins.tryEval case62.config.system.build.toplevel).success == true;
+    assert (builtins.tryEval case62.config.system.build.toplevel.type).success == true;
     assert
       case62.config.boot.loader.sprout.settings.actions.act.chainload.devicetree
       == "\\EFI\\Linux\\device-tree.dtb";
@@ -1227,7 +1227,7 @@ let
     }
   ];
   testCase65 =
-    assert (builtins.tryEval case65.config.system.build.toplevel).success == true;
+    assert (builtins.tryEval case65.config.system.build.toplevel.type).success == true;
     assert case65.config.boot.loader.sprout.drivers == { };
     true;
 
@@ -1239,7 +1239,7 @@ let
     }
   ];
   testCase66 =
-    assert (builtins.tryEval case66.config.system.build.toplevel).success == true;
+    assert (builtins.tryEval case66.config.system.build.toplevel.type).success == true;
     assert case66.config.boot.loader.sprout.drivers.btrfs.provides == "any";
     assert case66.config.boot.loader.sprout.drivers.btrfs.path == ./flake.nix;
     true;
@@ -1255,7 +1255,7 @@ let
     }
   ];
   testCase67 =
-    assert (builtins.tryEval case67.config.system.build.toplevel).success == true;
+    assert (builtins.tryEval case67.config.system.build.toplevel.type).success == true;
     assert case67.config.boot.loader.sprout.drivers.btrfs.provides == "filesystems";
     assert case67.config.boot.loader.sprout.drivers.btrfs.path == ./flake.nix;
     true;
@@ -1271,7 +1271,7 @@ let
     }
   ];
   testCase68 =
-    assert (builtins.tryEval case68.config.system.build.toplevel).success == true;
+    assert (builtins.tryEval case68.config.system.build.toplevel.type).success == true;
     assert case68.config.boot.loader.sprout.drivers.btrfs.provides == "any";
     assert case68.config.boot.loader.sprout.drivers.btrfs.path == ./flake.nix;
     true;
