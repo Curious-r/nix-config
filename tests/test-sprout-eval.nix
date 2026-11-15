@@ -68,8 +68,8 @@ let
   ];
   testCase4 =
     let
-      toplevelEval = builtins.tryEval case4.config.system.build.toplevel;
-      installBootLoaderEval = builtins.tryEval case4.config.system.build.installBootLoader;
+      toplevelEval = builtins.tryEval case4.config.system.build.toplevel.drvPath;
+      installBootLoaderEval = builtins.tryEval (toString case4.config.system.build.installBootLoader);
     in
     assert case4.config.boot.loader.sprout.enable == true;
     assert case4.config.boot.loader.grub.enable == true;
