@@ -20,6 +20,7 @@
       nvidiaGpuMonitor.enable = true;
       powerUsagePlugin.enable = true;
       dockerManager.enable = true;
+      chineseCalendar.enable = true;
     };
   };
 }
