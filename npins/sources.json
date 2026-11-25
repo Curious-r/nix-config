@@ -35,9 +35,9 @@
       },
       "branch": "master",
       "submodules": false,
-      "revision": "331ce1fb41236fcd5ac28e5e089f7f9e620b8a43",
-      "url": "https://github.com/duxlabs-dev/dux-plugin-registry/archive/331ce1fb41236fcd5ac28e5e089f7f9e620b8a43.tar.gz",
-      "hash": "sha256-IqYrKiR5l070PK2FOZkIFbxeQxTOGe+Mkmk+26nmhcA="
+      "revision": "225439e6b4c9a5a5d6af6c1d8bb5a87761cd8435",
+      "url": "https://github.com/duxlabs-dev/dux-plugin-registry/archive/225439e6b4c9a5a5d6af6c1d8bb5a87761cd8435.tar.gz",
+      "hash": "sha256-WRhxDNep2oxQHz4YApooDpr/m3JkgESha8YWjhF7zaA="
     },
     "home-manager": {
       "type": "Git",
@@ -48,9 +48,9 @@
       },
       "branch": "master",
       "submodules": false,
-      "revision": "b56bcd042b5e69ad188eca20d9bec1bfbf3dd453",
-      "url": "https://github.com/nix-community/home-manager/archive/b56bcd042b5e69ad188eca20d9bec1bfbf3dd453.tar.gz",
-      "hash": "sha256-xkRZ+PcPWaAyf9YrEBszYD5w2S6/Ac2tIfsufzd4dEQ="
+      "revision": "6a13737c0ed27c7c285f59e3be423ed972aa605f",
+      "url": "https://github.com/nix-community/home-manager/archive/6a13737c0ed27c7c285f59e3be423ed972aa605f.tar.gz",
+      "hash": "sha256-d9Osol//t6hqeo1xlspsYMbhTJK507h6t0EmPyF5Db0="
     },
     "lanzaboote": {
       "type": "GitRelease",
@@ -77,9 +77,9 @@
       },
       "branch": "main",
       "submodules": false,
-      "revision": "d70dfebdbd4616aa852fdb47c16588ec1ba8fc6f",
-      "url": "https://github.com/numtide/llm-agents.nix/archive/d70dfebdbd4616aa852fdb47c16588ec1ba8fc6f.tar.gz",
-      "hash": "sha256-HUVg1F7c3btLD++JDjdTsSAwp50NvrciqTMFdCKEfAg="
+      "revision": "0ce72a431c555e4db17520ce8ba70bb07a5747e1",
+      "url": "https://github.com/numtide/llm-agents.nix/archive/0ce72a431c555e4db17520ce8ba70bb07a5747e1.tar.gz",
+      "hash": "sha256-irsXSZxVVCEUqmL9lV+XeliXPcafj+U1rsckYP4lg0M="
     },
     "nix-on-droid": {
       "type": "Git",
